@@ -1,0 +1,154 @@
+<div class="grid">
+    <div class="col-12">
+        <div class="flex justify-content-between align-items-center mb-4">
+            <h2 class="m-0 text-primary font-bold">Gestión de Clientes</h2>
+            <p-button label="Nuevo Cliente" icon="pi pi-plus" (click)="abrirNuevo()"></p-button>
+        </div>
+
+        <!-- VISTA MÓVIL (Tarjetas) -->
+        <div class="block md:hidden">
+            <div class="mb-3">
+                <span class="p-input-icon-left w-full">
+                    <i class="pi pi-search"></i>
+                    <input pInputText type="text" (input)="dt.filterGlobal($any($event.target).value, 'contains')" placeholder="Buscar cliente, documento..." class="w-full" />
+                </span>
+            </div>
+            <div class="flex flex-column gap-3">
+                <p-card *ngFor="let cliente of clientes" styleClass="shadow-3 border-round-xl hover:shadow-5 transition-all transition-duration-200 p-0">
+                    <div class="flex flex-column gap-2 mb-2">
+                        <div class="flex align-items-center mb-2">
+                            <div class="bg-primary-50 border-circle flex align-items-center justify-content-center mr-3" style="width: 3rem; height: 3rem;">
+                                <i class="pi pi-user text-primary text-xl"></i>
+                            </div>
+                            <span class="font-bold text-xl text-900 line-height-2">{{ cliente.nombre_razon_social }}</span>
+                        </div>
+
+                        <div class="flex justify-content-between surface-100 p-3 border-round-lg">
+                            <div>
+                                <span class="text-500 text-sm block mb-1"><i class="pi pi-id-card mr-1"></i>Doc. Identidad</span>
+                                <div class="inline-flex align-items-center font-medium text-900 mt-1">
+                                    <span *ngIf="cliente.documento_identidad" class="px-2 py-1 border-round text-xs font-bold mr-2" 
+                                        [ngClass]="{'bg-blue-100 text-blue-700': cliente.documento_identidad.length === 8, 'bg-purple-100 text-purple-700': cliente.documento_identidad.length === 11, 'bg-gray-100 text-gray-700': cliente.documento_identidad.length !== 8 && cliente.documento_identidad.length !== 11}">
+                                        {{cliente.documento_identidad.length === 8 ? 'DNI' : (cliente.documento_identidad.length === 11 ? 'RUC' : 'OTRO')}}
+                                    </span>
+                                    <span>{{ cliente.documento_identidad || 'No registrado' }}</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div *ngIf="cliente.telefono" class="flex align-items-center mt-2 px-2">
+                            <i class="pi pi-phone text-500 mr-2"></i>
+                            <span class="text-900">{{ cliente.telefono }}</span>
+                        </div>
+
+                        <div *ngIf="cliente.correo" class="flex align-items-center mt-2 px-2">
+                            <i class="pi pi-envelope text-500 mr-2"></i>
+                            <span class="text-900">{{ cliente.correo }}</span>
+                        </div>
+
+                        <div *ngIf="cliente.direccion" class="flex align-items-start mt-2 px-2">
+                            <i class="pi pi-map-marker text-500 mr-2 mt-1"></i>
+                            <span class="text-900 text-sm line-height-2">{{ cliente.direccion }}</span>
+                        </div>
+                    </div>
+
+                    <ng-template pTemplate="footer">
+                        <div class="flex gap-2 w-full mt-1">
+                            <p-button label="Editar" icon="pi pi-pencil" styleClass="p-button-primary p-button-outlined flex-1 p-button-sm border-round-lg font-bold" (click)="abrirEditar(cliente)"></p-button>
+                            <p-button label="Eliminar" icon="pi pi-trash" styleClass="p-button-danger flex-1 p-button-sm border-round-lg font-bold" (click)="eliminarCliente(cliente)"></p-button>
+                        </div>
+                    </ng-template>
+                </p-card>
+            </div>
+            <div *ngIf="!loading && clientes.length === 0" class="surface-card p-4 shadow-1 border-round text-center mt-3">
+                <i class="pi pi-users text-500 mb-3" style="font-size: 3rem"></i>
+                <p class="text-500 m-0">No hay clientes registrados.</p>
+            </div>
+        </div>
+
+        <!-- VISTA ESCRITORIO (Tabla) -->
+        <div class="hidden md:block surface-card p-4 shadow-1 border-round">
+            <p-table #dt [value]="clientes" [paginator]="true" [rows]="10" [globalFilterFields]="['nombre_razon_social', 'documento_identidad']" [loading]="loading" responsiveLayout="scroll" styleClass="p-datatable-striped p-datatable-gridlines">
+                <ng-template pTemplate="caption">
+                    <div class="flex justify-content-end">
+                        <span class="p-input-icon-left">
+                            <i class="pi pi-search"></i>
+                            <input pInputText type="text" (input)="dt.filterGlobal($any($event.target).value, 'contains')" placeholder="Buscar cliente, documento..." />
+                        </span>
+                    </div>
+                </ng-template>
+                <ng-template pTemplate="header">
+                    <tr>
+                        <th>Razón Social / Nombre</th>
+                        <th>Documento (RUC/DNI)</th>
+                        <th>Dirección</th>
+                        <th>Teléfono</th>
+                        <th>Correo</th>
+                        <th class="text-center" style="width: 8rem">Acciones</th>
+                    </tr>
+                </ng-template>
+                <ng-template pTemplate="body" let-cliente>
+                    <tr>
+                        <td class="font-bold">{{ cliente.nombre_razon_social }}</td>
+                        <td>
+                            <div class="inline-flex align-items-center">
+                                <span *ngIf="cliente.documento_identidad" class="px-2 py-1 border-round text-xs font-bold mr-2" 
+                                      [ngClass]="{'bg-blue-100 text-blue-700': cliente.documento_identidad.length === 8, 'bg-purple-100 text-purple-700': cliente.documento_identidad.length === 11, 'bg-gray-100 text-gray-700': cliente.documento_identidad.length !== 8 && cliente.documento_identidad.length !== 11}">
+                                    {{cliente.documento_identidad.length === 8 ? 'DNI' : (cliente.documento_identidad.length === 11 ? 'RUC' : 'OTRO')}}
+                                </span>
+                                <span>{{ cliente.documento_identidad || '-' }}</span>
+                            </div>
+                        </td>
+                        <td>{{ cliente.direccion || '-' }}</td>
+                        <td>{{ cliente.telefono || '-' }}</td>
+                        <td>{{ cliente.correo || '-' }}</td>
+                        <td class="text-center">
+                            <div class="flex justify-content-center gap-2">
+                                <p-button icon="pi pi-pencil" styleClass="p-button-rounded p-button-text p-button-sm p-button-primary" (click)="abrirEditar(cliente)" pTooltip="Editar"></p-button>
+                                <p-button icon="pi pi-trash" styleClass="p-button-rounded p-button-text p-button-sm p-button-danger" (click)="eliminarCliente(cliente)" pTooltip="Eliminar"></p-button>
+                            </div>
+                        </td>
+                    </tr>
+                </ng-template>
+                <ng-template pTemplate="emptymessage">
+                    <tr>
+                        <td colspan="6" class="text-center py-4">No hay clientes registrados.</td>
+                    </tr>
+                </ng-template>
+            </p-table>
+        </div>
+    </div>
+</div>
+
+<p-dialog header="Nuevo Cliente" [(visible)]="displayModal" [modal]="true" [style]="{width: '450px'}">
+    <div class="p-fluid grid formgrid pt-2">
+        <div class="field col-12">
+            <label>Documento (RUC/DNI para Autocompletar)</label>
+            <div class="p-inputgroup">
+                <input pInputText type="text" [(ngModel)]="nuevoCliente.documento_identidad" (keyup.enter)="buscarDocApiPeru()" placeholder="Escriba y presione buscar..." />
+                <button type="button" pButton icon="pi pi-search" styleClass="p-button-primary" (click)="buscarDocApiPeru()" [loading]="isSearchingDoc"></button>
+            </div>
+            <small class="text-500">Busca en SUNAT/RENIEC para llenar los datos automáticamente.</small>
+        </div>
+        <div class="field col-12 mt-3">
+            <label>Razón Social / Nombre (*)</label>
+            <input pInputText type="text" [(ngModel)]="nuevoCliente.nombre_razon_social" />
+        </div>
+        <div class="field col-12">
+            <label>Dirección</label>
+            <input pInputText type="text" [(ngModel)]="nuevoCliente.direccion" />
+        </div>
+        <div class="field col-12 md:col-6">
+            <label>Teléfono</label>
+            <input pInputText type="text" [(ngModel)]="nuevoCliente.telefono" />
+        </div>
+        <div class="field col-12 md:col-6">
+            <label>Correo</label>
+            <input pInputText type="text" [(ngModel)]="nuevoCliente.correo" />
+        </div>
+    </div>
+    <ng-template pTemplate="footer">
+        <p-button label="Cancelar" icon="pi pi-times" (click)="displayModal=false" styleClass="p-button-text"></p-button>
+        <p-button label="Guardar" icon="pi pi-check" (click)="guardarCliente()" [loading]="isSaving"></p-button>
+    </ng-template>
+</p-dialog>

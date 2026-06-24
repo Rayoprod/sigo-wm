@@ -1,0 +1,281 @@
+<div class="grid">
+    <div class="col-12">
+        <div class="flex justify-content-between align-items-center mb-4">
+            <h2 class="m-0 text-primary font-bold">Documentos Comerciales</h2>
+            <p-button label="Nuevo Documento" icon="pi pi-plus" styleClass="p-button-primary" routerLink="/comercial/nuevo"></p-button>
+        </div>
+
+        <!-- VISTA MÓVIL (Tarjetas) -->
+        <div class="block md:hidden">
+            <div class="mb-3">
+                <span class="p-input-icon-left w-full">
+                    <i class="pi pi-search"></i>
+                    <input pInputText type="text" (input)="dt.filterGlobal($any($event.target).value, 'contains')" placeholder="Buscar por folio, cliente..." class="w-full" />
+                </span>
+            </div>
+
+            <div class="flex flex-column gap-3">
+                <p-card *ngFor="let pedido of pedidos" styleClass="shadow-3 border-round-xl hover:shadow-5 transition-all transition-duration-200 p-0">
+                    <div class="flex justify-content-between align-items-start mb-3">
+                        <div class="flex-1 pr-3">
+                            <span class="text-500 font-medium text-sm flex align-items-center"><i class="pi pi-file mr-1"></i>Folio {{ pedido.folio }}</span>
+                            <div class="text-900 font-bold text-xl mt-2 line-height-2"><i class="pi pi-user mr-2 text-primary"></i>{{ pedido.clientes?.nombre_razon_social }}</div>
+                        </div>
+                        <p-tag [value]="pedido.tipo_documento === 'COTIZACION' ? 'Cotización' : 'Venta'" [severity]="pedido.tipo_documento === 'COTIZACION' ? 'warning' : 'success'" styleClass="font-bold"></p-tag>
+                    </div>
+
+                    <div class="flex flex-column gap-3 mb-2">
+                        <div class="flex justify-content-between surface-100 p-3 border-round-lg align-items-center">
+                            <div>
+                                <span class="text-500 text-sm block mb-1"><i class="pi pi-calendar mr-1"></i>Fecha</span>
+                                <span class="font-medium text-900">{{ pedido.created_at | date:'dd/MM/yyyy' }}</span>
+                            </div>
+                            <div class="text-right border-left-1 surface-border pl-3">
+                                <span class="text-500 text-sm block mb-1"><i class="pi pi-money-bill mr-1"></i>Total</span>
+                                <span class="font-bold text-green-600 text-2xl">{{ pedido.total | currency:'PEN':'symbol':'1.2-2' }}</span>
+                            </div>
+                        </div>
+
+                        <div class="flex justify-content-between align-items-center px-2">
+                            <div>
+                                <span class="text-500 text-sm block mb-2"><i class="pi pi-check-circle mr-1"></i>Estado</span>
+                                <div *ngIf="isCotizacionVencida(pedido); else mobileDropdownTemplate">
+                                    <p-tag value="VENCIDA" severity="danger"></p-tag>
+                                </div>
+                                <ng-template #mobileDropdownTemplate>
+                                    <p-dropdown 
+                                        [options]="pedido.tipo_documento === 'COTIZACION' ? estadosCotizacion : estadosVenta" 
+                                        [ngModel]="pedido.estado" 
+                                        (onChange)="onEstadoChange($event, pedido)" 
+                                        [disabled]="pedido.estado === 'COMPLETADA' || pedido.estado === 'ANULADA'"
+                                        appendTo="body" 
+                                        styleClass="text-sm">
+                                        <ng-template let-selected pTemplate="selectedItem">
+                                            <p-tag [value]="selected.label" [severity]="getSeverityEstado(selected.value)"></p-tag>
+                                        </ng-template>
+                                    </p-dropdown>
+                                </ng-template>
+                            </div>
+                            <div class="text-right">
+                                <span class="text-500 text-sm block mb-2"><i class="pi pi-wallet mr-1"></i>Pago</span>
+                                <span class="text-xs border-round px-2 py-1 font-bold" 
+                                      [ngClass]="{'bg-green-100 text-green-700': pedido.estado_pago === 'PAGADO', 'bg-orange-100 text-orange-700': pedido.estado_pago === 'PARCIAL', 'bg-red-100 text-red-700': pedido.estado_pago === 'PENDIENTE'}">
+                                    {{ pedido.estado_pago }}
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <ng-template pTemplate="footer">
+                        <div class="flex gap-2 w-full mt-2">
+                            <p-button label="PDF" icon="pi pi-file-pdf" [loading]="isGeneratingPdf" styleClass="p-button-danger p-button-outlined flex-1 p-button-sm border-round-lg font-bold" (click)="generarPDF(pedido)"></p-button>
+                            <p-button *ngIf="pedido.tipo_documento === 'COTIZACION'" label="Editar" icon="pi pi-pencil" styleClass="p-button-info p-button-outlined flex-1 p-button-sm border-round-lg font-bold" [routerLink]="['/comercial/editar', pedido.id]"></p-button>
+                            <p-button *ngIf="pedido.tipo_documento !== 'COTIZACION'" label="WhatsApp" icon="pi pi-whatsapp" styleClass="p-button-success p-button-outlined flex-1 p-button-sm border-round-lg font-bold" (click)="compartirWhatsApp(pedido)"></p-button>
+                            <p-button *ngIf="pedido.tipo_documento !== 'COTIZACION'" label="Pagos" icon="pi pi-wallet" styleClass="p-button-primary p-button-outlined flex-1 p-button-sm border-round-lg font-bold" (click)="openCobro(pedido)"></p-button>
+                        </div>
+                    </ng-template>
+                </p-card>
+            </div>
+            
+            <div *ngIf="!loading && pedidos.length === 0" class="surface-card p-4 shadow-1 border-round text-center">
+                <i class="pi pi-folder-open text-500 mb-3" style="font-size: 3rem"></i>
+                <p class="text-500 m-0">No se encontraron documentos comerciales.</p>
+            </div>
+        </div>
+
+        <!-- VISTA ESCRITORIO (Tabla) -->
+        <div class="hidden md:block surface-card p-4 shadow-1 border-round">
+            <p-table 
+                #dt 
+                [value]="pedidos" 
+                [paginator]="true" 
+                [rows]="10" 
+                [loading]="loading" 
+                [globalFilterFields]="['folio', 'clientes.nombre_razon_social', 'tipo_documento']"
+                responsiveLayout="scroll"
+                styleClass="p-datatable-sm p-datatable-striped">
+                
+                <ng-template pTemplate="caption">
+                    <div class="flex justify-content-end">
+                        <span class="p-input-icon-left">
+                            <i class="pi pi-search"></i>
+                            <input pInputText type="text" (input)="dt.filterGlobal($any($event.target).value, 'contains')" placeholder="Buscar por folio, cliente..." />
+                        </span>
+                    </div>
+                </ng-template>
+
+                <ng-template pTemplate="header">
+                    <tr>
+                        <th pSortableColumn="folio">Folio <p-sortIcon field="folio"></p-sortIcon></th>
+                        <th pSortableColumn="tipo_documento">Tipo <p-sortIcon field="tipo_documento"></p-sortIcon></th>
+                        <th pSortableColumn="clientes.nombre_razon_social">Cliente <p-sortIcon field="clientes.nombre_razon_social"></p-sortIcon></th>
+                        <th pSortableColumn="created_at">Fecha <p-sortIcon field="created_at"></p-sortIcon></th>
+                        <th>Total</th>
+                        <th pSortableColumn="estado">Estado <p-sortIcon field="estado"></p-sortIcon></th>
+                        <th pSortableColumn="estado_pago">Pago <p-sortIcon field="estado_pago"></p-sortIcon></th>
+                        <th>Acciones</th>
+                    </tr>
+                </ng-template>
+
+                <ng-template pTemplate="body" let-pedido>
+                    <tr>
+                        <td class="font-bold">{{ pedido.folio }}</td>
+                        <td>{{ pedido.tipo_documento === 'COTIZACION' ? 'Cotización' : 'Venta' }}</td>
+                        <td>{{ pedido.clientes?.nombre_razon_social }}</td>
+                        <td>{{ pedido.created_at | date:'dd/MM/yyyy HH:mm' }}</td>
+                        <td class="font-semibold text-primary">{{ pedido.total | currency:'PEN':'symbol':'1.2-2' }}</td>
+                        <td>
+                            <div *ngIf="isCotizacionVencida(pedido); else dropdownTemplate">
+                                <p-tag value="VENCIDA" severity="danger" pTooltip="Cotización expirada"></p-tag>
+                            </div>
+                            <ng-template #dropdownTemplate>
+                                <p-dropdown 
+                                    [options]="pedido.tipo_documento === 'COTIZACION' ? estadosCotizacion : estadosVenta" 
+                                    [ngModel]="pedido.estado" 
+                                    (onChange)="onEstadoChange($event, pedido)" 
+                                    [disabled]="pedido.estado === 'COMPLETADA' || pedido.estado === 'ANULADA'"
+                                    appendTo="body" 
+                                    styleClass="w-full text-sm">
+                                    <ng-template let-option pTemplate="item">
+                                        <span [ngClass]="{'text-orange-500 font-bold': option.value === 'PENDIENTE', 'text-green-500 font-bold': option.value === 'APROBADA' || option.value === 'COMPLETADA', 'text-red-500 font-bold': option.value === 'RECHAZADA' || option.value === 'ANULADA'}">
+                                            {{option.label}}
+                                        </span>
+                                    </ng-template>
+                                    <ng-template let-selected pTemplate="selectedItem">
+                                        <p-tag [value]="selected.label" [severity]="getSeverityEstado(selected.value)"></p-tag>
+                                    </ng-template>
+                                </p-dropdown>
+                            </ng-template>
+                        </td>
+                        <td>
+                            <span class="text-sm border-round px-2 py-1" 
+                                  [ngClass]="{'bg-green-100 text-green-700': pedido.estado_pago === 'PAGADO', 'bg-orange-100 text-orange-700': pedido.estado_pago === 'PARCIAL', 'bg-red-100 text-red-700': pedido.estado_pago === 'PENDIENTE'}">
+                                {{ pedido.estado_pago }}
+                            </span>
+                        </td>
+                        <td>
+                            <div class="flex gap-2">
+                                <p-button icon="pi pi-file-pdf" [loading]="isGeneratingPdf" styleClass="p-button-rounded p-button-danger p-button-text" (click)="generarPDF(pedido)" pTooltip="Ver PDF"></p-button>
+                                <p-button *ngIf="pedido.tipo_documento === 'COTIZACION'" icon="pi pi-pencil" styleClass="p-button-rounded p-button-info p-button-text" [routerLink]="['/comercial/editar', pedido.id]" pTooltip="Editar/Aprobar"></p-button>
+                                <p-button *ngIf="pedido.tipo_documento !== 'COTIZACION'" icon="pi pi-whatsapp" styleClass="p-button-rounded p-button-success p-button-text" (click)="compartirWhatsApp(pedido)" pTooltip="Compartir Rastreo"></p-button>
+                                <p-button *ngIf="pedido.tipo_documento !== 'COTIZACION'" icon="pi pi-wallet" styleClass="p-button-rounded p-button-primary p-button-text" (click)="openCobro(pedido)" pTooltip="Ver / Registrar Pagos"></p-button>
+                            </div>
+                        </td>
+                    </tr>
+                </ng-template>
+                
+                <ng-template pTemplate="emptymessage">
+                    <tr>
+                        <td colspan="8" class="text-center py-4">No se encontraron documentos comerciales.</td>
+                    </tr>
+                </ng-template>
+            </p-table>
+        </div>
+    </div>
+</div>
+
+<!-- Modal de Gestión de Pagos -->
+<p-dialog header="Gestión de Pagos - {{ selectedPedidoPagos?.clientes?.nombre_razon_social }}" [(visible)]="displayPagosModal" [modal]="true" [style]="{width: '100%', maxWidth: '700px'}" [breakpoints]="{'960px': '95vw'}">
+    <div *ngIf="selectedPedidoPagos" class="flex flex-column gap-4">
+        
+        <!-- Resumen de Deuda -->
+        <div class="grid m-0 bg-blue-50 border-round-xl p-3">
+            <div class="col-12 md:col-6 text-center md:text-left border-bottom-1 md:border-bottom-none md:border-right-1 surface-border border-blue-200">
+                <span class="text-600 block mb-1">Total de la Venta</span>
+                <span class="text-3xl font-bold text-blue-800">{{ selectedPedidoPagos.total | currency:'PEN':'symbol':'1.2-2' }}</span>
+            </div>
+            <div class="col-12 md:col-6 text-center md:text-right mt-2 md:mt-0">
+                <span class="text-600 block mb-1">Saldo Pendiente</span>
+                <span class="text-3xl font-bold" [ngClass]="{'text-green-600': saldoDeudor === 0, 'text-red-600': saldoDeudor > 0}">{{ saldoDeudor | currency:'PEN':'symbol':'1.2-2' }}</span>
+            </div>
+        </div>
+
+        <!-- Formulario de Nuevo Abono -->
+        <div class="surface-card p-4 border-round-xl shadow-2 border-1 surface-border" *ngIf="saldoDeudor > 0 && selectedPedidoPagos.estado !== 'ANULADA'">
+            <h3 class="text-lg font-semibold mt-0 mb-3 text-900"><i class="pi pi-plus-circle text-primary mr-2"></i>Registrar Nuevo Pago</h3>
+            <div class="grid formgrid p-fluid">
+                <div class="field col-12 md:col-4">
+                    <label class="font-medium text-700">Monto (Máx: {{saldoDeudor}})</label>
+                    <p-inputNumber [(ngModel)]="nuevoPago.monto" mode="currency" currency="PEN" [max]="saldoDeudor" [min]="0" class="w-full"></p-inputNumber>
+                </div>
+                <div class="field col-12 md:col-4">
+                    <label class="font-medium text-700">Método de Pago</label>
+                    <p-dropdown [options]="metodosPago" [(ngModel)]="nuevoPago.metodo" appendTo="body"></p-dropdown>
+                </div>
+                <div class="field col-12 md:col-4">
+                    <label class="font-medium text-700">Ref. / Operación</label>
+                    <input pInputText [(ngModel)]="nuevoPago.referencia" placeholder="Opcional" />
+                </div>
+                <div class="col-12 flex justify-content-end mt-2">
+                    <p-button label="Registrar Abono" icon="pi pi-check" styleClass="p-button-success" (click)="registrarAbono()" [loading]="isSavingPago" [disabled]="nuevoPago.monto <= 0 || nuevoPago.monto > saldoDeudor"></p-button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Historial de Pagos -->
+        <div>
+            <h3 class="text-lg font-semibold mt-0 mb-3 text-900"><i class="pi pi-history text-primary mr-2"></i>Historial de Pagos</h3>
+            <p-table [value]="historialPagos" responsiveLayout="scroll" styleClass="p-datatable-sm p-datatable-gridlines">
+                <ng-template pTemplate="header">
+                    <tr>
+                        <th class="surface-100">Fecha</th>
+                        <th class="surface-100">Monto</th>
+                        <th class="surface-100">Método</th>
+                        <th class="surface-100">Usuario</th>
+                        <th class="surface-100">Referencia</th>
+                    </tr>
+                </ng-template>
+                <ng-template pTemplate="body" let-pago>
+                    <tr>
+                        <td>{{ pago.fecha_pago | date:'dd/MM/yyyy HH:mm' }}</td>
+                        <td class="font-bold text-green-600">{{ pago.monto_pagado | currency:'PEN':'symbol':'1.2-2' }}</td>
+                        <td><p-tag [value]="pago.metodo_pago" severity="info"></p-tag></td>
+                        <td class="text-sm text-500"><i class="pi pi-user mr-1"></i>{{ pago.usuarios?.nombre_completo || 'Sistema' }}</td>
+                        <td class="text-sm text-500">{{ pago.referencia_operacion || '-' }}</td>
+                    </tr>
+                </ng-template>
+                <ng-template pTemplate="emptymessage">
+                    <tr>
+                        <td colspan="5" class="text-center p-4">
+                            <span class="text-500">No hay pagos registrados para esta venta.</span>
+                        </td>
+                    </tr>
+                </ng-template>
+            </p-table>
+        </div>
+    </div>
+</p-dialog>
+
+<p-confirmDialog [style]="{width: '450px'}"></p-confirmDialog>
+
+<!-- Dialog para Convertir a Venta -->
+<p-dialog header="Convertir Cotización a Venta" [(visible)]="displayConversionDialog" [modal]="true" [style]="{width: '450px'}" [closable]="false">
+    <div class="p-fluid">
+        <p class="mb-4">Estás a punto de aprobar esta cotización. Se convertirá en una Orden de Venta y se descontará el stock automáticamente.</p>
+        
+        <div class="field">
+            <label class="font-bold">Estado de Pago Inicial</label>
+            <p-dropdown 
+                [options]="opcionesPago" 
+                [(ngModel)]="conversionConfig.estadoPago" 
+                appendTo="body">
+            </p-dropdown>
+        </div>
+
+        <div class="field" *ngIf="conversionConfig.estadoPago !== 'PAGADO'">
+            <label class="font-bold">Días de Crédito (Espera)</label>
+            <p-inputNumber 
+                [(ngModel)]="conversionConfig.diasCredito" 
+                [min]="0" 
+                [max]="365"
+                suffix=" días">
+            </p-inputNumber>
+            <small class="text-500">Dejar en 0 si no tiene fecha límite estricta.</small>
+        </div>
+    </div>
+    
+    <ng-template pTemplate="footer">
+        <p-button label="Cancelar" icon="pi pi-times" styleClass="p-button-text" (click)="cancelarConversion()"></p-button>
+        <p-button label="Aprobar y Convertir" icon="pi pi-check" styleClass="p-button-primary" (click)="confirmarConversion()"></p-button>
+    </ng-template>
+</p-dialog>

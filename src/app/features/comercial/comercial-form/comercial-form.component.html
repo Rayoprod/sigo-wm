@@ -1,0 +1,249 @@
+<div class="flex flex-column md:flex-row justify-content-between md:align-items-center mb-4 gap-3">
+    <div class="flex flex-column md:flex-row md:align-items-center gap-3 w-full md:w-auto">
+        <h2 class="m-0 text-primary font-bold">Nuevo Documento</h2>
+        <!-- Tipo de Documento -->
+        <p-dropdown [options]="tipoDocumentos" [(ngModel)]="tipo_documento" optionLabel="label" optionValue="value" styleClass="w-full md:w-15rem"></p-dropdown>
+    </div>
+    <p-button label="Cancelar" icon="pi pi-times" styleClass="p-button-text p-button-secondary w-full md:w-auto" routerLink="/comercial"></p-button>
+</div>
+
+<div class="grid formgrid">
+    <!-- COLUMNA IZQUIERDA (Principal) -->
+    <div class="col-12 xl:col-8">
+        
+        <!-- Tarjeta 1: Datos del Cliente -->
+        <div class="surface-card p-4 shadow-1 border-round mb-4">
+            <div class="flex justify-content-between align-items-center border-bottom-1 surface-border pb-3 mb-4">
+                <div class="text-900 font-bold text-lg flex align-items-center">
+                    <span class="mr-2">1</span> Datos del Cliente
+                </div>
+                <p-dropdown [options]="[{label: 'Existente', value: 'existente'}, {label: 'Nuevo', value: 'nuevo'}]" 
+                                [(ngModel)]="modoCliente" 
+                                (ngModelChange)="cambiarModoCliente($event)" 
+                                optionLabel="label" 
+                                optionValue="value"
+                                styleClass="w-full md:w-15rem">
+                </p-dropdown>
+            </div>
+            
+            <!-- MODO: EXISTENTE -->
+            <div class="grid p-fluid formgrid" *ngIf="modoCliente === 'existente'">
+                <div class="col-12 field mb-4">
+                    <label class="text-sm font-bold text-900">Buscar Cliente <span class="text-red-500">*</span></label>
+                    <p-autoComplete 
+                        [(ngModel)]="clienteSearchText" 
+                        [suggestions]="clienteFiltro" 
+                        (completeMethod)="buscarClienteLocal($event)" 
+                        (onSelect)="onClienteSelect($event)"
+                        [dropdown]="true"
+                        appendTo="body"
+                        placeholder="Escribe el nombre o RUC/DNI..."
+                        styleClass="w-full">
+                        <ng-template let-cliente pTemplate="item">
+                            <div class="flex flex-column w-full overflow-hidden" style="max-width: 85vw;">
+                                <span class="font-bold text-overflow-ellipsis overflow-hidden white-space-nowrap w-full block">{{cliente.nombre_razon_social}}</span>
+                                <span class="text-sm text-500">{{cliente.documento_identidad}}</span>
+                            </div>
+                        </ng-template>
+                    </p-autoComplete>
+                </div>
+
+                <!-- Preview de datos seleccionados -->
+                <div class="col-12" *ngIf="clienteActual.id">
+                    <div class="surface-100 p-3 border-round">
+                        <div class="font-bold mb-1">{{clienteActual.nombre_razon_social}} <span class="text-green-600 text-sm ml-2 font-normal"><i class="pi pi-check-circle mr-1"></i>Registrado</span></div>
+                        <div class="text-sm text-700"><i class="pi pi-id-card mr-1"></i> {{clienteActual.documento_identidad}}</div>
+                        <div class="text-sm text-700 mt-1" *ngIf="clienteActual.direccion"><i class="pi pi-map-marker mr-1"></i> {{clienteActual.direccion}}</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- MODO: NUEVO -->
+            <div class="grid p-fluid formgrid" *ngIf="modoCliente === 'nuevo'">
+                <div class="col-12 md:col-5 field mb-4">
+                    <label class="text-sm font-bold text-900">RUC / DNI <span class="text-red-500">*</span></label>
+                    <div class="p-inputgroup">
+                        <input pInputText type="text" [(ngModel)]="clienteActual.documento_identidad" (keyup.enter)="buscarDocApiPeru()" placeholder="Número" />
+                        <button type="button" pButton icon="pi pi-search" (click)="buscarDocApiPeru()" [loading]="isSearchingDoc" pTooltip="Validar SUNAT/RENIEC" class="p-button-primary"></button>
+                    </div>
+                </div>
+                <div class="col-12 md:col-7 field mb-4">
+                    <label class="text-sm font-bold text-900">Razón Social / Nombres <span class="text-red-500">*</span></label>
+                    <input pInputText type="text" [(ngModel)]="clienteActual.nombre_razon_social" placeholder="Nombre completo o razón social" />
+                </div>
+
+                <div class="col-12 md:col-4 field mb-2">
+                    <label class="text-sm font-bold text-900">Teléfono</label>
+                    <input pInputText type="text" [(ngModel)]="clienteActual.telefono" placeholder="Opcional" />
+                </div>
+                <div class="col-12 md:col-4 field mb-2">
+                    <label class="text-sm font-bold text-900">Correo</label>
+                    <input pInputText type="text" [(ngModel)]="clienteActual.correo" placeholder="Opcional" />
+                </div>
+                <div class="col-12 md:col-4 field mb-2">
+                    <label class="text-sm font-bold text-900">Dirección</label>
+                    <input pInputText type="text" [(ngModel)]="clienteActual.direccion" placeholder="Opcional" />
+                </div>
+            </div>
+        </div>
+
+        <!-- Tarjeta 2: Detalle de Ítems -->
+        <div class="surface-card p-4 shadow-1 border-round mb-4">
+            <div class="text-900 font-bold text-lg border-bottom-1 surface-border pb-3 mb-4">
+                <span class="mr-2">2</span> {{ tipo_documento === 'COTIZACION' ? 'Detalle de Cotización' : 'Detalle de Venta' }}
+            </div>
+            
+            <!-- Tabla Carrito maneja el "+ Agregar Ítem" en su interior -->
+            <app-tabla-carrito 
+                [items]="items" 
+                (itemsChange)="onItemsChange($event)">
+            </app-tabla-carrito>
+        </div>
+
+    </div>
+
+    <!-- COLUMNA DERECHA (Lateral) -->
+    <div class="col-12 xl:col-4">
+        
+        <!-- Tarjeta 3: Condiciones -->
+        <div class="surface-card p-4 shadow-1 border-round mb-4">
+            <div class="text-900 font-bold text-lg border-bottom-1 surface-border pb-3 mb-4">
+                <span class="mr-2">3</span> Condiciones del Documento
+            </div>
+            
+            <div class="flex flex-column gap-4">
+                <div class="flex justify-content-between align-items-center">
+                    <div>
+                        <span class="font-bold text-900 block mb-1">Incluir IGV (18%)</span>
+                        <span class="text-500 text-sm">Precios incluyen impuesto</span>
+                    </div>
+                    <p-inputSwitch [(ngModel)]="afectaIgv" (ngModelChange)="recalcularTotales()"></p-inputSwitch>
+                </div>
+
+                <div class="field mb-0">
+                    <label class="font-bold text-900 mb-2 block">Punto de Entrega</label>
+                    <p-dropdown [options]="[{label: 'En Cantera', value: 'CANTERA'}, {label: 'En Obra', value: 'OBRA'}]" [(ngModel)]="lugar_entrega" optionLabel="label" optionValue="value" styleClass="w-full"></p-dropdown>
+                </div>
+                
+                <div class="field mb-0" *ngIf="lugar_entrega === 'OBRA'">
+                    <label class="font-medium text-sm">Dirección de Obra / Referencias</label>
+                    <input pInputText type="text" [(ngModel)]="direccion_entrega_detalle" placeholder="Ej: Km 4.5 Panamericana Sur..." class="w-full" />
+                </div>
+
+                <ng-container *ngIf="tipo_documento === 'COTIZACION'">
+                    <div class="field mb-0">
+                        <label class="font-bold text-900 mb-2 block">¿Qué mostrar en el PDF?</label>
+                        <div class="flex flex-column gap-2">
+                            <div class="flex align-items-center">
+                                <p-checkbox value="validez" [(ngModel)]="opcionesPdf" inputId="opc1"></p-checkbox>
+                                <label for="opc1" class="ml-2 text-sm flex-1">Validez de la oferta</label>
+                                <div class="w-4rem">
+                                    <input pInputText type="number" [(ngModel)]="dias_validez_oferta" class="w-full text-right p-1 text-sm" />
+                                </div>
+                                <span class="text-sm ml-2 text-500">días</span>
+                            </div>
+                            <div class="flex align-items-center">
+                                <p-checkbox value="cuentas" [(ngModel)]="opcionesPdf" inputId="opc2"></p-checkbox>
+                                <label for="opc2" class="ml-2 text-sm">Cuentas bancarias</label>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="field mb-0">
+                        <label class="font-medium text-sm block mb-1">Observaciones personalizadas</label>
+                        <textarea pInputTextarea [(ngModel)]="observaciones" rows="2" class="w-full"></textarea>
+                    </div>
+                </ng-container>
+
+                <ng-container *ngIf="tipo_documento === 'ORDEN_VENTA'">
+                    <div class="field mb-0">
+                        <label class="font-bold text-900 mb-2 block">Estado Financiero</label>
+                        <p-dropdown [options]="estadosFinancieros" [(ngModel)]="estado_pago" optionLabel="label" optionValue="value" styleClass="w-full"></p-dropdown>
+                    </div>
+                    
+                    <!-- CRÉDITO LOGIC -->
+                    <ng-container *ngIf="estado_pago === 'PARCIAL'">
+                        <div class="field mb-0 mt-3">
+                            <label class="font-medium text-sm">Días de Crédito Otorgado</label>
+                            <p-dropdown [options]="[{label: '15 días', value: 15}, {label: '30 días', value: 30}, {label: '45 días', value: 45}, {label: '60 días', value: 60}, {label: 'Personalizado', value: 0}]" [(ngModel)]="dias_credito" optionLabel="label" optionValue="value" styleClass="w-full"></p-dropdown>
+                        </div>
+                        <div class="field mb-0 mt-2" *ngIf="dias_credito === 0">
+                            <input pInputText type="number" [(ngModel)]="dias_credito" class="w-full" placeholder="Ingresar días manualmente" />
+                        </div>
+                        <div class="field mb-0 mt-3">
+                            <label class="font-medium text-sm">Monto de Adelanto (Si deja algo hoy)</label>
+                            <p-inputNumber [(ngModel)]="monto_adelanto" mode="decimal" prefix="S/ " [minFractionDigits]="2" [maxFractionDigits]="2" styleClass="w-full" inputStyleClass="w-full"></p-inputNumber>
+                            <small *ngIf="!hasAdelantoValido" class="text-red-500">El adelanto debe ser menor al total.</small>
+                        </div>
+                    </ng-container>
+
+                    <!-- PAGO INICIAL / TOTAL -->
+                    <div class="surface-100 p-3 border-round mt-3" *ngIf="estado_pago === 'PAGADO' || (estado_pago === 'PARCIAL' && monto_adelanto !== null && monto_adelanto > 0)">
+                        <div class="font-medium text-900 mb-2">Detalles del Pago ({{estado_pago}})</div>
+                        <div class="field mb-3">
+                            <label class="font-medium text-sm">Método de Pago</label>
+                            <p-dropdown [options]="metodosPago" [(ngModel)]="metodo_pago" optionLabel="label" optionValue="value" styleClass="w-full"></p-dropdown>
+                        </div>
+                        <div class="field mb-0 mt-3">
+                            <label class="font-medium text-sm">Número de Operación (Opcional)</label>
+                            <input pInputText type="text" [(ngModel)]="numero_operacion" class="w-full" />
+                        </div>
+                    </div>
+                </ng-container>
+            </div>
+        </div>
+
+        <!-- Tarjeta 4: Resumen y Acción -->
+        <div class="surface-card p-4 shadow-1 border-round mb-4">
+            <div class="text-900 font-bold text-lg border-bottom-1 surface-border pb-3 mb-4">
+                Resumen
+            </div>
+            
+            <div class="flex justify-content-between mb-2">
+                <span class="text-600">Subtotal</span>
+                <span class="font-bold text-900">{{ subtotal | currency:'PEN':'symbol':'1.2-2' }}</span>
+            </div>
+            
+            <div class="flex justify-content-between mb-2 align-items-center">
+                <span class="text-600">Descuento</span>
+                <p-inputNumber [(ngModel)]="descuento_global" (ngModelChange)="recalcularTotales()" mode="decimal" prefix="S/ " [minFractionDigits]="2" [maxFractionDigits]="2" inputStyleClass="w-6rem text-right p-inputtext-sm p-1 text-red-500 font-bold"></p-inputNumber>
+            </div>
+
+            <div class="flex justify-content-between mb-4" *ngIf="afectaIgv">
+                <span class="text-600">18% IGV</span>
+                <span class="font-bold text-red-500">+ {{ igv | currency:'PEN':'symbol':'1.2-2' }}</span>
+            </div>
+
+            <p-divider></p-divider>
+            
+            <div class="flex justify-content-between align-items-center mb-4">
+                <span class="text-xl font-bold text-900">TOTAL</span>
+                <span class="text-3xl font-bold text-primary">{{ total | currency:'PEN':'symbol':'1.2-2' }}</span>
+            </div>
+
+            <div class="text-sm text-500 mb-4 text-center">
+                <i class="pi pi-list mr-1"></i> {{ items.length }} ítem(s) en la {{ tipo_documento === 'COTIZACION' ? 'cotización' : 'venta' }}
+            </div>
+
+            <!-- Validaciones Visuales -->
+            <div class="flex flex-column gap-2 mb-4">
+                <div *ngIf="!isClienteValido" class="surface-50 p-2 border-round border-1 border-orange-200 flex align-items-start">
+                    <i class="pi pi-exclamation-triangle text-orange-500 mt-1 mr-2"></i>
+                    <span class="text-sm text-orange-700">Completa el nombre y documento del cliente para generar.</span>
+                </div>
+                <div *ngIf="!isItemsValido" class="surface-50 p-2 border-round border-1 border-orange-200 flex align-items-start">
+                    <i class="pi pi-exclamation-triangle text-orange-500 mt-1 mr-2"></i>
+                    <span class="text-sm text-orange-700">Agrega al menos un ítem con descripción y cantidad válida.</span>
+                </div>
+            </div>
+
+            <!-- Boton Acción -->
+            <button pButton pRipple 
+                class="p-button-lg w-full justify-content-center font-bold" 
+                [icon]="isSaving ? 'pi pi-spin pi-spinner' : 'pi pi-file-pdf'" 
+                [label]="tipo_documento === 'COTIZACION' ? 'Generar Cotización PDF' : 'Guardar Venta'" 
+                [disabled]="!isClienteValido || !isItemsValido || !hasAdelantoValido || isSaving"
+                (click)="guardar()">
+            </button>
+        </div>
+    </div>
+</div>

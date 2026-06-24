@@ -1,0 +1,203 @@
+<div class="grid">
+    <div class="col-12">
+        <h2 class="m-0 text-900 font-bold mb-4">Configuración del Sistema</h2>
+
+        <div class="surface-card p-0 shadow-2 border-round-xl overflow-hidden">
+            <p-tabView styleClass="custom-tabview">
+                
+                <!-- TAB 1: GESTION DE USUARIOS -->
+                <p-tabPanel header="Gestión de Usuarios" leftIcon="pi pi-users">
+                    <div class="p-4">
+                        <div class="flex justify-content-between align-items-center mb-4">
+                            <div>
+                                <h3 class="m-0 text-800 font-semibold">Cuentas del Equipo</h3>
+                                <p class="text-500 m-0 mt-1">Administra los accesos de tus vendedores y despachadores.</p>
+                            </div>
+                            <p-button label="Nuevo Usuario" icon="pi pi-user-plus" styleClass="p-button-primary shadow-2" (click)="abrirNuevoUsuario()"></p-button>
+                        </div>
+
+                        <p-table [value]="usuarios" [loading]="loadingUsuarios" responsiveLayout="scroll" styleClass="p-datatable-striped p-datatable-gridlines">
+                            <ng-template pTemplate="header">
+                                <tr>
+                                    <th class="bg-blue-50 text-blue-800">Nombre Completo</th>
+                                    <th class="bg-blue-50 text-blue-800">Correo Electrónico</th>
+                                    <th class="bg-blue-50 text-blue-800 text-center">Rol Asignado</th>
+                                    <th class="bg-blue-50 text-blue-800 text-center">Estado</th>
+                                    <th class="bg-blue-50 text-blue-800 text-center">Acciones</th>
+                                </tr>
+                            </ng-template>
+                            <ng-template pTemplate="body" let-user>
+                                <tr>
+                                    <td class="font-bold text-900">{{ user.nombre_completo || '-' }}</td>
+                                    <td class="font-medium text-600">{{ user.correo }}</td>
+                                    <td class="text-center">
+                                        <p-tag [value]="user.rol | uppercase" 
+                                               [severity]="user.rol === 'admin' ? 'danger' : (user.rol === 'vendedor' ? 'info' : 'warning')"></p-tag>
+                                    </td>
+                                    <td class="text-center">
+                                        <p-tag [value]="user.activo ? 'ACTIVO' : 'INACTIVO'" 
+                                               [severity]="user.activo ? 'success' : 'danger'"></p-tag>
+                                    </td>
+                                    <td class="text-center">
+                                        <div class="flex justify-content-center gap-2">
+                                            <p-button icon="pi pi-pencil" 
+                                                      pTooltip="Editar Nombre/Rol"
+                                                      styleClass="p-button-text p-button-info"
+                                                      (click)="editarUsuario(user)"></p-button>
+                                            <p-button [icon]="user.activo ? 'pi pi-ban' : 'pi pi-check-circle'" 
+                                                      [pTooltip]="user.activo ? 'Desactivar' : 'Activar'"
+                                                      [styleClass]="user.activo ? 'p-button-text p-button-danger' : 'p-button-text p-button-success'"
+                                                      (click)="toggleUserStatus(user)"></p-button>
+                                        </div>
+                                    </td>
+                                </tr>
+                            </ng-template>
+                            <ng-template pTemplate="emptymessage">
+                                <tr>
+                                    <td colspan="4" class="text-center py-5 text-500">No hay usuarios registrados además del administrador original.</td>
+                                </tr>
+                            </ng-template>
+                        </p-table>
+                    </div>
+                </p-tabPanel>
+
+                <!-- TAB 2: DATOS DE LA EMPRESA -->
+                <p-tabPanel header="Datos de la Empresa" leftIcon="pi pi-building">
+                    <div class="p-4 grid">
+                        <div class="col-12 md:col-7">
+                            <h3 class="m-0 text-800 font-semibold mb-4">Información Fiscal</h3>
+                            
+                            <div class="p-fluid formgrid grid">
+                                <div class="field col-12">
+                                    <label class="font-medium text-900">Razón Social</label>
+                                    <input pInputText type="text" [(ngModel)]="empresa.razon_social" />
+                                </div>
+                                <div class="field col-12 md:col-6">
+                                    <label class="font-medium text-900">RUC</label>
+                                    <input pInputText type="text" [(ngModel)]="empresa.ruc" />
+                                </div>
+                                <div class="field col-12">
+                                    <label class="font-medium text-900">Dirección Fiscal</label>
+                                    <input pInputText type="text" [(ngModel)]="empresa.direccion_fiscal" />
+                                </div>
+                                <div class="field col-12 md:col-6">
+                                    <label class="font-medium text-900">Teléfonos de Contacto</label>
+                                    <input pInputText type="text" [(ngModel)]="empresa.telefonos" placeholder="Ej: 999 999 999 - (01) 444 4444" />
+                                </div>
+                                <div class="field col-12 md:col-6">
+                                    <label class="font-medium text-900">Correo de Contacto</label>
+                                    <input pInputText type="email" [(ngModel)]="empresa.correo" placeholder="ventas@empresa.com" />
+                                </div>
+                                <div class="field col-12 md:col-6">
+                                    <label class="font-medium text-900">Color Institucional (PDFs)</label>
+                                    <div class="flex align-items-center gap-2">
+                                        <input type="color" [(ngModel)]="empresa.color_hex" class="w-4rem h-3rem border-none p-0 cursor-pointer" style="border-radius: 8px; overflow: hidden;" />
+                                        <input pInputText type="text" [(ngModel)]="empresa.color_hex" class="uppercase flex-1" />
+                                    </div>
+                                </div>
+                                <div class="field col-12 mt-2">
+                                    <div class="flex align-items-center justify-content-between mb-2">
+                                        <label class="font-medium text-900 m-0">Cuentas Bancarias (Para pagos y cotizaciones)</label>
+                                        <p-button icon="pi pi-plus" label="Agregar Cuenta" size="small" [outlined]="true" (click)="agregarCuentaBancaria()"></p-button>
+                                    </div>
+                                    <div class="grid align-items-center mb-2" *ngFor="let cuenta of empresa.cuentas_bancarias_json; let i = index">
+                                        <div class="col-12 md:col-3 p-1">
+                                            <input pInputText placeholder="Banco (Ej. BCP)" [(ngModel)]="cuenta.banco" class="w-full" />
+                                        </div>
+                                        <div class="col-12 md:col-2 p-1">
+                                            <input pInputText placeholder="Moneda" [(ngModel)]="cuenta.moneda" class="w-full" />
+                                        </div>
+                                        <div class="col-12 md:col-3 p-1">
+                                            <input pInputText placeholder="N° Cuenta" [(ngModel)]="cuenta.numero_cuenta" class="w-full" />
+                                        </div>
+                                        <div class="col-12 md:col-3 p-1">
+                                            <input pInputText placeholder="CCI" [(ngModel)]="cuenta.cci" class="w-full" />
+                                        </div>
+                                        <div class="col-12 md:col-1 p-1 flex justify-content-center">
+                                            <p-button icon="pi pi-trash" severity="danger" [text]="true" (click)="eliminarCuentaBancaria(i)"></p-button>
+                                        </div>
+                                    </div>
+                                    <div *ngIf="!empresa.cuentas_bancarias_json || empresa.cuentas_bancarias_json.length === 0" class="text-500 text-sm mt-2">
+                                        No hay cuentas bancarias registradas.
+                                    </div>
+                                </div>
+                                <div class="field col-12 mt-3">
+                                    <p-button label="Guardar Datos" icon="pi pi-save" (click)="guardarEmpresa()" [loading]="isSavingEmpresa"></p-button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="col-12 md:col-5 flex flex-column align-items-center justify-content-start border-left-none md:border-left-1 surface-border pl-0 md:pl-5 mt-4 md:mt-0">
+                            <h3 class="m-0 text-800 font-semibold mb-4 text-center w-full">Logotipo Oficial</h3>
+                            
+                            <!-- Current Logo Preview -->
+                            <div class="w-15rem h-15rem border-circle border-2 border-dashed surface-border flex align-items-center justify-content-center bg-surface-50 overflow-hidden mb-4 relative" style="border-color: #cbd5e1 !important;">
+                                <ng-container *ngIf="empresa.logo_url; else noLogo">
+                                    <img [src]="empresa.logo_url" alt="Logo de la Empresa" class="w-full h-full" style="object-fit: contain; padding: 1rem;" />
+                                </ng-container>
+                                <ng-template #noLogo>
+                                    <div class="text-center text-400">
+                                        <i class="pi pi-image text-4xl mb-2"></i>
+                                        <p class="m-0 text-sm">Sin logotipo</p>
+                                    </div>
+                                </ng-template>
+                            </div>
+
+                            <!-- Upload Component -->
+                            <p-fileUpload #fileUpload mode="basic" chooseLabel="Subir Nuevo Logo" accept="image/*" maxFileSize="2000000" [customUpload]="true" (uploadHandler)="uploadLogo($event, fileUpload)" [auto]="true" styleClass="p-button-outlined"></p-fileUpload>
+                            <small class="text-500 text-center mt-2">Formato recomendado: PNG transparente o JPG.<br>Se guarda automáticamente en la nube.</small>
+                        </div>
+                    </div>
+                </p-tabPanel>
+
+            </p-tabView>
+        </div>
+    </div>
+</div>
+
+<!-- Modal: Nuevo/Editar Usuario -->
+<p-dialog [header]="isEditingUser ? 'Editar Usuario' : 'Crear Nuevo Usuario'" [(visible)]="displayUserModal" [modal]="true" [style]="{width: '450px'}" styleClass="p-fluid">
+    <div class="grid pt-3">
+        <div class="col-12 text-center mb-4">
+            <div class="bg-blue-50 inline-flex align-items-center justify-content-center border-circle mb-3" style="width: 4rem; height: 4rem;">
+                <i [class]="isEditingUser ? 'pi pi-user-edit text-blue-500 text-3xl' : 'pi pi-user-plus text-blue-500 text-3xl'"></i>
+            </div>
+            <p class="m-0 text-500" *ngIf="!isEditingUser">Se le enviará acceso inmediatamente.</p>
+        </div>
+        
+        <div class="field col-12">
+            <label class="font-medium text-900">Nombre Completo (*)</label>
+            <div class="p-inputgroup">
+                <span class="p-inputgroup-addon"><i class="pi pi-user"></i></span>
+                <input pInputText type="text" [(ngModel)]="nuevoUsuario.nombre_completo" placeholder="Ej. Juan Pérez" />
+            </div>
+        </div>
+
+        <div class="field col-12">
+            <label class="font-medium text-900">Correo Electrónico (*)</label>
+            <div class="p-inputgroup">
+                <span class="p-inputgroup-addon"><i class="pi pi-envelope"></i></span>
+                <input pInputText type="email" [(ngModel)]="nuevoUsuario.email" placeholder="ejemplo@empresa.com" [disabled]="isEditingUser" />
+            </div>
+            <small *ngIf="isEditingUser" class="text-500">El correo no se puede cambiar por seguridad.</small>
+        </div>
+        
+        <div class="field col-12" *ngIf="!isEditingUser">
+            <label class="font-medium text-900">Contraseña Temporal (*)</label>
+            <div class="p-inputgroup">
+                <span class="p-inputgroup-addon"><i class="pi pi-lock"></i></span>
+                <input pInputText type="text" [(ngModel)]="nuevoUsuario.password" placeholder="Mínimo 6 caracteres" />
+            </div>
+        </div>
+
+        <div class="field col-12">
+            <label class="font-medium text-900">Rol del Empleado</label>
+            <p-dropdown [options]="roles" [(ngModel)]="nuevoUsuario.rol" appendTo="body" styleClass="w-full"></p-dropdown>
+        </div>
+    </div>
+    
+    <ng-template pTemplate="footer">
+        <p-button label="Cancelar" icon="pi pi-times" (click)="displayUserModal=false" styleClass="p-button-text p-button-secondary"></p-button>
+        <p-button [label]="isEditingUser ? 'Guardar Cambios' : 'Crear Cuenta'" icon="pi pi-check" (click)="guardarUsuario()" [loading]="isSavingUser" styleClass="p-button-primary"></p-button>
+    </ng-template>
+</p-dialog>

@@ -1,0 +1,227 @@
+/* Removido import de font para evitar error de budget en Angular */
+
+$bg-color: #f3f4f6;
+$card-bg: #ffffff;
+$primary: #10b981; // Verde Sigo (Success)
+$secondary: #3b82f6; // Azul Sigo
+$accent: #FF4B2B; // Rojo Alerta/Ruta
+$text-main: #1f2937;
+$text-light: #6b7280;
+$border: #e5e7eb;
+
+* {
+  box-sizing: border-box;
+  font-family: 'Inter', sans-serif;
+}
+
+.rastreo-container {
+  min-height: 100vh;
+  background-color: $bg-color;
+  padding: 20px;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+}
+
+.loader-container, .error-container {
+  text-align: center;
+  padding: 50px 20px;
+  background: $card-bg;
+  border-radius: 20px;
+  box-shadow: 0 10px 25px rgba(0,0,0,0.05);
+  margin-top: 50px;
+  width: 100%;
+  max-width: 400px;
+
+  h2 { color: $text-main; margin-bottom: 10px; }
+  p { color: $text-light; }
+  .icon { font-size: 3rem; margin-bottom: 20px; }
+}
+
+.spinner {
+  width: 50px;
+  height: 50px;
+  border: 4px solid rgba(0, 0, 0, 0.1);
+  border-top-color: $primary;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin: 0 auto 20px auto;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.tracking-content {
+  width: 100%;
+  max-width: 500px; /* Mobile optimal */
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.header-card, .timeline-card, .map-card, .evidence-card {
+  background: $card-bg;
+  border-radius: 20px;
+  padding: 20px;
+  box-shadow: 0 4px 15px rgba(0,0,0,0.03);
+}
+
+.header-card {
+  text-align: center;
+  
+  .brand {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+    padding-bottom: 15px;
+    border-bottom: 1px solid $border;
+    
+    .logo {
+      font-weight: 800;
+      font-size: 1.2rem;
+      color: $primary;
+      letter-spacing: 1px;
+    }
+    .folio {
+      font-size: 0.9rem;
+      color: $text-light;
+      font-weight: 600;
+      background: $bg-color;
+      padding: 5px 10px;
+      border-radius: 8px;
+    }
+  }
+
+  .status-title {
+    font-size: 2rem;
+    font-weight: 800;
+    color: $text-main;
+    margin: 10px 0;
+    
+    &.delivered {
+      color: $primary;
+    }
+  }
+
+  .destination {
+    color: $text-light;
+    font-size: 0.95rem;
+    line-height: 1.5;
+  }
+}
+
+.timeline-card {
+  .step {
+    display: flex;
+    position: relative;
+    padding-bottom: 30px;
+    
+    &:last-child {
+      padding-bottom: 0;
+    }
+
+    .dot {
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      background: $border;
+      margin-top: 5px;
+      position: relative;
+      z-index: 2;
+    }
+
+    .line {
+      position: absolute;
+      left: 7px;
+      top: 21px;
+      bottom: 0;
+      width: 2px;
+      background: $border;
+      z-index: 1;
+    }
+
+    .content {
+      margin-left: 20px;
+      
+      h4 {
+        margin: 0 0 5px 0;
+        color: $text-light;
+        font-size: 1.1rem;
+      }
+      .time {
+        font-size: 0.85rem;
+        color: $text-light;
+      }
+    }
+
+    &.active {
+      .dot {
+        background: $primary;
+        box-shadow: 0 0 0 4px rgba($primary, 0.2);
+      }
+      .line {
+        background: $primary;
+      }
+      .content h4 {
+        color: $text-main;
+        font-weight: 700;
+      }
+      .content .time {
+        color: $primary;
+        font-weight: 600;
+      }
+    }
+  }
+}
+
+.map-card {
+  h3 { margin: 0 0 15px 0; color: $text-main; }
+  .map-view {
+    width: 100%;
+    height: 250px;
+    border-radius: 12px;
+    background: #e5e5e5;
+  }
+}
+
+.evidence-card {
+  margin-bottom: 15px;
+  
+  .evidence-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+    border-bottom: 1px solid $border;
+    padding-bottom: 10px;
+
+    h3 { 
+      margin: 0; 
+      color: $text-main; 
+      font-size: 1.1rem;
+    }
+    .evidence-time {
+      font-size: 0.85rem;
+      color: $text-light;
+      display: flex;
+      align-items: center;
+    }
+  }
+
+  .photo-gallery {
+    display: flex;
+    gap: 10px;
+    overflow-x: auto;
+    padding-bottom: 10px;
+    
+    .delivery-photo {
+      height: 120px;
+      width: auto;
+      border-radius: 8px;
+      object-fit: cover;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+  }
+}

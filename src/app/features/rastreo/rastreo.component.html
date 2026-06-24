@@ -1,0 +1,76 @@
+<div class="rastreo-container">
+  <div *ngIf="loading" class="loader-container">
+    <div class="spinner"></div>
+    <p>Rastreando pedido...</p>
+  </div>
+
+  <div *ngIf="error" class="error-container">
+    <div class="icon">⚠️</div>
+    <h2>Oops</h2>
+    <p>{{ error }}</p>
+  </div>
+
+  <div *ngIf="!loading && !error && trackingData" class="tracking-content">
+    
+    <!-- HEADER -->
+    <header class="header-card">
+      <div class="brand">
+        <span class="logo">W&M</span>
+        <span class="folio">Pedido {{ trackingData.folio }}</span>
+      </div>
+      <h1 class="status-title" [ngClass]="{'delivered': isDelivered}">
+        {{ isDelivered ? 'Entregado' : (isDispatched ? 'En Camino' : 'En Preparación') }}
+      </h1>
+      <p class="destination">📍 {{ trackingData.destino }}</p>
+    </header>
+
+    <!-- TIMELINE -->
+    <section class="timeline-card">
+      <div class="step" [ngClass]="{'active': true}">
+        <div class="dot"></div>
+        <div class="content">
+          <h4>Pedido Recibido</h4>
+          <span class="time">{{ trackingData.fecha_pedido | date:'medium' }}</span>
+        </div>
+      </div>
+      
+      <div class="step" [ngClass]="{'active': isDispatched}">
+        <div class="line"></div>
+        <div class="dot"></div>
+        <div class="content">
+          <h4>En Camino</h4>
+          <span class="time" *ngIf="isDispatched">Despachado en unidad {{ trackingData.placa_vehiculo }}</span>
+          <span class="time" *ngIf="!isDispatched">Preparando en almacén...</span>
+        </div>
+      </div>
+
+      <div class="step" [ngClass]="{'active': isDelivered}">
+        <div class="line"></div>
+        <div class="dot"></div>
+        <div class="content">
+          <h4>Entregado</h4>
+          <span class="time" *ngIf="isDelivered">Tu pedido ha llegado a su destino.</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- DELIVERY PHOTOS (EVIDENCE) -->
+    <ng-container *ngIf="hasPhotos">
+      <section class="evidence-card" *ngFor="let evento of trackingData.eventos">
+        <ng-container *ngIf="evento.foto || (evento.fotos && evento.fotos.length > 0)">
+          <div class="evidence-header">
+            <h3>{{ evento.detalle }}</h3>
+            <span class="evidence-time"><i class="pi pi-clock mr-1"></i> {{ evento.timestamp | date:'shortTime' }}</span>
+          </div>
+          <div class="photo-gallery">
+            <img *ngIf="evento.foto" [src]="evento.foto" class="delivery-photo" alt="Foto de evidencia" />
+            <ng-container *ngIf="evento.fotos">
+              <img *ngFor="let fotoUrl of evento.fotos" [src]="fotoUrl" class="delivery-photo" alt="Foto de evidencia" />
+            </ng-container>
+          </div>
+        </ng-container>
+      </section>
+    </ng-container>
+
+  </div>
+</div>

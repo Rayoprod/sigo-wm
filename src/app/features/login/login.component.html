@@ -1,0 +1,34 @@
+<div class="flex align-items-center justify-content-center min-h-screen login-body">
+  <div class="glass-card p-5 border-round-2xl w-full mx-3" style="max-width: 420px;">
+      <div class="text-center mb-5">
+          <div class="flex justify-content-center mb-3">
+              <div class="flex align-items-center justify-content-center border-circle" style="width: 64px; height: 64px; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2);">
+                  <i class="pi pi-box text-3xl text-white"></i>
+              </div>
+          </div>
+          <div class="text-white text-3xl font-light mb-2 letter-spacing-1">W&M</div>
+          <span class="text-white-alpha-70 font-light">Gestión de Inventario y Ventas</span>
+      </div>
+
+      <div *ngIf="errorMsg" class="mb-4">
+        <div class="p-3 border-round bg-red-500 text-white flex align-items-center shadow-2">
+            <i class="pi pi-exclamation-circle mr-2 text-xl"></i>
+            <span class="font-medium text-sm">{{errorMsg}}</span>
+        </div>
+      </div>
+
+      <div class="flex flex-column gap-4">
+          <div>
+              <label for="email" class="block text-white-alpha-80 font-medium mb-2 text-sm uppercase tracking-wide">Correo Electrónico</label>
+              <input id="email" type="text" placeholder="usuario@empresa.com" pInputText class="w-full" [(ngModel)]="email" (keyup.enter)="login()" />
+          </div>
+
+          <div>
+              <label for="password" class="block text-white-alpha-80 font-medium mb-2 text-sm uppercase tracking-wide">Contraseña</label>
+              <p-password id="password" [(ngModel)]="password" placeholder="••••••••" [toggleMask]="true" styleClass="w-full" inputStyleClass="w-full" (keyup.enter)="login()" [feedback]="false"></p-password>
+          </div>
+
+          <button pButton pRipple label="Ingresar" icon="pi pi-arrow-right" iconPos="right" class="w-full mt-2 font-bold p-button-lg shadow-4" [loading]="loading" (click)="login()"></button>
+      </div>
+  </div>
+</div>
