@@ -549,7 +549,7 @@ export class LogisticaComponent implements OnInit, OnDestroy {
         .from('despachos_viajes_cabecera')
         .select(`
           *,
-          usuarios (correo, nombre_completo),
+          usuarios:usuarios!despachos_viajes_cabecera_despachador_id_fkey (correo, nombre_completo),
           despachos_viajes_detalle (
             cantidad_viaje,
             pedidos_items (
