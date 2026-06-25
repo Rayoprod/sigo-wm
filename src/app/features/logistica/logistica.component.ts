@@ -87,6 +87,7 @@ export class LogisticaComponent implements OnInit, OnDestroy {
   selectedAuditoriaItem: any = null;
 
   realtimeChannel: any;
+  rutaRealtimeChannel: any;
   currentUserRole: string | undefined;
 
   async ngOnInit() {
@@ -543,9 +544,38 @@ export class LogisticaComponent implements OnInit, OnDestroy {
       this.map = null;
     }
 
+    // Suscribir a cambios en tiempo real para este pedido
+    this.rutaRealtimeChannel = this.supabase.channel('current-ruta-channel')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'despachos_viajes_cabecera' }, payload => {
+        const item = (payload.new || payload.old) as any;
+        if (this.selectedPedidoParaRuta && item && item.pedido_id === this.selectedPedidoParaRuta.id) {
+          this.refrescarDatosRuta();
+        }
+      })
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'rutas_gps' }, payload => {
+        const item = payload.new as any;
+        if (this.selectedPedidoParaRuta && item && item.pedido_id === this.selectedPedidoParaRuta.id) {
+          this.refrescarDatosRuta();
+        }
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'viajes_entregas' }, payload => {
+        const item = (payload.new || payload.old) as any;
+        if (this.selectedPedidoParaRuta && item && item.pedido_id === this.selectedPedidoParaRuta.id) {
+          this.refrescarDatosRuta();
+        }
+      })
+      .subscribe();
+
+    await this.refrescarDatosRuta();
+    this.loadingRuta = false;
+  }
+
+  async refrescarDatosRuta() {
+    if (!this.selectedPedidoParaRuta) return;
+
     try {
       // 1. Obtener datos del Despacho (Salidas desde la Planta)
-      const { data: despachosData, error: errorDespachos } = await this.supabase
+      const { data: despachosData } = await this.supabase
         .from('despachos_viajes_cabecera')
         .select(`
           *,
@@ -559,14 +589,14 @@ export class LogisticaComponent implements OnInit, OnDestroy {
             )
           )
         `)
-        .eq('pedido_id', pedido.id)
+        .eq('pedido_id', this.selectedPedidoParaRuta.id)
         .order('numero_viaje_secuencial', { ascending: true });
 
       // 2. Obtener puntos GPS continuos del chofer (ordenados)
       const { data: gpsData } = await this.supabase
         .from('rutas_gps')
         .select('*')
-        .eq('pedido_id', pedido.id)
+        .eq('pedido_id', this.selectedPedidoParaRuta.id)
         .order('timestamp', { ascending: true });
         
       if (gpsData) {
@@ -577,7 +607,7 @@ export class LogisticaComponent implements OnInit, OnDestroy {
       const { data: entregasData } = await this.supabase
         .from('viajes_entregas')
         .select('*, chofer:usuarios(nombre_completo)')
-        .eq('pedido_id', pedido.id)
+        .eq('pedido_id', this.selectedPedidoParaRuta.id)
         .order('created_at', { ascending: true });
 
       if (entregasData) {
@@ -586,10 +616,14 @@ export class LogisticaComponent implements OnInit, OnDestroy {
 
       // 4. Consolidar para Auditoría visual (Tarjetas)
       const consolidadosMap = new Map<number, any>();
+      
+      // Registrar despachos
       (despachosData || []).forEach(d => {
         const num = d.numero_viaje_secuencial || 1;
         consolidadosMap.set(num, { numero_viaje_secuencial: num, despacho: d, chofer: null });
       });
+      
+      // Registrar entregas
       (entregasData || []).forEach(c => {
         const num = c.numero_viaje_secuencial || 1;
         if (consolidadosMap.has(num)) {
@@ -598,8 +632,18 @@ export class LogisticaComponent implements OnInit, OnDestroy {
           consolidadosMap.set(num, { numero_viaje_secuencial: num, despacho: null, chofer: c });
         }
       });
+
+      // Incorporar viajes que solo tengan puntos GPS pero ningún despacho ni entrega aún en la nube (flujo en progreso)
+      (this.puntosRuta || []).forEach(p => {
+        const num = p.numero_viaje_secuencial || 1;
+        if (!consolidadosMap.has(num)) {
+          consolidadosMap.set(num, { numero_viaje_secuencial: num, despacho: null, chofer: null });
+        }
+      });
+
+      // Guardamos la lista de viajes en orden DECRECIENTE (el más reciente arriba)
       this.viajesAuditoria = Array.from(consolidadosMap.values())
-        .sort((a, b) => a.numero_viaje_secuencial - b.numero_viaje_secuencial);
+        .sort((a, b) => b.numero_viaje_secuencial - a.numero_viaje_secuencial);
 
       // 5. Construir Historial Unificado para la línea de tiempo y colores
       this.historialTracking = [];
@@ -634,7 +678,6 @@ export class LogisticaComponent implements OnInit, OnDestroy {
 
         gpsDeEsteViaje.forEach(p => {
           puntosDelViaje.push([p.latitud, p.longitud]);
-          // No mostramos en timeline los puntos intermedios para no saturar, solo en el mapa.
         });
 
         // 5c. Añadir evento de Entrega
@@ -660,7 +703,8 @@ export class LogisticaComponent implements OnInit, OnDestroy {
         currentTramoIndex++;
       }
 
-      this.historialTracking.sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime());
+      // Ordenar la línea de tiempo de manera DECRECIENTE (más recientes primero)
+      this.historialTracking.sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
 
       // Renderizar el mapa de Leaflet
       setTimeout(() => {
@@ -668,11 +712,10 @@ export class LogisticaComponent implements OnInit, OnDestroy {
       }, 300);
 
     } catch (e) {
-      console.error(e);
+      console.error('Error al cargar/refrescar historial y rutas:', e);
       alert('Error cargando historial y rutas.');
-    } finally {
-      this.loadingRuta = false;
     }
+  }
   }
 
   // OSRM eliminado para graficar los puntos GPS reales (camino de puntos) sin "vueltones"
@@ -938,6 +981,10 @@ export class LogisticaComponent implements OnInit, OnDestroy {
     if (this.map) {
       this.map.remove();
       this.map = null;
+    }
+    if (this.rutaRealtimeChannel) {
+      this.supabase.removeChannel(this.rutaRealtimeChannel);
+      this.rutaRealtimeChannel = null;
     }
   }
 
