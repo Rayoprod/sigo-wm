@@ -1,0 +1,60 @@
+.chat-floating-btn {
+    position: fixed;
+    bottom: 2rem;
+    right: 2rem;
+    width: 3.5rem;
+    height: 3.5rem;
+    z-index: 1000;
+    transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+
+    &:hover {
+        transform: scale(1.1);
+        box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2) !important;
+    }
+
+    i {
+        font-size: 1.5rem;
+    }
+}
+
+::ng-deep .chat-sidebar {
+    .p-sidebar-header {
+        border-bottom: 1px solid var(--surface-border);
+        padding: 1rem 1.5rem;
+        background-color: #ffffff;
+    }
+    
+    .p-sidebar-content {
+        padding: 0;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+    }
+
+    /* Custom Scrollbar para el chat */
+    .chat-scroll::-webkit-scrollbar {
+        width: 6px;
+    }
+    
+    .chat-scroll::-webkit-scrollbar-track {
+        background: transparent;
+    }
+    
+    .chat-scroll::-webkit-scrollbar-thumb {
+        background: #cbd5e1;
+        border-radius: 10px;
+    }
+    
+    .chat-scroll::-webkit-scrollbar-thumb:hover {
+        background: #94a3b8;
+    }
+
+    /* Tablas Responsive dentro del Chat */
+    .chat-bubble table {
+        display: block;
+        width: 100%;
+        overflow-x: auto;
+        white-space: nowrap;
+        -webkit-overflow-scrolling: touch;
+    }
+}

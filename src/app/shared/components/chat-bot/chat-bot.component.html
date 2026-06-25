@@ -1,0 +1,99 @@
+<!-- Botón Flotante Global -->
+<button pButton 
+        pRipple 
+        type="button" 
+        icon="pi pi-sparkles" 
+        class="p-button-rounded p-button-primary shadow-5 chat-floating-btn" 
+        (click)="toggleChat()"
+        pTooltip="Hablar con Monito" 
+        tooltipPosition="left">
+</button>
+
+<!-- Drawer del Chat -->
+<p-sidebar [(visible)]="chatVisible" position="right" [showCloseIcon]="true" styleClass="w-full md:w-30rem lg:w-30rem p-0 m-0 chat-sidebar" [blockScroll]="true">
+    <ng-template pTemplate="header">
+        <div class="flex align-items-center w-full">
+            <div class="flex align-items-center justify-content-center bg-primary border-circle w-2.5rem h-2.5rem mr-3 shadow-2 shadow-primary">
+                <i class="pi pi-bolt text-lg text-white"></i>
+            </div>
+            <div>
+                <h2 class="m-0 text-900 font-bold text-xl">Monito</h2>
+                <p class="m-0 text-500 text-sm mt-1">Tu Asistente</p>
+            </div>
+            <div class="flex-grow-1"></div>
+            <button pButton pRipple type="button" icon="pi pi-download" 
+                    class="p-button-rounded p-button-text p-button-secondary mr-2" 
+                    pTooltip="Exportar chat a TXT" tooltipPosition="bottom"
+                    (click)="exportarChat()" *ngIf="chatMessages.length > 0">
+            </button>
+            <button pButton pRipple type="button" icon="pi pi-trash" 
+                    class="p-button-rounded p-button-text p-button-danger mr-2" 
+                    pTooltip="Limpiar memoria del chat" tooltipPosition="bottom"
+                    (click)="limpiarChat()" *ngIf="chatMessages.length > 0">
+            </button>
+        </div>
+    </ng-template>
+
+    <div class="flex flex-column h-full w-full bg-bluegray-50">
+        <!-- Chat History -->
+        <div #chatScroll class="flex-grow-1 overflow-y-auto px-3 py-4 w-full" style="height: calc(100vh - 180px); scroll-behavior: smooth;">
+            
+            <!-- Pantalla de Bienvenida (Vacío) -->
+            <div *ngIf="chatMessages.length === 0" class="flex flex-column align-items-center justify-content-center h-full text-center fadein">
+                <i class="pi pi-sparkles text-5xl text-primary-200 mb-3"></i>
+                <h3 class="text-700 m-0 mb-2 text-lg">Hola, soy Monito</h3>
+                <p class="text-500 text-sm max-w-15rem">Estoy conectado a tu base de datos. Pregúntame lo que necesites saber.</p>
+                <div class="mt-4 flex flex-column gap-2 w-full">
+                    <p-chip label="¿Quiénes me deben dinero?" icon="pi pi-wallet" styleClass="w-full surface-0 hover:surface-100 cursor-pointer transition-colors shadow-1 justify-content-center py-2" (click)="enviarMensajeIA('¿Quiénes me deben dinero?')"></p-chip>
+                    <p-chip label="Valor de mi inventario" icon="pi pi-box" styleClass="w-full surface-0 hover:surface-100 cursor-pointer transition-colors shadow-1 justify-content-center py-2" (click)="enviarMensajeIA('¿Cuál es el valor total inmovilizado en mi inventario?')"></p-chip>
+                </div>
+            </div>
+
+            <!-- Burbujas de Mensajes -->
+            <div *ngFor="let msg of chatMessages" class="mb-4 flex fadeinup animation-duration-200 w-full" [ngClass]="{'justify-content-end': msg.role === 'user', 'justify-content-start': msg.role === 'ai'}">
+                
+                <!-- Avatar IA -->
+                <div *ngIf="msg.role === 'ai'" class="flex-shrink-0 mr-2 mt-1">
+                    <div class="flex align-items-center justify-content-center bg-white border-circle w-2rem h-2rem shadow-1">
+                        <i class="pi pi-bolt text-primary" style="font-size: 0.8rem;"></i>
+                    </div>
+                </div>
+
+                <!-- Burbuja -->
+                <div class="p-3 shadow-1 chat-bubble" 
+                     [ngClass]="{
+                       'bg-primary text-white': msg.role === 'user', 
+                       'bg-white text-800': msg.role === 'ai'
+                     }"
+                     [style]="msg.role === 'user' ? 'max-width: 85%; font-size: 0.95rem; line-height: 1.5; border-radius: 18px 18px 4px 18px;' : 'max-width: 90%; font-size: 0.95rem; line-height: 1.5; border-radius: 4px 18px 18px 18px;'"
+                     [innerHTML]="msg.text">
+                </div>
+            </div>
+
+            <!-- Indicador de Escribiendo -->
+            <div *ngIf="isChatLoading" class="mb-4 flex justify-content-start fadein w-full">
+                <div class="flex-shrink-0 mr-2 mt-1">
+                    <div class="flex align-items-center justify-content-center bg-white border-circle w-2rem h-2rem shadow-1">
+                        <i class="pi pi-spin pi-spinner text-primary" style="font-size: 0.8rem;"></i>
+                    </div>
+                </div>
+                <div class="p-3 bg-white text-500 shadow-1 flex align-items-center gap-2" style="border-radius: 4px 18px 18px 18px; font-size: 0.95rem;">
+                    <span class="block w-0.5rem h-0.5rem border-circle bg-300"></span>
+                    <span class="block w-0.5rem h-0.5rem border-circle bg-400"></span>
+                    <span class="block w-0.5rem h-0.5rem border-circle bg-500"></span>
+                    Escribiendo...
+                </div>
+            </div>
+        </div>
+
+        <!-- Chat Input Box (Pegado al fondo) -->
+        <div class="bg-white p-3 border-top-1 surface-border shadow-2 w-full mt-auto z-5">
+            <div class="p-inputgroup border-round-3xl overflow-hidden bg-bluegray-50 border-1 surface-border hover:border-primary transition-colors transition-duration-200">
+                <input type="text" pInputText class="w-full p-2 text-md border-none focus:shadow-none text-900 bg-transparent" placeholder="Pregúntale a la IA..." [(ngModel)]="chatInput" (keyup.enter)="enviarMensajeIA()" [disabled]="isChatLoading" style="outline: none;">
+                <button type="button" pButton icon="pi pi-send" class="p-button-primary px-3 border-none font-bold" (click)="enviarMensajeIA()" [disabled]="isChatLoading || !chatInput.trim()">
+                </button>
+            </div>
+            <p class="text-center text-400 mt-2 m-0" style="font-size: 0.65rem;">Desarrollado con DeepSeek V4. Verifica la info.</p>
+        </div>
+    </div>
+</p-sidebar>

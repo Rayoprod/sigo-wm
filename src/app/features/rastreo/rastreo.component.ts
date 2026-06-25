@@ -71,8 +71,23 @@ export class RastreoComponent implements OnInit, OnDestroy {
     return this.trackingData?.eventos?.some((e: any) => e.tipo === 'DESPACHO_INICIADO') || this.isDelivered;
   }
 
+  get eventosFiltrados(): any[] {
+    if (!this.trackingData?.eventos) return [];
+    
+    if (this.trackingData.lugar_entrega === 'CANTERA') {
+      return this.trackingData.eventos.filter((e: any) => e.tipo === 'DESPACHO_INICIADO');
+    }
+    
+    if (this.trackingData.lugar_entrega === 'OBRA') {
+      return this.trackingData.eventos.filter((e: any) => e.tipo === 'ENTREGA_REALIZADA');
+    }
+    
+    return this.trackingData.eventos;
+  }
+
   get hasPhotos(): boolean {
-    if (!this.trackingData?.eventos) return false;
-    return this.trackingData.eventos.some((e: any) => e.foto || (e.fotos && e.fotos.length > 0));
+    const eventos = this.eventosFiltrados;
+    if (!eventos || eventos.length === 0) return false;
+    return eventos.some((e: any) => e.foto || (e.fotos && e.fotos.length > 0));
   }
 }

@@ -188,10 +188,10 @@ export class DashboardComponent implements OnInit {
         ]
     };
 
-    // Gráfico 2: Despachos por Estado
+    // Gráfico 2: Viajes por Estado
     const { data: despachos } = await this.supabase
-      .from('despachos')
-      .select('estado');
+      .from('despachos_viajes_cabecera')
+      .select('estado_viaje');
       
     let pendientes = 0;
     let en_ruta = 0;
@@ -199,9 +199,9 @@ export class DashboardComponent implements OnInit {
 
     if (despachos) {
         despachos.forEach((d: any) => {
-            if (d.estado === 'PENDIENTE') pendientes++;
-            else if (d.estado === 'EN_RUTA') en_ruta++;
-            else if (d.estado === 'COMPLETADO') completados++;
+            if (d.estado_viaje === 'PENDIENTE' || d.estado_viaje === 'ASIGNADO') pendientes++;
+            else if (d.estado_viaje === 'EN RUTA') en_ruta++;
+            else if (d.estado_viaje === 'COMPLETADO') completados++;
         });
     }
 

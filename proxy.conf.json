@@ -1,0 +1,11 @@
+{
+  "/api-peru/v1": {
+    "target": "https://api.apis.net.pe/v2",
+    "secure": false,
+    "changeOrigin": true,
+    "logLevel": "debug",
+    "pathRewrite": {
+      "^/api-peru/v1": ""
+    }
+  }
+}

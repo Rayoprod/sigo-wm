@@ -56,7 +56,7 @@
 
     <!-- DELIVERY PHOTOS (EVIDENCE) -->
     <ng-container *ngIf="hasPhotos">
-      <section class="evidence-card" *ngFor="let evento of trackingData.eventos">
+      <section class="evidence-card" *ngFor="let evento of eventosFiltrados">
         <ng-container *ngIf="evento.foto || (evento.fotos && evento.fotos.length > 0)">
           <div class="evidence-header">
             <h3>{{ evento.detalle }}</h3>

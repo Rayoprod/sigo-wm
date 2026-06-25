@@ -14,6 +14,8 @@ import { DialogModule } from 'primeng/dialog';
 import { TableModule } from 'primeng/table';
 import { TooltipModule } from 'primeng/tooltip';
 import { DropdownModule } from 'primeng/dropdown';
+import { InputTextModule } from 'primeng/inputtext';
+import { ImageModule } from 'primeng/image';
 
 @Component({
   selector: 'app-logistica',
@@ -29,7 +31,9 @@ import { DropdownModule } from 'primeng/dropdown';
     DialogModule,
     TableModule,
     TooltipModule,
-    DropdownModule
+    DropdownModule,
+    InputTextModule,
+    ImageModule
   ],
   templateUrl: './logistica.component.html',
   styleUrl: './logistica.component.scss'
@@ -39,16 +43,22 @@ export class LogisticaComponent implements OnInit, OnDestroy {
   auth = inject(AuthService);
 
   pedidos: any[] = [];
-  loading = false;
+  loading = true;
   vehiculosOptions: any[] = [];
+  choferesOptions: any[] = [];
 
   // Detalles expandidos (Mobile y Desktop)
-  expandedPedidoId: string | null = null; // Mantenemos para compatibilidad con tarjetas móviles si es necesario, o usamos el Map
+  expandedPedidoId: string | null = null;
   expandedRows: { [key: string]: boolean } = {};
-  itemsDelPedidoMap: { [pedidoId: string]: any[] } = {};
-  loadingItemsMap: { [pedidoId: string]: boolean } = {};
+  itemsDelPedidoMap: { [key: string]: any[] } = {};
+  loadingItemsMap: { [key: string]: boolean } = {};
+  
+  viajesDelPedidoMap: { [key: string]: any[] } = {};
+  loadingViajesMap: { [key: string]: boolean } = {};
 
   displayViajeModal = false;
+  displayAsignarModal = false;
+  selectedChoferId: string | null = null;
   selectedPedido: any = null;
   viajeForm = {
     placa: '',
@@ -74,6 +84,7 @@ export class LogisticaComponent implements OnInit, OnDestroy {
   historialTracking: any[] = []; // Línea de tiempo unificada
   map: L.Map | null = null;
   polyline: L.Polyline | null = null;
+  selectedAuditoriaItem: any = null;
 
   realtimeChannel: any;
   currentUserRole: string | undefined;
@@ -83,6 +94,7 @@ export class LogisticaComponent implements OnInit, OnDestroy {
     this.currentUserRole = user?.rol;
     await this.cargarPedidos();
     await this.cargarVehiculos();
+    await this.cargarChoferes();
     this.suscribirCambiosViajes();
   }
 
@@ -90,6 +102,13 @@ export class LogisticaComponent implements OnInit, OnDestroy {
     const { data } = await this.supabase.from('vehiculos').select('placa').order('placa');
     if (data) {
       this.vehiculosOptions = data.map(v => ({ label: v.placa, value: v.placa }));
+    }
+  }
+
+  async cargarChoferes() {
+    const { data } = await this.supabase.from('usuarios').select('id, nombre_completo').eq('rol', 'chofer').order('nombre_completo');
+    if (data) {
+      this.choferesOptions = data.map(c => ({ label: c.nombre_completo, value: c.id }));
     }
   }
 
@@ -130,12 +149,14 @@ export class LogisticaComponent implements OnInit, OnDestroy {
     } else {
       this.expandedPedidoId = pedidoId;
       await this.cargarItemsPedido(pedidoId);
+      await this.cargarViajesPedido(pedidoId);
     }
   }
 
   async onRowExpand(event: any) {
     const pedidoId = event.data.id;
     await this.cargarItemsPedido(pedidoId);
+    await this.cargarViajesPedido(pedidoId);
   }
 
   async onRowCollapse(event: any) {
@@ -155,6 +176,25 @@ export class LogisticaComponent implements OnInit, OnDestroy {
       this.itemsDelPedidoMap[pedidoId] = data || [];
     }
     this.loadingItemsMap[pedidoId] = false;
+  }
+
+  async cargarViajesPedido(pedidoId: string) {
+    if (this.viajesDelPedidoMap[pedidoId]) return;
+
+    this.loadingViajesMap[pedidoId] = true;
+    const { data, error } = await this.supabase
+      .from('despachos_viajes_cabecera')
+      .select(`
+        *,
+        usuarios!despachos_viajes_cabecera_chofer_id_fkey(nombre_completo)
+      `)
+      .eq('pedido_id', pedidoId)
+      .order('numero_viaje_secuencial', { ascending: false });
+
+    if (!error) {
+      this.viajesDelPedidoMap[pedidoId] = data || [];
+    }
+    this.loadingViajesMap[pedidoId] = false;
   }
 
   // --- REGISTRO DE VIAJE (V2) ---
@@ -278,8 +318,8 @@ export class LogisticaComponent implements OnInit, OnDestroy {
   }
 
   async guardarViaje() {
-    const tieneItems = this.viajeForm.items.some(i => i.cantidad_viaje > 0);
-    if (!tieneItems) {
+    const itemsAEnviar = this.viajeForm.items.filter(i => i.cantidad_viaje > 0);
+    if (itemsAEnviar.length === 0) {
       alert("Debes indicar la cantidad a despachar de al menos un material.");
       return;
     }
@@ -336,7 +376,7 @@ export class LogisticaComponent implements OnInit, OnDestroy {
         }
       }
 
-      // 2. Insertar Cabecera
+      // 2. Insertar Cabecera (Registro desde base sin asignación obligatoria en este botón)
       const { data: cabeceraData, error: insertError } = await this.supabase
         .from('despachos_viajes_cabecera')
         .insert({
@@ -369,22 +409,7 @@ export class LogisticaComponent implements OnInit, OnDestroy {
           
         if (detalleError) throw detalleError;
 
-        // 4. Actualizar la cantidad despachada en pedidos_items
-        for (const item of this.viajeForm.items) {
-          if (item.cantidad_viaje > 0) {
-            const originalItem = (this.itemsDelPedidoMap[this.selectedPedido.id] || []).find((i: any) => i.id === item.id);
-            const nuevaCantidad = Number(originalItem?.cantidad_despachada || 0) + Number(item.cantidad_viaje);
-            
-            const { error: updateError } = await this.supabase
-              .from('pedidos_items')
-              .update({ cantidad_despachada: nuevaCantidad })
-              .eq('id', item.id);
-              
-            if (updateError) {
-              console.error('Error al actualizar la cantidad_despachada:', updateError);
-            }
-          }
-        }
+        // 4. ELIMINADO: Ya no se actualiza cantidad_despachada aquí. Lo hará la BD cuando el chofer entregue.
       }
 
       alert("Viaje registrado con éxito. Fotos comprimidas y guardadas.");
@@ -399,6 +424,129 @@ export class LogisticaComponent implements OnInit, OnDestroy {
     }
   }
 
+  // --- ASIGNACIÓN DE CHOFER ÚNICA ---
+  async openAsignarModal(pedido: any) {
+    this.selectedPedido = pedido;
+    this.selectedChoferId = null;
+    this.displayAsignarModal = true;
+    
+    // Cargar los items si no están en caché
+    if (!this.itemsDelPedidoMap[pedido.id]) {
+      await this.cargarItemsPedido(pedido.id);
+    }
+  }
+
+  async asignarChofer() {
+    if (!this.selectedChoferId) {
+      alert("Debes seleccionar un chofer.");
+      return;
+    }
+
+    this.isSavingViaje = true;
+    try {
+      const user = this.auth.currentUser();
+      
+      // Obtener el siguiente secuencial
+      const { data: maxViajeData } = await this.supabase
+        .from('despachos_viajes_cabecera')
+        .select('numero_viaje_secuencial')
+        .eq('pedido_id', this.selectedPedido.id)
+        .order('numero_viaje_secuencial', { ascending: false })
+        .limit(1);
+        
+      let numSecuencial = 1;
+      if (maxViajeData && maxViajeData.length > 0 && maxViajeData[0].numero_viaje_secuencial) {
+        numSecuencial = Number(maxViajeData[0].numero_viaje_secuencial) + 1;
+      }
+
+      const { data: cabeceraData, error: insertError } = await this.supabase
+        .from('despachos_viajes_cabecera')
+        .insert({
+          pedido_id: this.selectedPedido.id,
+          despachador_id: user?.id,
+          chofer_id: this.selectedChoferId,
+          estado_viaje: 'ASIGNADO',
+          numero_viaje_secuencial: numSecuencial,
+        })
+        .select()
+        .single();
+
+      if (insertError) throw insertError;
+
+      // Generar automáticamente el detalle del viaje con TODO el material pendiente
+      const itemsPendientes = (this.itemsDelPedidoMap[this.selectedPedido.id] || []).filter((i: any) => i.cantidad > (i.cantidad_despachada || 0));
+      
+      const detallesAInsertar = itemsPendientes.map((i: any) => {
+        const restante = Number(i.cantidad) - Number(i.cantidad_despachada || 0);
+        return {
+          viaje_id: cabeceraData.id,
+          pedido_item_id: i.id,
+          cantidad_viaje: restante
+        };
+      });
+
+      if (detallesAInsertar.length > 0) {
+        const { error: detalleError } = await this.supabase
+          .from('despachos_viajes_detalle')
+          .insert(detallesAInsertar);
+          
+        if (detalleError) throw detalleError;
+
+        // ELIMINADO: Ya no se actualiza cantidad_despachada aquí. Lo hará la BD cuando el chofer entregue.
+      }
+
+      alert("Chofer asignado con éxito. Se autogeneró el viaje con el saldo pendiente y ya le debe aparecer en su aplicación móvil.");
+      this.displayAsignarModal = false;
+
+    } catch (error: any) {
+      alert("Error al asignar el chofer: " + error.message);
+    } finally {
+      this.isSavingViaje = false;
+    }
+  }
+
+  // --- ASIGNAR CHOFER A VIAJE YA CREADO ---
+  displayAsignarViajeExistenteModal = false;
+  selectedViajeToAssign: any = null;
+
+  openAsignarViajeExistenteModal(viaje: any) {
+    this.selectedViajeToAssign = viaje;
+    this.selectedChoferId = null;
+    this.displayAsignarViajeExistenteModal = true;
+  }
+
+  async asignarChoferAViajeExistente() {
+    if (!this.selectedChoferId) {
+      alert("Debes seleccionar un chofer.");
+      return;
+    }
+
+    this.isSavingViaje = true;
+    try {
+      const { error: updateError } = await this.supabase
+        .from('despachos_viajes_cabecera')
+        .update({
+          chofer_id: this.selectedChoferId,
+          estado_viaje: 'ASIGNADO'
+        })
+        .eq('id', this.selectedViajeToAssign.id);
+
+      if (updateError) throw updateError;
+
+      alert("Chofer asignado al viaje con éxito.");
+      this.displayAsignarViajeExistenteModal = false;
+      
+      // Refrescar los viajes del pedido para que se vea el nombre del chofer
+      delete this.viajesDelPedidoMap[this.selectedViajeToAssign.pedido_id]; // invalidar cache
+      await this.cargarViajesPedido(this.selectedViajeToAssign.pedido_id);
+
+    } catch (error: any) {
+      alert("Error al asignar el chofer: " + error.message);
+    } finally {
+      this.isSavingViaje = false;
+    }
+  }
+
   // ====== HISTORIAL, RASTREO Y MAPAS ======
 
   async abrirRutaChofer(pedido: any) {
@@ -408,6 +556,7 @@ export class LogisticaComponent implements OnInit, OnDestroy {
     this.puntosRuta = [];
     this.entregasRuta = [];
     this.viajesAuditoria = [];
+    this.selectedAuditoriaItem = null;
 
     // Limpiar el mapa actual si existe
     if (this.map) {
@@ -500,16 +649,9 @@ export class LogisticaComponent implements OnInit, OnDestroy {
           });
         }
 
-        // 5b. Puntos GPS intermedios, intentaremos inferir si pertenecen a este viaje
-        // Asumimos que los GPS points pertenecen a un viaje si caen temporalmente entre el despacho y la entrega.
-        // Si no hay entrega, hasta "ahora". Si no hay despacho, desde "el principio de los tiempos".
-        const startTime = aud.despacho ? new Date(aud.despacho.created_at).getTime() : 0;
-        const endTime = aud.chofer ? new Date(aud.chofer.created_at).getTime() : Date.now() + 9999999;
-        
-        const gpsDeEsteViaje = this.puntosRuta.filter(p => {
-          const t = new Date(p.timestamp).getTime();
-          return t >= startTime && t <= endTime;
-        });
+        // 5b. Puntos GPS intermedios filtrados por secuencial de viaje
+        const gpsDeEsteViaje = this.puntosRuta.filter(p => p.numero_viaje_secuencial === seqNum);
+        aud.gpsPuntos = gpsDeEsteViaje; // Para el listado detallado de coordenadas
 
         gpsDeEsteViaje.forEach(p => {
           puntosDelViaje.push([p.latitud, p.longitud]);
@@ -554,18 +696,23 @@ export class LogisticaComponent implements OnInit, OnDestroy {
     }
   }
 
-  initMapUnified() {
-    if (this.map) {
-      this.map.remove();
-    }
-
+  // OSRM eliminado para graficar los puntos GPS reales (camino de puntos) sin "vueltones"
+  async initMapUnified() {
     const container = document.getElementById('ruta-mapa-unificado');
     if (!container) return;
 
-    this.map = L.map(container);
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      attribution: '© OpenStreetMap contributors'
-    }).addTo(this.map);
+    if (!this.map) {
+      this.map = L.map(container);
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© OpenStreetMap contributors'
+      }).addTo(this.map);
+    } else {
+      // Limpiar capas existentes (marcadores y polilíneas) excepto el mapa base
+      this.map.eachLayer((layer: any) => {
+        if (layer instanceof L.TileLayer) return;
+        this.map!.removeLayer(layer);
+      });
+    }
 
     const bounds = L.latLngBounds([]);
     let pointsAdded = 0;
@@ -587,37 +734,96 @@ export class LogisticaComponent implements OnInit, OnDestroy {
       iconSize: [12, 20], iconAnchor: [6, 20]
     });
 
-    for (const aud of this.viajesAuditoria) {
+    const viajesADibujar = this.selectedAuditoriaItem ? [this.selectedAuditoriaItem] : this.viajesAuditoria;
+
+    for (const aud of viajesADibujar) {
       const pts = aud.mapaPuntos as L.LatLngTuple[];
       if (pts && pts.length > 0) {
-        // Dibujar polyline
-        L.polyline(pts, { color: aud.mapaColor, weight: 5, opacity: 0.8 }).addTo(this.map);
+        // Dibujar línea punteada directa ("camino de hormigas") usando los puntos crudos
+        L.polyline(pts, {
+          color: aud.mapaColor,
+          weight: 4,
+          opacity: 0.9,
+          dashArray: '10, 14', // Línea punteada según especificación
+        }).addTo(this.map);
 
         // Añadir marcadores
         pts.forEach((p, index) => {
-          let markIcon = iconPoint;
-          if (index === 0 && aud.despacho) markIcon = iconStart; // Primer punto es salida si hay despacho
-          else if (index === pts.length - 1 && aud.chofer) markIcon = iconEnd; // Último es llegada si hay entrega
-
-          const marker = L.marker(p, { icon: markIcon }).addTo(this.map!);
+          if (index === 0 && aud.despacho) {
+            L.marker(p, { icon: iconStart }).addTo(this.map!);
+          } else if (index === pts.length - 1 && aud.chofer) {
+            L.marker(p, { icon: iconEnd }).addTo(this.map!);
+          } else {
+            // Puntos intermedios pasivos del chofer
+            L.circleMarker(p, { radius: 3, color: aud.mapaColor, fillOpacity: 0.8 }).addTo(this.map!);
+          }
           bounds.extend(p);
           pointsAdded++;
         });
       }
     }
 
+    // Marcador de camión en vivo si hay un punto GPS reciente (< 2 minutos)
+    if (this.puntosRuta.length > 0) {
+      const sorted = [...this.puntosRuta].sort(
+        (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+      );
+      
+      // Si estamos filtrando, usamos el último punto del viaje filtrado, si no, el último general
+      let ultimoPunto = sorted[0];
+      if (this.selectedAuditoriaItem && this.selectedAuditoriaItem.gpsPuntos && this.selectedAuditoriaItem.gpsPuntos.length > 0) {
+          const sortedViaje = [...this.selectedAuditoriaItem.gpsPuntos].sort(
+              (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+          );
+          ultimoPunto = sortedViaje[0];
+      }
+
+      const esReciente = (Date.now() - new Date(ultimoPunto.timestamp).getTime()) < 120000;
+
+      if (esReciente && !this.selectedAuditoriaItem) { // Solo mostrar "en vivo" si vemos todo
+        const iconVivo = L.divIcon({
+          className: '',
+          html: `<div style="background-color: #3b82f6; color: white; width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; border-radius: 50%; border: 3px solid white; box-shadow: 0 0 15px rgba(59, 130, 246, 0.8);">
+                   <i class="pi pi-truck" style="font-size: 1.4rem;"></i>
+                 </div>`,
+          iconSize: [40, 40],
+          iconAnchor: [20, 20],
+        });
+        L.marker([ultimoPunto.latitud, ultimoPunto.longitud], { icon: iconVivo })
+          .addTo(this.map!)
+          .bindPopup('🚛 Chofer activo ahora', { autoClose: false })
+          .openPopup();
+      } else if (this.selectedAuditoriaItem && this.selectedAuditoriaItem.chofer == null) {
+        // Si filtramos un viaje y AUN NO ESTA ENTREGADO, pintamos el camión en la última posición conocida de ese viaje
+        const iconCamion = L.divIcon({
+          className: '',
+          html: `<div style="background-color: #f59e0b; color: white; width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; border-radius: 50%; border: 2px solid white; box-shadow: 0 0 10px rgba(245, 158, 11, 0.6);">
+                   <i class="pi pi-truck" style="font-size: 1.2rem;"></i>
+                 </div>`,
+          iconSize: [36, 36],
+          iconAnchor: [18, 18],
+        });
+        L.marker([ultimoPunto.latitud, ultimoPunto.longitud], { icon: iconCamion })
+          .addTo(this.map!)
+          .bindPopup('🚛 Última posición en este viaje');
+      }
+    }
+
     if (pointsAdded > 0) {
-      this.map.fitBounds(bounds, { padding: [30, 30] });
+      this.map.fitBounds(bounds, { padding: [40, 40] });
     } else {
       this.map.setView([-12.046374, -77.042793], 13); // Lima por defecto
     }
   }
 
   enfocarEnViaje(viajeItem: any) {
-    if (!this.map || !viajeItem.mapaPuntos || viajeItem.mapaPuntos.length === 0) return;
+    if (this.selectedAuditoriaItem === viajeItem) {
+        this.selectedAuditoriaItem = null; // Toggle off
+    } else {
+        this.selectedAuditoriaItem = viajeItem; // Toggle on
+    }
     
-    const bounds = L.latLngBounds(viajeItem.mapaPuntos);
-    this.map.flyToBounds(bounds, { padding: [50, 50], maxZoom: 16, duration: 1 });
+    this.initMapUnified();
   }
 
   initMap() {

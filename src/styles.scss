@@ -1,1 +1,183 @@
 /* You can add global styles to this file, and also import other style files */
+@import "primeflex/primeflex.scss";
+@import "primeng/resources/themes/lara-light-teal/theme.css";
+@import "primeng/resources/primeng.css";
+@import "primeicons/primeicons.css";
+@import "leaflet/dist/leaflet.css";
+
+:root {
+  --font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
+}
+
+html, body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  font-family: var(--font-family);
+  background-color: var(--surface-ground, #f8f9fa);
+  color: var(--text-color, #495057);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+// Global utility for layout
+.layout-wrapper {
+  min-height: 100vh;
+}
+
+/* ==========================================================================
+   UI / UX Premium Overrides (Global)
+   ========================================================================== */
+
+/* Suavizar transiciones globales para botones y hover states */
+.p-button,
+.p-card,
+.surface-card,
+a,
+.p-menuitem-link {
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+
+/* Elevación moderna para tarjetas (Shadow hover) */
+.surface-card:hover {
+  box-shadow: 0 4px 15px rgba(0,0,0,0.05) !important;
+}
+
+/* Redondear botones sutilmente */
+.p-button {
+  border-radius: 8px !important;
+}
+
+/* Esquinas de tarjetas más estilizadas */
+.p-card, .surface-card {
+  border-radius: 12px !important;
+  border: 1px solid var(--surface-border) !important;
+}
+
+/* Estilizar inputs */
+.p-inputtext, .p-dropdown, .p-autocomplete-input {
+  border-radius: 8px !important;
+}
+.p-inputtext:enabled:focus, .p-dropdown:not(.p-disabled).p-focus {
+  box-shadow: 0 0 0 0.2rem rgba(59, 130, 246, 0.15) !important;
+  border-color: var(--primary-color) !important;
+}
+
+/* Modales redondos y suaves */
+.p-dialog .p-dialog-header {
+  border-top-left-radius: 12px !important;
+  border-top-right-radius: 12px !important;
+  padding: 1.5rem 1.5rem 1rem 1.5rem !important;
+}
+.p-dialog .p-dialog-content {
+  padding: 0 1.5rem 1.5rem 1.5rem !important;
+}
+.p-dialog .p-dialog-footer {
+  border-bottom-left-radius: 12px !important;
+  border-bottom-right-radius: 12px !important;
+  padding: 1rem 1.5rem 1.5rem 1.5rem !important;
+  border-top: 1px solid var(--surface-border) !important;
+}
+.p-dialog {
+  border-radius: 12px !important;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04) !important;
+  border: none !important;
+}
+
+/* Datatable (Mejoras de grilla) */
+.p-datatable .p-datatable-thead > tr > th {
+  background-color: #f8fafc !important; /* bg-slate-50 */
+  color: #334155 !important; /* text-slate-700 */
+  font-weight: 600 !important;
+  text-transform: uppercase;
+  font-size: 0.75rem;
+  letter-spacing: 0.05em;
+  padding: 1rem !important;
+  border-bottom: 2px solid #e2e8f0 !important;
+}
+.p-datatable .p-datatable-tbody > tr > td {
+  padding: 1rem !important;
+}
+
+/* Custom Dark Menu for Sidebar */
+.custom-dark-menu {
+  .p-menuitem > .p-menuitem-content {
+    background-color: transparent !important;
+    border-radius: 8px;
+    margin-bottom: 0.25rem;
+    transition: all 0.2s ease;
+    
+    .p-menuitem-link {
+      background-color: transparent !important;
+      padding: 0.75rem 1rem !important;
+      
+      .p-menuitem-icon {
+        color: #94a3b8 !important; /* text-slate-400 */
+        margin-right: 0.75rem;
+      }
+      .p-menuitem-text {
+        color: #f1f5f9 !important; /* text-slate-100 */
+        font-weight: 500;
+      }
+
+      &:focus {
+        box-shadow: none !important;
+        background-color: rgba(255, 255, 255, 0.05) !important;
+      }
+    }
+
+    &:hover, &.p-highlight {
+      background-color: rgba(255, 255, 255, 0.1) !important;
+      
+      .p-menuitem-link {
+        .p-menuitem-icon, .p-menuitem-text {
+          color: #ffffff !important;
+        }
+      }
+    }
+  }
+
+  /* Override active states that PrimeNG might add */
+  .p-menuitem-link.router-link-active,
+  .p-menuitem-link.p-menuitem-link-active {
+    background-color: rgba(59, 130, 246, 0.2) !important;
+    border-left: 3px solid #3b82f6 !important;
+    
+    .p-menuitem-icon, .p-menuitem-text {
+      color: #60a5fa !important;
+    }
+  }
+}
+
+/* Fix for PrimeFlex 4 missing bluegray explicitly */
+.bg-bluegray-900 {
+  background-color: #0f172a !important;
+}
+.bg-bluegray-800 {
+  background-color: #1e293b !important;
+}
+.border-bluegray-800 {
+  border-color: #1e293b !important;
+}
+.text-bluegray-400 {
+  color: #94a3b8 !important;
+}
+.bg-blue-50 {
+  background-color: #eff6ff !important;
+}
+.text-blue-300 {
+  color: #93c5fd !important;
+}
+.bg-primary {
+  background-color: var(--primary-color, #3b82f6) !important;
+}
+.text-primary {
+  color: var(--primary-color, #3b82f6) !important;
+}
+.border-primary {
+  border-color: var(--primary-color, #3b82f6) !important;
+}

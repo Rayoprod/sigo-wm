@@ -10,12 +10,12 @@
             <div class="mb-3">
                 <span class="p-input-icon-left w-full">
                     <i class="pi pi-search"></i>
-                    <input pInputText type="text" (input)="dt.filterGlobal($any($event.target).value, 'contains')" placeholder="Buscar por folio, cliente..." class="w-full" />
+                    <input pInputText type="text" #textInput (input)="dt.filterGlobal(textInput.value, 'contains')" placeholder="Buscar por folio, cliente..." class="w-full" />
                 </span>
             </div>
 
             <div class="flex flex-column gap-3">
-                <p-card *ngFor="let pedido of pedidos" styleClass="shadow-3 border-round-xl hover:shadow-5 transition-all transition-duration-200 p-0">
+                <p-card *ngFor="let pedido of (dt.filteredValue || pedidos)" styleClass="shadow-3 border-round-xl hover:shadow-5 transition-all transition-duration-200 p-0">
                     <div class="flex justify-content-between align-items-start mb-3">
                         <div class="flex-1 pr-3">
                             <span class="text-500 font-medium text-sm flex align-items-center"><i class="pi pi-file mr-1"></i>Folio {{ pedido.folio }}</span>
@@ -99,7 +99,7 @@
                     <div class="flex justify-content-end">
                         <span class="p-input-icon-left">
                             <i class="pi pi-search"></i>
-                            <input pInputText type="text" (input)="dt.filterGlobal($any($event.target).value, 'contains')" placeholder="Buscar por folio, cliente..." />
+                            <input pInputText type="text" #textInput (input)="dt.filterGlobal(textInput.value, 'contains')" placeholder="Buscar por folio, cliente..." />
                         </span>
                     </div>
                 </ng-template>
