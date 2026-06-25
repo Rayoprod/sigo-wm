@@ -197,6 +197,22 @@ export class LogisticaComponent implements OnInit, OnDestroy {
     this.loadingViajesMap[pedidoId] = false;
   }
 
+  async obtenerCantidadesEnTransito(pedidoId: string): Promise<Record<string, number>> {
+    const { data, error } = await this.supabase
+      .from('despachos_viajes_detalle')
+      .select('pedido_item_id, cantidad_viaje, despachos_viajes_cabecera!inner(estado_viaje, pedido_id)')
+      .eq('despachos_viajes_cabecera.pedido_id', pedidoId)
+      .in('despachos_viajes_cabecera.estado_viaje', ['ASIGNADO', 'EN RUTA']);
+
+    const enTransitoMap: Record<string, number> = {};
+    if (!error && data) {
+      data.forEach((d: any) => {
+        enTransitoMap[d.pedido_item_id] = (enTransitoMap[d.pedido_item_id] || 0) + Number(d.cantidad_viaje);
+      });
+    }
+    return enTransitoMap;
+  }
+
   // --- REGISTRO DE VIAJE (V2) ---
 
   async openViajeModal(pedido: any) {
@@ -205,6 +221,7 @@ export class LogisticaComponent implements OnInit, OnDestroy {
     
     // Preparar form con los items actuales
     await this.cargarItemsPedido(pedido.id);
+    const enTransitoMap = await this.obtenerCantidadesEnTransito(pedido.id);
     
     this.viajeForm = {
       placa: '',
@@ -212,7 +229,8 @@ export class LogisticaComponent implements OnInit, OnDestroy {
       lng: null,
       fotosFiles: [],
       items: (this.itemsDelPedidoMap[pedido.id] || []).map((item: any) => {
-        const restante = Number(item.cantidad) - Number(item.cantidad_despachada || 0);
+        const enTransito = enTransitoMap[item.id] || 0;
+        const restante = Number(item.cantidad) - Number(item.cantidad_despachada || 0) - enTransito;
         return {
           id: item.id,
           descripcion: item.productos?.descripcion || item.descripcion_manual,
@@ -473,11 +491,18 @@ export class LogisticaComponent implements OnInit, OnDestroy {
 
       if (insertError) throw insertError;
 
-      // Generar automáticamente el detalle del viaje con TODO el material pendiente
-      const itemsPendientes = (this.itemsDelPedidoMap[this.selectedPedido.id] || []).filter((i: any) => i.cantidad > (i.cantidad_despachada || 0));
+      // Generar automáticamente el detalle del viaje con TODO el material pendiente (restando lo despachado y lo en tránsito)
+      const enTransitoMap = await this.obtenerCantidadesEnTransito(this.selectedPedido.id);
+      
+      const itemsPendientes = (this.itemsDelPedidoMap[this.selectedPedido.id] || []).filter((i: any) => {
+        const enTransito = enTransitoMap[i.id] || 0;
+        const restante = Number(i.cantidad) - Number(i.cantidad_despachada || 0) - enTransito;
+        return restante > 0;
+      });
       
       const detallesAInsertar = itemsPendientes.map((i: any) => {
-        const restante = Number(i.cantidad) - Number(i.cantidad_despachada || 0);
+        const enTransito = enTransitoMap[i.id] || 0;
+        const restante = Number(i.cantidad) - Number(i.cantidad_despachada || 0) - enTransito;
         return {
           viaje_id: cabeceraData.id,
           pedido_item_id: i.id,

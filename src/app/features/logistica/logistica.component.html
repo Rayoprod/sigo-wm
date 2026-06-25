@@ -60,7 +60,6 @@
                         </td>
                         <td>
                             <div class="flex gap-2 justify-content-center">
-                                <p-button *ngIf="currentUserRole !== 'vendedor'" icon="pi pi-user-plus" styleClass="p-button-rounded p-button-warning p-button-text" pTooltip="Asignar a Chofer" (click)="openAsignarModal(pedido)"></p-button>
                                 <p-button *ngIf="currentUserRole !== 'vendedor'" icon="pi pi-truck" styleClass="p-button-rounded p-button-success p-button-text" pTooltip="Registrar Viaje" (click)="openViajeModal(pedido)"></p-button>
                                 <p-button icon="pi pi-map" styleClass="p-button-rounded p-button-info p-button-text" pTooltip="Auditar y Rutas" (click)="abrirRutaChofer(pedido)"></p-button>
                             </div>
@@ -110,7 +109,7 @@
                                             <div class="text-sm text-600 mb-3" *ngIf="viaje.placa_vehiculo">
                                                 <i class="pi pi-car mr-1"></i> Placa: {{ viaje.placa_vehiculo }}
                                             </div>
-                                            <p-button *ngIf="!viaje.chofer_id && currentUserRole !== 'vendedor'" label="Asignar Chofer" icon="pi pi-user-plus" styleClass="p-button-warning p-button-sm w-full" (click)="openAsignarViajeExistenteModal(viaje)"></p-button>
+                                            <p-button *ngIf="!viaje.chofer_id && currentUserRole !== 'vendedor' && pedido.lugar_entrega === 'OBRA'" label="Asignar Chofer" icon="pi pi-user-plus" styleClass="p-button-warning p-button-sm w-full" (click)="openAsignarViajeExistenteModal(viaje)"></p-button>
                                         </div>
                                     </div>
                                 </div>
@@ -216,20 +215,13 @@
                                     <div class="text-sm text-600 mb-3" *ngIf="viaje.placa_vehiculo">
                                         <i class="pi pi-car mr-1"></i> Placa: {{ viaje.placa_vehiculo }}
                                     </div>
-                                    <p-button *ngIf="!viaje.chofer_id && currentUserRole !== 'vendedor'" label="Asignar Chofer" icon="pi pi-user-plus" styleClass="p-button-warning p-button-sm w-full" (click)="openAsignarViajeExistenteModal(viaje)"></p-button>
+                                    <p-button *ngIf="!viaje.chofer_id && currentUserRole !== 'vendedor' && pedido.lugar_entrega === 'OBRA'" label="Asignar Chofer" icon="pi pi-user-plus" styleClass="p-button-warning p-button-sm w-full" (click)="openAsignarViajeExistenteModal(viaje)"></p-button>
                                 </div>
                             </div>
                         </div>
 
                     <ng-template pTemplate="footer">
                         <div class="flex gap-2 w-full mt-3">
-                            <p-button 
-                                *ngIf="currentUserRole !== 'vendedor'"
-                                label="Asignar Chofer" 
-                                icon="pi pi-user-plus" 
-                                styleClass="p-button-warning flex-1 p-button-lg"
-                                (click)="openAsignarModal(pedido)">
-                            </p-button>
                             <p-button 
                                 *ngIf="currentUserRole !== 'vendedor'"
                                 label="Registrar Viaje del Camión" 
