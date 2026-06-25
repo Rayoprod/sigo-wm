@@ -132,7 +132,7 @@ export class LogisticaComponent implements OnInit, OnDestroy {
     this.loading = true;
     const { data, error } = await this.supabase
       .from('pedidos')
-      .select('*, clientes(nombre_razon_social)')
+      .select('*, clientes(nombre_razon_social), chofer:usuarios!pedidos_chofer_id_fkey(nombre_completo)')
       .eq('tipo_documento', 'ORDEN_VENTA')
       .in('estado', ['APROBADA', 'COMPLETADA'])
       .order('created_at', { ascending: false });
@@ -462,66 +462,20 @@ export class LogisticaComponent implements OnInit, OnDestroy {
 
     this.isSavingViaje = true;
     try {
-      const user = this.auth.currentUser();
-      
-      // Obtener el siguiente secuencial
-      const { data: maxViajeData } = await this.supabase
-        .from('despachos_viajes_cabecera')
-        .select('numero_viaje_secuencial')
-        .eq('pedido_id', this.selectedPedido.id)
-        .order('numero_viaje_secuencial', { ascending: false })
-        .limit(1);
-        
-      let numSecuencial = 1;
-      if (maxViajeData && maxViajeData.length > 0 && maxViajeData[0].numero_viaje_secuencial) {
-        numSecuencial = Number(maxViajeData[0].numero_viaje_secuencial) + 1;
-      }
-
-      const { data: cabeceraData, error: insertError } = await this.supabase
-        .from('despachos_viajes_cabecera')
-        .insert({
-          pedido_id: this.selectedPedido.id,
-          despachador_id: user?.id,
-          chofer_id: this.selectedChoferId,
-          estado_viaje: 'ASIGNADO',
-          numero_viaje_secuencial: numSecuencial,
+      const { error: updateError } = await this.supabase
+        .from('pedidos')
+        .update({
+          chofer_id: this.selectedChoferId
         })
-        .select()
-        .single();
+        .eq('id', this.selectedPedido.id);
 
-      if (insertError) throw insertError;
+      if (updateError) throw updateError;
 
-      // Generar automáticamente el detalle del viaje con TODO el material pendiente (restando lo despachado y lo en tránsito)
-      const enTransitoMap = await this.obtenerCantidadesEnTransito(this.selectedPedido.id);
-      
-      const itemsPendientes = (this.itemsDelPedidoMap[this.selectedPedido.id] || []).filter((i: any) => {
-        const enTransito = enTransitoMap[i.id] || 0;
-        const restante = Number(i.cantidad) - Number(i.cantidad_despachada || 0) - enTransito;
-        return restante > 0;
-      });
-      
-      const detallesAInsertar = itemsPendientes.map((i: any) => {
-        const enTransito = enTransitoMap[i.id] || 0;
-        const restante = Number(i.cantidad) - Number(i.cantidad_despachada || 0) - enTransito;
-        return {
-          viaje_id: cabeceraData.id,
-          pedido_item_id: i.id,
-          cantidad_viaje: restante
-        };
-      });
-
-      if (detallesAInsertar.length > 0) {
-        const { error: detalleError } = await this.supabase
-          .from('despachos_viajes_detalle')
-          .insert(detallesAInsertar);
-          
-        if (detalleError) throw detalleError;
-
-        // ELIMINADO: Ya no se actualiza cantidad_despachada aquí. Lo hará la BD cuando el chofer entregue.
-      }
-
-      alert("Chofer asignado con éxito. Se autogeneró el viaje con el saldo pendiente y ya le debe aparecer en su aplicación móvil.");
+      alert("Chofer asignado al pedido con éxito. Todos los viajes registrados para este pedido se le asignarán automáticamente.");
       this.displayAsignarModal = false;
+      
+      // Refrescar los pedidos para que se muestre la asignación
+      await this.cargarPedidos();
 
     } catch (error: any) {
       alert("Error al asignar el chofer: " + error.message);

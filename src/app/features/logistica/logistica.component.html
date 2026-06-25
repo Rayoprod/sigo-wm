@@ -45,7 +45,12 @@
                             <button type="button" pButton pRipple [pRowToggler]="pedido" class="p-button-text p-button-rounded p-button-plain" [icon]="expanded ? 'pi pi-chevron-down' : 'pi pi-chevron-right'"></button>
                         </td>
                         <td class="font-bold"><i class="pi pi-file mr-2 text-primary"></i>{{ pedido.folio }}</td>
-                        <td class="font-bold">{{ pedido.clientes?.nombre_razon_social }}</td>
+                        <td class="font-bold">
+                            {{ pedido.clientes?.nombre_razon_social }}
+                            <div class="text-xs text-500 mt-1 font-normal" *ngIf="pedido.chofer?.nombre_completo">
+                                <i class="pi pi-user mr-1 text-primary"></i>Chofer: <b>{{ pedido.chofer.nombre_completo }}</b>
+                            </div>
+                        </td>
                         <td>{{ pedido.created_at | date:'dd/MM/yyyy' }}</td>
                         <td>
                             <p-tag [value]="pedido.lugar_entrega" [severity]="pedido.lugar_entrega === 'OBRA' ? 'warning' : 'info'"></p-tag>
@@ -60,6 +65,7 @@
                         </td>
                         <td>
                             <div class="flex gap-2 justify-content-center">
+                                <p-button *ngIf="currentUserRole !== 'vendedor' && pedido.lugar_entrega === 'OBRA'" icon="pi pi-user-plus" styleClass="p-button-rounded p-button-warning p-button-text" pTooltip="Asignar Chofer del Pedido" (click)="openAsignarModal(pedido)"></p-button>
                                 <p-button *ngIf="currentUserRole !== 'vendedor'" icon="pi pi-truck" styleClass="p-button-rounded p-button-success p-button-text" pTooltip="Registrar Viaje" (click)="openViajeModal(pedido)"></p-button>
                                 <p-button icon="pi pi-map" styleClass="p-button-rounded p-button-info p-button-text" pTooltip="Auditar y Rutas" (click)="abrirRutaChofer(pedido)"></p-button>
                             </div>
@@ -141,6 +147,9 @@
                         <div>
                             <span class="text-500 text-sm block mb-1"><i class="pi pi-user mr-1"></i>Cliente</span>
                             <span class="font-bold text-lg text-900 block line-height-2">{{ pedido.clientes?.nombre_razon_social }}</span>
+                            <div class="text-xs text-500 mt-1" *ngIf="pedido.chofer?.nombre_completo">
+                                <i class="pi pi-user mr-1 text-primary"></i>Chofer: <b>{{ pedido.chofer.nombre_completo }}</b>
+                            </div>
                         </div>
                         
                         <div class="flex justify-content-between surface-100 p-2 border-round">
@@ -222,6 +231,13 @@
 
                     <ng-template pTemplate="footer">
                         <div class="flex gap-2 w-full mt-3">
+                            <p-button 
+                                *ngIf="currentUserRole !== 'vendedor' && pedido.lugar_entrega === 'OBRA'"
+                                label="Asignar Chofer" 
+                                icon="pi pi-user-plus" 
+                                styleClass="p-button-warning flex-1 p-button-lg"
+                                (click)="openAsignarModal(pedido)">
+                            </p-button>
                             <p-button 
                                 *ngIf="currentUserRole !== 'vendedor'"
                                 label="Registrar Viaje del Camión" 
@@ -354,7 +370,7 @@
     <ng-template pTemplate="footer">
         <div class="flex gap-2 w-full">
             <p-button label="Cancelar" icon="pi pi-times" styleClass="p-button-text flex-1" (click)="displayAsignarModal = false"></p-button>
-            <p-button label="Despacho Rápido (Auto-asignar Materiales)" icon="pi pi-bolt" styleClass="p-button-warning flex-1" (click)="asignarChofer()" [loading]="isSavingViaje"></p-button>
+            <p-button label="Confirmar Asignación" icon="pi pi-check" styleClass="p-button-warning flex-1" (click)="asignarChofer()" [loading]="isSavingViaje"></p-button>
         </div>
     </ng-template>
 </p-dialog>
