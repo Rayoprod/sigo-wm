@@ -13,7 +13,10 @@ export class PdfService {
     if (!url) return null;
     if (url.startsWith('data:')) return url;
     try {
-      const response = await fetch(url, { mode: 'cors', credentials: 'omit' });
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 3000);
+      const response = await fetch(url, { mode: 'cors', credentials: 'omit', signal: controller.signal });
+      clearTimeout(timeoutId);
       if (!response.ok) {
         console.error('Error fetching image:', response.statusText);
         return null;
@@ -52,7 +55,7 @@ export class PdfService {
   async getPdfData(pedidoId: string) {
     const { data: pedido, error: errPedido } = await this.supabase
       .from('pedidos')
-      .select('*, clientes(nombre_razon_social, documento_identidad, direccion, telefono, correo), usuarios(correo, nombre_completo)')
+      .select('*, clientes(nombre_razon_social, documento_identidad, direccion, telefono, correo), usuarios:usuarios!pedidos_vendedor_id_fkey(correo, nombre_completo)')
       .eq('id', pedidoId)
       .single();
 
@@ -240,8 +243,12 @@ export class PdfService {
       if (mostrarCuentas) {
         colPago.push({ text: 'DATOS PARA PAGO', fontSize: 8, bold: true, color: colorEmpresa, margin: [0, 0, 0, 6] });
         cuentas.forEach((c: any) => {
-          colPago.push({ text: `• ${c.banco} (${c.moneda || 'Soles'})`, fontSize: 7.5, bold: true, margin: [0, 0, 0, 1] });
-          colPago.push({ text: `  Nro: ${c.numero}`, fontSize: 7, color: '#374151', margin: [0, 0, 0, 1] });
+          const bancoName = c.banco || 'Banco';
+          const monedaName = c.moneda === 'USD' ? 'Dólares' : (c.moneda === 'PEN' ? 'Soles' : (c.moneda || 'Soles'));
+          const numCuenta = c.numero_cuenta || c.numeroCuenta || c.numero || c.cuenta || '-';
+
+          colPago.push({ text: `• ${bancoName} (${monedaName})`, fontSize: 7.5, bold: true, margin: [0, 0, 0, 1] });
+          colPago.push({ text: `  Nro: ${numCuenta}`, fontSize: 7, color: '#374151', margin: [0, 0, 0, 1] });
           if (c.cci) colPago.push({ text: `  CCI: ${c.cci}`, fontSize: 6.5, color: '#6b7280', margin: [0, 0, 0, 4] });
           else colPago.push({ text: '', margin: [0, 0, 0, 3] });
         });

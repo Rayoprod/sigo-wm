@@ -66,7 +66,6 @@
                         <td>
                             <div class="flex gap-2 justify-content-center">
                                 <p-button *ngIf="currentUserRole !== 'vendedor' && pedido.lugar_entrega === 'OBRA'" icon="pi pi-user-plus" styleClass="p-button-rounded p-button-warning p-button-text" pTooltip="Asignar Chofer del Pedido" (click)="openAsignarModal(pedido)"></p-button>
-                                <p-button *ngIf="currentUserRole !== 'vendedor'" icon="pi pi-truck" styleClass="p-button-rounded p-button-success p-button-text" pTooltip="Registrar Viaje" (click)="openViajeModal(pedido)"></p-button>
                                 <p-button icon="pi pi-map" styleClass="p-button-rounded p-button-info p-button-text" pTooltip="Auditar y Rutas" (click)="abrirRutaChofer(pedido)"></p-button>
                             </div>
                         </td>
@@ -239,16 +238,9 @@
                                 (click)="openAsignarModal(pedido)">
                             </p-button>
                             <p-button 
-                                *ngIf="currentUserRole !== 'vendedor'"
-                                label="Registrar Viaje del Camión" 
-                                icon="pi pi-truck" 
-                                styleClass="p-button-success flex-1 p-button-lg"
-                                (click)="openViajeModal(pedido)">
-                            </p-button>
-                            <p-button 
+                                label="Auditar y Rutas GPS" 
                                 icon="pi pi-map" 
-                                styleClass="p-button-outlined p-button-info p-button-lg"
-                                pTooltip="Auditar y Rutas"
+                                styleClass="p-button-info flex-1 p-button-lg"
                                 (click)="abrirRutaChofer(pedido)">
                             </p-button>
                         </div>
@@ -259,95 +251,7 @@
     </div>
 </div>
 
-<!-- Modal Mobile-Friendly para Registrar Viaje -->
-<p-dialog 
-    header="Registrar Evidencia de Viaje" 
-    [(visible)]="displayViajeModal" 
-    [modal]="true" 
-    [breakpoints]="{'960px': '75vw', '640px': '95vw'}" 
-    [style]="{width: '50vw'}"
-    [draggable]="false"
-    [resizable]="false">
-    
-    <div class="p-fluid">
-        <div class="field mb-4">
-            <label class="font-bold text-lg">Placa del Vehículo <span class="text-500 text-sm font-normal">(Opcional)</span></label>
-            <p-dropdown [options]="vehiculosOptions" [(ngModel)]="viajeForm.placa" [editable]="true" optionLabel="label" optionValue="value" placeholder="Ej: ABC-123" styleClass="w-full text-xl"></p-dropdown>
-        </div>
 
-        <div class="field mb-4">
-            <label class="font-bold text-lg">Cantidades a Despachar en este viaje</label>
-            <div class="surface-ground p-3 border-round-lg mb-2" *ngFor="let item of viajeForm.items">
-                <p class="m-0 mb-2 font-medium">{{ item.descripcion }}</p>
-                <div class="flex align-items-center gap-2">
-                    <p-inputNumber 
-                        [(ngModel)]="item.cantidad_viaje" 
-                        [min]="0" 
-                        [max]="item.maxCantidad"
-                        [maxFractionDigits]="2"
-                        [showButtons]="true"
-                        buttonLayout="horizontal" 
-                        spinnerMode="horizontal" 
-                        decrementButtonClass="p-button-danger" 
-                        incrementButtonClass="p-button-success" 
-                        incrementButtonIcon="pi pi-plus" 
-                        decrementButtonIcon="pi pi-minus"
-                        inputStyleClass="text-center font-bold"
-                        class="flex-1">
-                    </p-inputNumber>
-                    <span class="text-500 w-4rem text-right">{{ item.unidad_medida }}</span>
-                </div>
-                <small class="block mt-1 text-600">Restante: {{ item.maxCantidad }}</small>
-            </div>
-        </div>
-
-        <div class="field mb-4">
-            <label class="font-bold text-lg">Ubicación GPS Satelital</label>
-            <div class="flex gap-2">
-                <p-button 
-                    label="Capturar GPS" 
-                    icon="pi pi-map-marker" 
-                    styleClass="p-button-outlined p-button-help" 
-                    (click)="capturarGPS()"
-                    [loading]="gpsLoading">
-                </p-button>
-                <div class="flex-1 surface-100 border-round p-2 text-center text-sm flex align-items-center justify-content-center">
-                    <span *ngIf="viajeForm.lat" class="text-green-600 font-bold"><i class="pi pi-check-circle mr-1"></i> Capturado</span>
-                    <span *ngIf="!viajeForm.lat" class="text-500">Pendiente</span>
-                </div>
-            </div>
-        </div>
-
-        <div class="field mb-4">
-            <label class="font-bold text-lg">Evidencias Fotográficas (Max 5)</label>
-            
-            <div class="flex flex-wrap gap-2 mb-2" *ngIf="viajeForm.fotosFiles.length > 0">
-                <div *ngFor="let f of viajeForm.fotosFiles; let i = index" class="surface-200 border-round p-2 flex align-items-center justify-content-between w-full">
-                    <span class="text-sm text-overflow-ellipsis overflow-hidden white-space-nowrap w-9">{{ f.name }}</span>
-                    <p-button icon="pi pi-trash" styleClass="p-button-rounded p-button-danger p-button-text p-button-sm" (click)="eliminarFoto(i)"></p-button>
-                </div>
-            </div>
-
-            <div class="relative overflow-hidden w-full" style="height: 50px;" *ngIf="viajeForm.fotosFiles.length < 5">
-                <input type="file" accept="image/*" capture="environment" multiple (change)="onFotoSeleccionada($event)" 
-                       class="absolute top-0 left-0 w-full h-full opacity-0 cursor-pointer z-2">
-                <p-button 
-                    label="Agregar Foto ({{viajeForm.fotosFiles.length}}/5)" 
-                    icon="pi pi-camera" 
-                    styleClass="p-button-outlined p-button-secondary w-full h-full"
-                    class="absolute top-0 left-0 w-full h-full z-1">
-                </p-button>
-            </div>
-        </div>
-    </div>
-
-    <ng-template pTemplate="footer">
-        <div class="flex gap-2 w-full">
-            <p-button label="Cancelar" icon="pi pi-times" styleClass="p-button-text flex-1" (click)="displayViajeModal = false"></p-button>
-            <p-button label="Guardar Viaje" icon="pi pi-check" styleClass="p-button-primary flex-1" (click)="guardarViaje()" [loading]="isSavingViaje"></p-button>
-        </div>
-    </ng-template>
-</p-dialog>
 
 <!-- Modal para Asignar Chofer -->
 <p-dialog 
@@ -415,6 +319,13 @@
         
         <!-- Panel Derecho/Arriba: Mapa Interactivo -->
         <div class="w-full md:w-7 h-20rem md:h-full relative surface-ground border-bottom-1 md:border-bottom-none md:border-left-1 surface-border order-1 md:order-2">
+            <div *ngIf="selectedPedidoParaRuta?.tipo_entrega === 'CANTERA' || selectedPedidoParaRuta?.lugar_entrega === 'CANTERA'" class="p-3 bg-yellow-100 border-round m-3 flex align-items-center" style="position: absolute; top: 10px; left: 10px; right: 10px; z-index: 1000; border: 1px solid #f59e0b;">
+                <i class="pi pi-info-circle mr-2 text-xl text-yellow-700"></i>
+                <div class="text-xs md:text-sm text-yellow-900">
+                    <b>Entrega en Cantera:</b> El cliente recoge el material directamente en planta. No requiere ruta GPS de traslado.
+                </div>
+            </div>
+
             <div *ngIf="!loadingRuta && puntosRuta.length === 0 && entregasRuta.length === 0 && viajesAuditoria.length === 0" class="absolute top-0 left-0 w-full h-full flex flex-column align-items-center justify-content-center text-500 bg-white" style="z-index: 2;">
                 <i class="pi pi-map mb-3" style="font-size: 4rem"></i>
                 <h3>Mapa Vacío</h3>
@@ -433,12 +344,30 @@
                 <i class="pi pi-inbox mb-3" style="font-size: 3rem"></i>
                 <h4>Sin Viajes</h4>
                 <p>No hay despachos registrados para este pedido.</p>
+                <p-button 
+                    label="Actualizar" 
+                    icon="pi pi-refresh" 
+                    styleClass="p-button-outlined p-button-sm mt-2"
+                    (click)="refrescarDatosRuta()">
+                </p-button>
             </div>
 
             <div *ngIf="!loadingRuta && viajesAuditoria.length > 0" class="p-3">
-                <h3 class="mt-0 mb-3 text-primary border-bottom-1 surface-border pb-2">
-                    <i class="pi pi-list mr-2"></i>Historial de Viajes
-                </h3>
+                <div class="flex align-items-center justify-content-between mb-3 border-bottom-1 surface-border pb-2">
+                    <h3 class="m-0 text-primary">
+                        <i class="pi pi-list mr-2"></i>Historial de Viajes
+                    </h3>
+                    <p-button 
+                        icon="pi pi-refresh" 
+                        [rounded]="true" 
+                        [text]="true"
+                        severity="secondary"
+                        pTooltip="Actualizar historial"
+                        tooltipPosition="left"
+                        [loading]="loadingRuta"
+                        (click)="refrescarDatosRuta()">
+                    </p-button>
+                </div>
                 
                 <div *ngFor="let viajeItem of viajesAuditoria" class="mb-4 border-round surface-card border-1 p-3 cursor-pointer hover:shadow-3 transition-all transition-duration-200" 
                      [ngClass]="selectedAuditoriaItem === viajeItem ? 'surface-200 border-primary shadow-4' : 'surface-border'"
@@ -453,38 +382,92 @@
                     </h4>
                     
                     <div class="grid m-0">
-                        <!-- Salida -->
-                        <div class="col-12 p-0 mb-2">
-                            <div class="text-sm text-500 mb-1 font-bold"><i class="pi pi-truck mr-1 text-orange-500"></i> Despacho (Salida)</div>
-                            <div *ngIf="viajeItem.despacho" class="text-sm pl-4">
-                                <div><i class="pi pi-calendar mr-1"></i> {{ viajeItem.despacho.fecha_dispositivo | date:'dd/MM/yy HH:mm' }}</div>
-                                <div><i class="pi pi-user mr-1"></i> {{ viajeItem.despacho.usuarios?.nombre_completo || 'Despachador' }}</div>
-                                <div><p-tag [value]="viajeItem.despacho.placa_vehiculo || 'Sin placa'" severity="secondary"></p-tag></div>
-                                <div class="mt-2 text-xs font-bold">Materiales:</div>
-                                <ul class="m-0 pl-3 mt-1">
-                                    <li *ngFor="let det of viajeItem.despacho.despachos_viajes_detalle" class="text-xs">
-                                        <b>{{ det.cantidad_viaje }}</b> {{ det.pedidos_items?.unidad_medida_manual || det.pedidos_items?.productos?.unidad_medida }} - {{ det.pedidos_items?.productos?.descripcion || det.pedidos_items?.descripcion_manual }}
-                                    </li>
-                                </ul>
-                                <div class="mt-3 flex flex-wrap gap-2" *ngIf="viajeItem.despacho.fotos_urls?.length">
-                                    <p-image *ngFor="let foto of viajeItem.despacho.fotos_urls" [src]="foto" alt="Evidencia" width="60" [preview]="true" styleClass="border-round shadow-1 border-1 surface-border hover:shadow-3 cursor-pointer transition-all"></p-image>
+                        <!-- ETAPA 1: CARGA Y SALIDA EN PLANTA -->
+                        <div class="col-12 p-0 mb-3">
+                            <div class="text-sm text-800 mb-2 font-bold flex align-items-center">
+                                <i class="pi pi-box mr-2 text-orange-500"></i>
+                                <span>Etapa 1: Carga y Salida en Planta</span>
+                            </div>
+                            
+                            <div class="grid m-0">
+                                <!-- Despacho del Operador -->
+                                <div class="col-12 md:col-6 p-2 surface-50 border-round border-1 surface-border mb-2 md:mb-0 mr-0 md:mr-1">
+                                    <div class="font-bold text-xs text-orange-700 mb-2"><i class="pi pi-user mr-1"></i>Registro de Despacho (Planta)</div>
+                                    <div *ngIf="viajeItem.despacho" class="text-xs text-800">
+                                        <div><b>Operador:</b> {{ viajeItem.despacho.usuarios?.nombre_completo || 'Despachador' }}</div>
+                                        <div><b>Placa:</b> <span class="font-bold text-primary">{{ viajeItem.despacho.placa_vehiculo || 'Sin placa' }}</span></div>
+                                        <div><b>Fecha:</b> {{ viajeItem.despacho.fecha_dispositivo | date:'dd/MM/yy HH:mm' }}</div>
+                                        <div class="mt-2 font-bold">Materiales:</div>
+                                        <ul class="m-0 pl-3 mt-1">
+                                            <li *ngFor="let det of viajeItem.despacho.despachos_viajes_detalle" class="text-xs">
+                                                <b>{{ det.cantidad_viaje }}</b> {{ det.pedidos_items?.unidad_medida_manual || det.pedidos_items?.productos?.unidad_medida }} - {{ det.pedidos_items?.productos?.descripcion || det.pedidos_items?.descripcion_manual }}
+                                            </li>
+                                        </ul>
+                                        <!-- Fotos Despachador -->
+                                        <div *ngIf="viajeItem.despacho.fotos_urls?.length" class="mt-3">
+                                            <div class="font-bold text-600 mb-1">Evidencia Operador:</div>
+                                            <div class="flex flex-wrap gap-1">
+                                                <p-image *ngFor="let foto of viajeItem.despacho.fotos_urls" [src]="foto" alt="Evidencia Despacho" width="55" [preview]="true" styleClass="border-round shadow-1 border-1 surface-border hover:shadow-2 cursor-pointer transition-all"></p-image>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div *ngIf="!viajeItem.despacho" class="text-xs text-500 italic">Sin despacho registrado</div>
+                                </div>
+
+                                <!-- Validación del Chofer (Recepción) -->
+                                <div class="col-12 md:col-6 p-2 surface-50 border-round border-1 surface-border" style="flex: 1;">
+                                    <div class="font-bold text-xs text-orange-700 mb-2"><i class="pi pi-check-circle mr-1"></i>Confirmación del Chofer (Carga)</div>
+                                    <div *ngIf="viajeItem.despacho?.fecha_recepcion_chofer" class="text-xs text-800">
+                                        <div><b>Estado:</b> <p-tag value="CARGADO" severity="success" styleClass="text-xs"></p-tag></div>
+                                        <div><b>Fecha Confirmación:</b> {{ viajeItem.despacho.fecha_recepcion_chofer | date:'dd/MM/yy HH:mm' }}</div>
+                                        
+                                        <!-- Fotos Recepción Chofer -->
+                                        <div *ngIf="viajeItem.despacho.fotos_urls_recepcion_chofer?.length" class="mt-3">
+                                            <div class="font-bold text-600 mb-1">Evidencia Chofer:</div>
+                                            <div class="flex flex-wrap gap-1">
+                                                <p-image *ngFor="let foto of viajeItem.despacho.fotos_urls_recepcion_chofer" [src]="foto" alt="Evidencia Recepción" width="55" [preview]="true" styleClass="border-round shadow-1 border-1 surface-border hover:shadow-2 cursor-pointer transition-all"></p-image>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div *ngIf="!viajeItem.despacho?.fecha_recepcion_chofer" class="text-xs text-500 italic flex align-items-center justify-content-center h-5rem bg-yellow-50 border-round p-2 border-1 border-yellow-200" style="width: 100%;">
+                                        <span class="text-yellow-700 font-bold"><i class="pi pi-spin pi-spinner mr-1"></i>Esperando recepción del chofer</span>
+                                    </div>
                                 </div>
                             </div>
-                            <div *ngIf="!viajeItem.despacho" class="text-sm text-400 italic pl-4">Sin registro</div>
                         </div>
 
-                        <!-- Llegada -->
-                        <div class="col-12 p-0 mt-2 border-top-1 surface-border pt-2">
-                            <div class="text-sm text-500 mb-1 font-bold"><i class="pi pi-check-circle mr-1 text-green-500"></i> Entrega (Chofer)</div>
-                            <div *ngIf="viajeItem.chofer" class="text-sm pl-4">
-                                <div><i class="pi pi-user mr-1"></i> {{ viajeItem.chofer.chofer?.nombre_completo || 'Chofer' }}</div>
-                                <div class="mt-1"><p-tag value="ENTREGADO" severity="success"></p-tag></div>
-                                <div *ngIf="viajeItem.chofer.fecha_dispositivo" class="mt-1"><b>Fecha de Entrega:</b> {{ viajeItem.chofer.fecha_dispositivo | date:'dd/MM/yy HH:mm' }}</div>
-                                <div class="mt-3 flex flex-wrap gap-2" *ngIf="viajeItem.chofer.foto_guia_path">
-                                    <p-image [src]="viajeItem.chofer.foto_guia_path" alt="Evidencia" width="60" [preview]="true" styleClass="border-round shadow-1 border-1 surface-border hover:shadow-3 cursor-pointer transition-all" pTooltip="Evidencia de Llegada"></p-image>
+                        <!-- ETAPA 2: ENTREGA AL CLIENTE -->
+                        <div class="col-12 p-0 mt-2 border-top-1 surface-border pt-3">
+                            <div class="text-sm text-800 mb-2 font-bold flex align-items-center">
+                                <i class="pi pi-map-marker mr-2 text-green-500"></i>
+                                <span>Etapa 2: Entrega y Descarga en Obra</span>
+                            </div>
+                            
+                            <div class="grid m-0">
+                                <div class="col-12 p-2 surface-50 border-round border-1 surface-border" style="width: 100%;">
+                                    <div *ngIf="viajeItem.chofer" class="text-xs text-800">
+                                        <div class="flex align-items-center gap-2 mb-2">
+                                            <div><b>Chofer:</b> {{ viajeItem.chofer.chofer?.nombre_completo || 'Chofer' }}</div>
+                                            <p-tag value="ENTREGADO EN OBRA" severity="success" styleClass="text-xs"></p-tag>
+                                        </div>
+                                        <div><b>Fecha/Hora Entrega:</b> {{ viajeItem.chofer.fecha_dispositivo | date:'dd/MM/yy HH:mm' }}</div>
+                                        
+                                        <!-- Fotos Entrega -->
+                                        <div *ngIf="viajeItem.chofer.fotos_urls_entrega?.length || viajeItem.chofer.foto_guia_path" class="mt-3">
+                                            <div class="font-bold text-600 mb-1">Evidencia de Entrega / Guía Firmada:</div>
+                                            <div class="flex flex-wrap gap-1" *ngIf="viajeItem.chofer.fotos_urls_entrega?.length">
+                                                <p-image *ngFor="let foto of viajeItem.chofer.fotos_urls_entrega" [src]="foto" alt="Evidencia Entrega" width="55" [preview]="true" styleClass="border-round shadow-1 border-1 surface-border hover:shadow-2 cursor-pointer transition-all"></p-image>
+                                            </div>
+                                            <div class="flex flex-wrap gap-1" *ngIf="!viajeItem.chofer.fotos_urls_entrega?.length && viajeItem.chofer.foto_guia_path">
+                                                <p-image [src]="viajeItem.chofer.foto_guia_path" alt="Evidencia Entrega" width="55" [preview]="true" styleClass="border-round shadow-1 border-1 surface-border hover:shadow-2 cursor-pointer transition-all"></p-image>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div *ngIf="!viajeItem.chofer" class="text-xs text-500 italic p-3 text-center bg-gray-50 border-round border-1 surface-border" style="width: 100%;">
+                                        <i class="pi pi-truck mr-1"></i>En ruta o pendiente de entrega
+                                    </div>
                                 </div>
                             </div>
-                            <div *ngIf="!viajeItem.chofer" class="text-sm text-400 italic pl-4">En curso o sin registrar</div>
                         </div>
 
                         <!-- 8b. Tabla de datos GPS crudos -->
@@ -516,6 +499,37 @@
                     </div>
                 </div>
             </div>
+        </div>
+
+        <!-- Panel de sesiones GPS huérfanas -->
+        <div class="mt-4" *ngIf="sesionesHuerfanas.length > 0">
+          <p-card header="⚠️ Sesiones GPS sin enlazar (Huérfanas)">
+            <p class="text-orange-600 text-sm mb-3">
+              Estas sesiones GPS fueron registradas por un chofer pero no se enlazaron automáticamente a un despacho.
+            </p>
+            <p-table [value]="sesionesHuerfanas" styleClass="p-datatable-sm p-datatable-gridlines shadow-1 border-round">
+              <ng-template pTemplate="header">
+                <tr>
+                  <th>Folio Pedido</th>
+                  <th>Chofer</th>
+                  <th>Inicio</th>
+                  <th>Fin</th>
+                  <th>Puntos GPS</th>
+                  <th>Estado</th>
+                </tr>
+              </ng-template>
+              <ng-template pTemplate="body" let-sesion>
+                <tr>
+                  <td class="font-bold">{{ sesion.pedido_folio }}</td>
+                  <td>{{ sesion.chofer_nombre }}</td>
+                  <td>{{ sesion.timestamp_inicio | date:'dd/MM/yyyy HH:mm' }}</td>
+                  <td>{{ sesion.timestamp_fin | date:'dd/MM/yyyy HH:mm' }}</td>
+                  <td>{{ sesion.puntos_gps }}</td>
+                  <td><p-tag value="HUERFANA" severity="danger"></p-tag></td>
+                </tr>
+              </ng-template>
+            </p-table>
+          </p-card>
         </div>
 
     </div>

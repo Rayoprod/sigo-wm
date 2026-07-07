@@ -11,7 +11,7 @@ import { HttpClient, HttpClientModule } from '@angular/common/http';
   styleUrls: ['./rastreo.component.scss']
 })
 export class RastreoComponent implements OnInit, OnDestroy {
-  folio: string = '';
+  token: string = '';
   loading: boolean = true;
   error: string = '';
   trackingData: any = null;
@@ -21,9 +21,9 @@ export class RastreoComponent implements OnInit, OnDestroy {
   constructor(private route: ActivatedRoute, private http: HttpClient) {}
 
   ngOnInit() {
-    this.folio = this.route.snapshot.paramMap.get('folio') || '';
-    if (!this.folio) {
-      this.error = 'Folio no válido.';
+    this.token = this.route.snapshot.paramMap.get('token') || '';
+    if (!this.token) {
+      this.error = 'Enlace de rastreo no válido o expirado.';
       this.loading = false;
       return;
     }
@@ -42,8 +42,7 @@ export class RastreoComponent implements OnInit, OnDestroy {
   }
 
   fetchData(isFirstLoad = true) {
-    // Usamos el endpoint de Vercel en producción
-    const url = `https://sigo-wm.vercel.app/api/rastreo?folio=${this.folio}`;
+    const url = `/api/rastreo?token=${this.token}`;
     this.http.get(url).subscribe({
       next: (data: any) => {
         this.trackingData = data;
@@ -60,8 +59,6 @@ export class RastreoComponent implements OnInit, OnDestroy {
       }
     });
   }
-
-
 
   get isDelivered(): boolean {
     return this.trackingData?.estado === 'COMPLETADA';
@@ -89,5 +86,11 @@ export class RastreoComponent implements OnInit, OnDestroy {
     const eventos = this.eventosFiltrados;
     if (!eventos || eventos.length === 0) return false;
     return eventos.some((e: any) => e.foto || (e.fotos && e.fotos.length > 0));
+  }
+
+  abrirEvidencia(url: string) {
+    if (url) {
+      window.open(url, '_blank');
+    }
   }
 }

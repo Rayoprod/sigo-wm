@@ -22,9 +22,15 @@ export default async function handler(req: any, res: any) {
     return res.status(405).json({ error: 'Method Not Allowed' });
   }
 
-  const { folio } = req.query;
-  if (!folio) {
-    return res.status(400).json({ error: 'Folio es requerido' });
+  const { token } = req.query;
+  if (!token) {
+    return res.status(400).json({ error: 'Token de rastreo es requerido' });
+  }
+
+  // Validar formato de UUID para mayor seguridad
+  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  if (!uuidRegex.test(token)) {
+    return res.status(400).json({ error: 'Token de rastreo inválido' });
   }
 
   // Usar ANON key, la función 'get_public_tracking_data' usa SECURITY DEFINER
@@ -32,7 +38,7 @@ export default async function handler(req: any, res: any) {
 
   try {
     const { data, error } = await supabase.rpc('get_public_tracking_data', {
-      p_folio: folio
+      p_token: token
     });
 
     if (error) {
@@ -45,11 +51,11 @@ export default async function handler(req: any, res: any) {
     }
 
     // Como el RPC original no traía lugar_entrega, hacemos una query rápida para obtenerlo
-    if (!data.lugar_entrega) {
+    if (data && !data.lugar_entrega) {
       const { data: pedidoData, error: pedidoError } = await supabase
         .from('pedidos')
         .select('lugar_entrega')
-        .eq('folio', folio)
+        .eq('tracking_token', token)
         .single();
         
       if (!pedidoError && pedidoData) {

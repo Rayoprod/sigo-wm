@@ -121,14 +121,21 @@
                 </div>
 
                 <div class="field mb-0">
-                    <label class="font-bold text-900 mb-2 block">Punto de Entrega</label>
-                    <p-dropdown [options]="[{label: 'En Cantera', value: 'CANTERA'}, {label: 'En Obra', value: 'OBRA'}]" [(ngModel)]="lugar_entrega" optionLabel="label" optionValue="value" styleClass="w-full"></p-dropdown>
+                    <label class="font-bold text-900 mb-2 block">Tipo de Entrega</label>
+                    <p-dropdown [options]="tiposEntrega" [(ngModel)]="tipo_entrega" (ngModelChange)="onTipoEntregaChange()" optionLabel="label" optionValue="value" styleClass="w-full"></p-dropdown>
                 </div>
-                
-                <div class="field mb-0" *ngIf="lugar_entrega === 'OBRA'">
-                    <label class="font-medium text-sm">Dirección de Obra / Referencias</label>
-                    <input pInputText type="text" [(ngModel)]="direccion_entrega_detalle" placeholder="Ej: Km 4.5 Panamericana Sur..." class="w-full" />
-                </div>
+
+                <ng-container *ngIf="tipo_entrega === 'DOMICILIO'">
+                    <div class="field mb-0" *ngIf="tipo_documento === 'ORDEN_VENTA'">
+                        <label class="font-bold text-900 mb-2 block">Chofer Asignado (Ruta)</label>
+                        <p-dropdown [options]="choferesOptions" [(ngModel)]="chofer_id" optionLabel="label" optionValue="value" placeholder="Seleccionar chofer (Opcional)..." [showClear]="true" styleClass="w-full"></p-dropdown>
+                    </div>
+
+                    <div class="field mb-0">
+                        <label class="font-medium text-sm">Dirección de Obra / Referencias</label>
+                        <input pInputText type="text" [(ngModel)]="direccion_entrega_detalle" placeholder="Ej: Km 4.5 Panamericana Sur..." class="w-full" />
+                    </div>
+                </ng-container>
 
                 <ng-container *ngIf="tipo_documento === 'COTIZACION'">
                     <div class="field mb-0">

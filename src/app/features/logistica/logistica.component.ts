@@ -1,4 +1,4 @@
-import { Component, OnInit, inject, OnDestroy } from '@angular/core';
+import { Component, OnInit, inject, OnDestroy, NgZone } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { SupabaseService } from '../../core/services/supabase.service';
 import { AuthService } from '../../core/services/auth.service';
@@ -41,6 +41,7 @@ import { ImageModule } from 'primeng/image';
 export class LogisticaComponent implements OnInit, OnDestroy {
   supabase = inject(SupabaseService).client;
   auth = inject(AuthService);
+  ngZone = inject(NgZone);
 
   pedidos: any[] = [];
   loading = true;
@@ -65,7 +66,8 @@ export class LogisticaComponent implements OnInit, OnDestroy {
     lat: null as number | null,
     lng: null as number | null,
     fotosFiles: [] as File[],
-    items: [] as any[] // [{ id, descripcion, maxCantidad, cantidad_viaje }]
+    items: [] as any[], // [{ id, descripcion, maxCantidad, cantidad_viaje }]
+    tipoRegistro: 'NORMAL' as 'NORMAL' | 'MANUAL_COMPLETO'
   };
   isSavingViaje = false;
   gpsLoading = false;
@@ -88,7 +90,12 @@ export class LogisticaComponent implements OnInit, OnDestroy {
 
   realtimeChannel: any;
   rutaRealtimeChannel: any;
+  rutaPollingInterval: any;
   currentUserRole: string | undefined;
+
+  sesionesHuerfanas: any[] = [];
+
+  globalPollingInterval: any;
 
   async ngOnInit() {
     const user = this.auth.currentUser();
@@ -96,7 +103,39 @@ export class LogisticaComponent implements OnInit, OnDestroy {
     await this.cargarPedidos();
     await this.cargarVehiculos();
     await this.cargarChoferes();
+    await this.cargarSesionesHuerfanas();
     this.suscribirCambiosViajes();
+  }
+
+  ngOnDestroy() {
+    if (this.realtimeChannel) this.supabase.removeChannel(this.realtimeChannel);
+    if (this.rutaRealtimeChannel) this.supabase.removeChannel(this.rutaRealtimeChannel);
+    if (this.rutaPollingInterval) clearInterval(this.rutaPollingInterval);
+    if (this.globalPollingInterval) clearInterval(this.globalPollingInterval);
+  }
+
+  async cargarSesionesHuerfanas() {
+    try {
+      const { data } = await this.supabase
+        .from('sesiones_gps')
+        .select(`
+          id, timestamp_inicio, timestamp_fin, estado,
+          pedidos (folio),
+          chofer:usuarios!sesiones_gps_chofer_id_fkey (nombre_completo),
+          rutas_gps (count)
+        `)
+        .eq('estado', 'HUERFANA')
+        .order('timestamp_inicio', { ascending: false });
+
+      this.sesionesHuerfanas = (data || []).map((s: any) => ({
+        ...s,
+        pedido_folio: s.pedidos?.folio,
+        chofer_nombre: s.chofer?.nombre_completo,
+        puntos_gps: s.rutas_gps?.[0]?.count || 0,
+      }));
+    } catch (e) {
+      console.error('Error cargando sesiones huerfanas:', e);
+    }
   }
 
   async cargarVehiculos() {
@@ -113,24 +152,41 @@ export class LogisticaComponent implements OnInit, OnDestroy {
     }
   }
 
-  ngOnDestroy() {
-    if (this.realtimeChannel) {
-      this.supabase.removeChannel(this.realtimeChannel);
-    }
-  }
+
 
   suscribirCambiosViajes() {
     this.realtimeChannel = this.supabase.channel('custom-viajes-channel')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'despachos_viajes_detalle' }, payload => {
         if (this.expandedPedidoId) {
+          // Forzar la recarga ignorando el caché
+          delete this.itemsDelPedidoMap[this.expandedPedidoId];
+          delete this.viajesDelPedidoMap[this.expandedPedidoId];
           this.cargarItemsPedido(this.expandedPedidoId);
+          this.cargarViajesPedido(this.expandedPedidoId);
         }
       })
       .subscribe();
+
+    // Polling Híbrido Global: Se ejecuta cada 15 segundos para garantizar que 
+    // la tabla principal, el modal de auditoría y los detalles expandidos 
+    // se mantengan actualizados (útil si los WebSockets fallan).
+    this.globalPollingInterval = setInterval(() => {
+      this.ngZone.run(async () => {
+        // Refrescar lista de pedidos principal silenciosamente
+        await this.cargarPedidos(true);
+        
+        // Si hay una fila expandida o modal de auditoría, refrescar sus items y viajes silenciosamente
+        if (this.expandedPedidoId || (this.displayAuditoriaModal && this.selectedPedido)) {
+          const targetId = this.expandedPedidoId || this.selectedPedido.id;
+          await this.cargarItemsPedido(targetId, true);
+          await this.cargarViajesPedido(targetId, true);
+        }
+      });
+    }, 15000);
   }
 
-  async cargarPedidos() {
-    this.loading = true;
+  async cargarPedidos(silent: boolean = false) {
+    if (!silent) this.loading = true;
     const { data, error } = await this.supabase
       .from('pedidos')
       .select('*, clientes(nombre_razon_social), chofer:usuarios!pedidos_chofer_id_fkey(nombre_completo)')
@@ -141,7 +197,7 @@ export class LogisticaComponent implements OnInit, OnDestroy {
     if (!error) {
       this.pedidos = data || [];
     }
-    this.loading = false;
+    if (!silent) this.loading = false;
   }
 
   async togglePedido(pedidoId: string) {
@@ -164,10 +220,10 @@ export class LogisticaComponent implements OnInit, OnDestroy {
     // Opcional: limpiar cache si quisieras, pero usualmente se deja guardado
   }
 
-  async cargarItemsPedido(pedidoId: string) {
-    if (this.itemsDelPedidoMap[pedidoId]) return; // Evitar recarga si ya está en caché
+  async cargarItemsPedido(pedidoId: string, silent: boolean = false) {
+    if (this.itemsDelPedidoMap[pedidoId] && !silent) return; // Evitar recarga si ya está en caché
 
-    this.loadingItemsMap[pedidoId] = true;
+    if (!silent) this.loadingItemsMap[pedidoId] = true;
     const { data, error } = await this.supabase
       .from('pedidos_items')
       .select('*, productos(descripcion, unidad_medida)')
@@ -176,13 +232,13 @@ export class LogisticaComponent implements OnInit, OnDestroy {
     if (!error) {
       this.itemsDelPedidoMap[pedidoId] = data || [];
     }
-    this.loadingItemsMap[pedidoId] = false;
+    if (!silent) this.loadingItemsMap[pedidoId] = false;
   }
 
-  async cargarViajesPedido(pedidoId: string) {
-    if (this.viajesDelPedidoMap[pedidoId]) return;
+  async cargarViajesPedido(pedidoId: string, silent: boolean = false) {
+    if (this.viajesDelPedidoMap[pedidoId] && !silent) return;
 
-    this.loadingViajesMap[pedidoId] = true;
+    if (!silent) this.loadingViajesMap[pedidoId] = true;
     const { data, error } = await this.supabase
       .from('despachos_viajes_cabecera')
       .select(`
@@ -195,7 +251,7 @@ export class LogisticaComponent implements OnInit, OnDestroy {
     if (!error) {
       this.viajesDelPedidoMap[pedidoId] = data || [];
     }
-    this.loadingViajesMap[pedidoId] = false;
+    if (!silent) this.loadingViajesMap[pedidoId] = false;
   }
 
   async obtenerCantidadesEnTransito(pedidoId: string): Promise<Record<string, number>> {
@@ -222,22 +278,22 @@ export class LogisticaComponent implements OnInit, OnDestroy {
     
     // Preparar form con los items actuales
     await this.cargarItemsPedido(pedido.id);
-    const enTransitoMap = await this.obtenerCantidadesEnTransito(pedido.id);
-    
     this.viajeForm = {
       placa: '',
       lat: null,
       lng: null,
       fotosFiles: [],
+      tipoRegistro: 'NORMAL',
       items: (this.itemsDelPedidoMap[pedido.id] || []).map((item: any) => {
-        const enTransito = enTransitoMap[item.id] || 0;
-        const restante = Number(item.cantidad) - Number(item.cantidad_despachada || 0) - enTransito;
+        // La base de datos ya suma todo en cantidad_despachada mediante el trigger, 
+        // no debemos volver a restar lo que está 'en tránsito'
+        const restante = Number(item.cantidad) - Number(item.cantidad_despachada || 0);
         return {
           id: item.id,
           descripcion: item.productos?.descripcion || item.descripcion_manual,
           unidad_medida: item.productos?.unidad_medida || item.unidad_medida_manual,
           maxCantidad: restante > 0 ? restante : 0,
-          cantidad_viaje: 0
+          cantidad_viaje: null
         };
       })
     };
@@ -386,7 +442,6 @@ export class LogisticaComponent implements OnInit, OnDestroy {
         const p = this.viajeForm.placa.trim().toUpperCase();
         try {
           await this.supabase.from('vehiculos').insert({ placa: p });
-          // Lo añadimos al dropdown si no falló
           if (!this.vehiculosOptions.find(o => o.value === p)) {
             this.vehiculosOptions.push({ label: p, value: p });
           }
@@ -395,14 +450,19 @@ export class LogisticaComponent implements OnInit, OnDestroy {
         }
       }
 
-      // 2. Insertar Cabecera (Registro desde base sin asignación obligatoria en este botón)
+      const esManualCompleto = this.viajeForm.tipoRegistro === 'MANUAL_COMPLETO';
+      const estadoViajeInicial = esManualCompleto ? 'ENTREGADO' : 'ASIGNADO';
+
+      // 2. Insertar Cabecera
       const { data: cabeceraData, error: insertError } = await this.supabase
         .from('despachos_viajes_cabecera')
         .insert({
           pedido_id: this.selectedPedido.id,
           despachador_id: user?.id,
+          chofer_id: this.selectedPedido.chofer_id || user?.id,
           placa_vehiculo: this.viajeForm.placa?.trim().toUpperCase(),
           numero_viaje_secuencial: numSecuencial,
+          estado_viaje: estadoViajeInicial,
           latitud: this.viajeForm.lat,
           longitud: this.viajeForm.lng,
           fotos_urls: fotosUrls
@@ -427,14 +487,37 @@ export class LogisticaComponent implements OnInit, OnDestroy {
           .insert(detallesAInsertar);
           
         if (detalleError) throw detalleError;
-
-        // 4. ELIMINADO: Ya no se actualiza cantidad_despachada aquí. Lo hará la BD cuando el chofer entregue.
       }
 
-      alert("Viaje registrado con éxito. Fotos comprimidas y guardadas.");
+      // 4. Si es Manual Completo (Cierre de emergencia), registrar entrega en viajes_entregas
+      if (esManualCompleto) {
+        const { error: entregaError } = await this.supabase
+          .from('viajes_entregas')
+          .insert({
+            pedido_id: this.selectedPedido.id,
+            numero_viaje_secuencial: numSecuencial,
+            chofer_id: this.selectedPedido.chofer_id || user?.id,
+            latitud: this.viajeForm.lat,
+            longitud: this.viajeForm.lng,
+            fecha_dispositivo: new Date().toISOString()
+          });
+
+        if (entregaError) console.warn("Aviso entrega manual:", entregaError.message);
+      }
+
+      if (esManualCompleto) {
+        alert("✅ Registro manual de viaje y entrega grabado con éxito. Las cantidades fueron sumadas y el viaje se cerró.");
+      } else {
+        alert("Viaje registrado con éxito. Fotos comprimidas y guardadas.");
+      }
+
       this.displayViajeModal = false;
-      // Refrescar el ítem actual
+      
+      // Refrescar el ítem y los viajes del pedido
+      delete this.viajesDelPedidoMap[this.selectedPedido.id];
+      await this.cargarViajesPedido(this.selectedPedido.id);
       await this.cargarItemsPedido(this.selectedPedido.id);
+      await this.cargarPedidos();
 
     } catch (error: any) {
       alert("Error al registrar el viaje: " + error.message);
@@ -443,10 +526,79 @@ export class LogisticaComponent implements OnInit, OnDestroy {
     }
   }
 
+  async marcarEntregaManualViaje(viaje: any) {
+    const confirmado = confirm(
+      `⚠️ ¿Estás seguro de marcar el Viaje #${viaje.numero_viaje_secuencial} como ENTREGADO manualmente?\n\n` +
+      `Esta opción es para emergencias cuando el chofer tuvo problemas en el móvil o entregó en físico. Actualizará las cantidades entregadas y el estado de la orden.`
+    );
+    if (!confirmado) return;
+
+    this.loading = true;
+    try {
+      const user = this.auth.currentUser();
+
+      // 1. Actualizar estado_viaje a ENTREGADO en cabecera
+      const { error: updateError } = await this.supabase
+        .from('despachos_viajes_cabecera')
+        .update({ estado_viaje: 'ENTREGADO' })
+        .eq('id', viaje.id);
+
+      if (updateError) throw updateError;
+
+      // 2. Insertar en viajes_entregas si no existe aún
+      const { error: entregaError } = await this.supabase
+        .from('viajes_entregas')
+        .insert({
+          pedido_id: viaje.pedido_id,
+          numero_viaje_secuencial: viaje.numero_viaje_secuencial,
+          chofer_id: viaje.chofer_id || user?.id,
+          fecha_dispositivo: new Date().toISOString()
+        });
+
+      if (entregaError) console.warn("Aviso al insertar viajes_entregas:", entregaError.message);
+
+      alert(`✅ Viaje #${viaje.numero_viaje_secuencial} marcado como ENTREGADO manualmente con éxito.`);
+      
+      delete this.viajesDelPedidoMap[viaje.pedido_id];
+      await this.cargarViajesPedido(viaje.pedido_id);
+      await this.cargarItemsPedido(viaje.pedido_id);
+      await this.cargarPedidos();
+
+    } catch (error: any) {
+      alert("Error al marcar entrega manual: " + error.message);
+    } finally {
+      this.loading = false;
+    }
+  }
+
   // --- ASIGNACIÓN DE CHOFER ÚNICA ---
+  async tieneRutaEnCurso(pedidoId: string): Promise<boolean> {
+    try {
+      const { data: sesiones } = await this.supabase
+        .from('sesiones_gps')
+        .select('id')
+        .eq('pedido_id', pedidoId)
+        .eq('estado', 'ACTIVO')
+        .limit(1);
+
+      if (sesiones && sesiones.length > 0) return true;
+
+      const { data: viajes } = await this.supabase
+        .from('despachos_viajes_cabecera')
+        .select('id')
+        .eq('pedido_id', pedidoId)
+        .eq('estado_viaje', 'EN RUTA')
+        .limit(1);
+
+      return !!(viajes && viajes.length > 0);
+    } catch (e) {
+      return false;
+    }
+  }
+
   async openAsignarModal(pedido: any) {
     this.selectedPedido = pedido;
-    this.selectedChoferId = null;
+    this.selectedChoferId = pedido.chofer_id || (pedido.chofer ? pedido.chofer.id : null);
     this.displayAsignarModal = true;
     
     // Cargar los items si no están en caché
@@ -459,6 +611,20 @@ export class LogisticaComponent implements OnInit, OnDestroy {
     if (!this.selectedChoferId) {
       alert("Debes seleccionar un chofer.");
       return;
+    }
+
+    const choferAnterior = this.selectedPedido.chofer_id;
+    const esCambioChofer = choferAnterior && choferAnterior !== this.selectedChoferId;
+
+    if (esCambioChofer) {
+      const enRuta = await this.tieneRutaEnCurso(this.selectedPedido.id);
+      if (enRuta) {
+        alert("🔒 No se puede reasignar el chofer mientras hay un viaje o sesión GPS EN RUTA. El chofer actual está transmitiendo su ubicación en vivo para esta entrega.");
+        return;
+      }
+
+      const confirmado = confirm("⚠️ ¿Estás seguro de que deseas reasignar el chofer de este pedido? El nuevo chofer visualizará la orden en su app móvil.");
+      if (!confirmado) return;
     }
 
     this.isSavingViaje = true;
@@ -491,7 +657,7 @@ export class LogisticaComponent implements OnInit, OnDestroy {
 
   openAsignarViajeExistenteModal(viaje: any) {
     this.selectedViajeToAssign = viaje;
-    this.selectedChoferId = null;
+    this.selectedChoferId = viaje.chofer_id || null;
     this.displayAsignarViajeExistenteModal = true;
   }
 
@@ -499,6 +665,17 @@ export class LogisticaComponent implements OnInit, OnDestroy {
     if (!this.selectedChoferId) {
       alert("Debes seleccionar un chofer.");
       return;
+    }
+
+    if (this.selectedViajeToAssign?.estado_viaje === 'EN RUTA') {
+      alert("🔒 No se puede reasignar el chofer de un viaje que se encuentra actualmente EN RUTA.");
+      return;
+    }
+
+    const choferAnterior = this.selectedViajeToAssign?.chofer_id;
+    if (choferAnterior && choferAnterior !== this.selectedChoferId) {
+      const confirmado = confirm("⚠️ ¿Estás seguro de que deseas reasignar el chofer para este viaje?");
+      if (!confirmado) return;
     }
 
     this.isSavingViaje = true;
@@ -549,22 +726,46 @@ export class LogisticaComponent implements OnInit, OnDestroy {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'despachos_viajes_cabecera' }, payload => {
         const item = (payload.new || payload.old) as any;
         if (this.selectedPedidoParaRuta && item && item.pedido_id === this.selectedPedidoParaRuta.id) {
-          this.refrescarDatosRuta();
+          this.ngZone.run(async () => {
+            await this.refrescarDatosRuta();
+          });
         }
       })
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'rutas_gps' }, payload => {
-        const item = payload.new as any;
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'rutas_gps' }, payload => {
+        const item = (payload.new || payload.old) as any;
         if (this.selectedPedidoParaRuta && item && item.pedido_id === this.selectedPedidoParaRuta.id) {
-          this.refrescarDatosRuta();
+          this.ngZone.run(async () => {
+            await this.refrescarDatosRuta();
+          });
         }
       })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'viajes_entregas' }, payload => {
         const item = (payload.new || payload.old) as any;
         if (this.selectedPedidoParaRuta && item && item.pedido_id === this.selectedPedidoParaRuta.id) {
-          this.refrescarDatosRuta();
+          this.ngZone.run(async () => {
+            await this.refrescarDatosRuta();
+          });
+        }
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'sesiones_gps' }, payload => {
+        const item = (payload.new || payload.old) as any;
+        if (this.selectedPedidoParaRuta && item && item.pedido_id === this.selectedPedidoParaRuta.id) {
+          this.ngZone.run(async () => {
+            await this.refrescarDatosRuta();
+          });
         }
       })
       .subscribe();
+
+    // Polling Híbrido de Respaldo cada 12 segundos para asegurar actualización
+    // en redes inestables o si la replicación de Supabase Realtime no está activa.
+    this.rutaPollingInterval = setInterval(() => {
+      if (this.selectedPedidoParaRuta && this.displayRutaModal) {
+        this.ngZone.run(async () => {
+          await this.refrescarDatosRuta();
+        });
+      }
+    }, 12000);
 
     await this.refrescarDatosRuta();
     this.loadingRuta = false;
@@ -592,12 +793,12 @@ export class LogisticaComponent implements OnInit, OnDestroy {
         .eq('pedido_id', this.selectedPedidoParaRuta.id)
         .order('numero_viaje_secuencial', { ascending: true });
 
-      // 2. Obtener puntos GPS continuos del chofer (ordenados)
+      // 2. Obtener puntos GPS del chofer (consultar TODOS los del pedido, porque offline pueden no tener sesion_id)
       const { data: gpsData } = await this.supabase
-        .from('rutas_gps')
-        .select('*')
-        .eq('pedido_id', this.selectedPedidoParaRuta.id)
-        .order('timestamp', { ascending: true });
+          .from('rutas_gps')
+          .select('*')
+          .eq('pedido_id', this.selectedPedidoParaRuta.id)
+          .order('timestamp', { ascending: true });
         
       if (gpsData) {
         this.puntosRuta = gpsData.filter(p => p.latitud && p.longitud && p.latitud !== 0 && p.longitud !== 0);
@@ -715,7 +916,6 @@ export class LogisticaComponent implements OnInit, OnDestroy {
       console.error('Error al cargar/refrescar historial y rutas:', e);
       alert('Error cargando historial y rutas.');
     }
-  }
   }
 
   // OSRM eliminado para graficar los puntos GPS reales (camino de puntos) sin "vueltones"
@@ -985,6 +1185,10 @@ export class LogisticaComponent implements OnInit, OnDestroy {
     if (this.rutaRealtimeChannel) {
       this.supabase.removeChannel(this.rutaRealtimeChannel);
       this.rutaRealtimeChannel = null;
+    }
+    if (this.rutaPollingInterval) {
+      clearInterval(this.rutaPollingInterval);
+      this.rutaPollingInterval = null;
     }
   }
 

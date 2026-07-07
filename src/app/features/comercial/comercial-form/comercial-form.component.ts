@@ -113,8 +113,9 @@ export class ComercialFormComponent implements OnInit {
   metodo_pago = 'EFECTIVO';
   
   estadosFinancieros = [
+    { label: 'Pendiente (Sin pago por ahora)', value: 'PENDIENTE' },
     { label: 'Pagado Completo', value: 'PAGADO' },
-    { label: 'Pago Parcial (Crédito)', value: 'PARCIAL' }
+    { label: 'Pago Parcial / Adelanto (Crédito)', value: 'PARCIAL' }
   ];
   estado_pago: 'PENDIENTE' | 'PARCIAL' | 'PAGADO' = 'PENDIENTE';
   monto_adelanto: number | null = null;
@@ -141,12 +142,43 @@ export class ComercialFormComponent implements OnInit {
     return this.monto_adelanto !== null && this.monto_adelanto >= 0 && this.monto_adelanto <= this.total;
   }
 
+  tiposEntrega = [
+    { label: 'A Domicilio (Con GPS)', value: 'DOMICILIO' },
+    { label: 'En Cantera (Recojo en Planta)', value: 'CANTERA' }
+  ];
+  tipo_entrega: 'DOMICILIO' | 'CANTERA' = 'DOMICILIO';
+  chofer_id: string | null = null;
+  choferesOptions: any[] = [];
+
   async ngOnInit() {
+    await this.cargarChoferes();
     const id = this.route.snapshot.paramMap.get('id');
     if (id) {
       this.pedidoIdAEditar = id;
       await this.cargarPedido(id);
     }
+  }
+
+  onTipoEntregaChange() {
+    if (this.tipo_entrega === 'CANTERA') {
+      this.lugar_entrega = 'CANTERA';
+      this.direccion_entrega_detalle = '';
+      this.chofer_id = null;
+    } else {
+      this.lugar_entrega = 'OBRA';
+    }
+  }
+
+  async cargarChoferes() {
+    const { data } = await this.supabase
+      .from('usuarios')
+      .select('id, nombre_completo')
+      .eq('rol', 'chofer')
+      .order('nombre_completo', { ascending: true });
+    this.choferesOptions = (data || []).map(c => ({
+      label: c.nombre_completo,
+      value: c.id
+    }));
   }
 
   async cargarPedido(id: string) {
@@ -163,6 +195,8 @@ export class ComercialFormComponent implements OnInit {
     this.estadoOriginal = pedido.estado;
     this.tipo_documento = pedido.tipo_documento;
     this.estado_pago = pedido.estado_pago || 'PENDIENTE';
+    this.tipo_entrega = pedido.tipo_entrega || 'DOMICILIO';
+    this.chofer_id = pedido.chofer_id || null;
     this.clienteActual = pedido.clientes;
     this.clienteSearchText = this.clienteActual.nombre_razon_social;
     
@@ -378,6 +412,8 @@ export class ComercialFormComponent implements OnInit {
           tipo_documento: this.tipo_documento,
           estado: estado_doc,
           estado_pago: this.tipo_documento === 'COTIZACION' ? 'PENDIENTE' : this.estado_pago,
+          tipo_entrega: this.tipo_entrega,
+          chofer_id: this.tipo_entrega === 'DOMICILIO' ? this.chofer_id : null,
           cliente_id: clienteId,
           lugar_entrega: this.lugar_entrega,
           direccion_entrega_detalle: this.lugar_entrega === 'OBRA' ? this.direccion_entrega_detalle : null,
