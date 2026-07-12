@@ -147,11 +147,8 @@ export class ComercialFormComponent implements OnInit {
     { label: 'En Cantera (Recojo en Planta)', value: 'CANTERA' }
   ];
   tipo_entrega: 'DOMICILIO' | 'CANTERA' = 'DOMICILIO';
-  chofer_id: string | null = null;
-  choferesOptions: any[] = [];
 
   async ngOnInit() {
-    await this.cargarChoferes();
     const id = this.route.snapshot.paramMap.get('id');
     if (id) {
       this.pedidoIdAEditar = id;
@@ -163,23 +160,12 @@ export class ComercialFormComponent implements OnInit {
     if (this.tipo_entrega === 'CANTERA') {
       this.lugar_entrega = 'CANTERA';
       this.direccion_entrega_detalle = '';
-      this.chofer_id = null;
     } else {
       this.lugar_entrega = 'OBRA';
     }
   }
 
-  async cargarChoferes() {
-    const { data } = await this.supabase
-      .from('usuarios')
-      .select('id, nombre_completo')
-      .eq('rol', 'chofer')
-      .order('nombre_completo', { ascending: true });
-    this.choferesOptions = (data || []).map(c => ({
-      label: c.nombre_completo,
-      value: c.id
-    }));
-  }
+
 
   async cargarPedido(id: string) {
     const { data: pedido, error } = await this.supabase
@@ -196,7 +182,6 @@ export class ComercialFormComponent implements OnInit {
     this.tipo_documento = pedido.tipo_documento;
     this.estado_pago = pedido.estado_pago || 'PENDIENTE';
     this.tipo_entrega = pedido.tipo_entrega || 'DOMICILIO';
-    this.chofer_id = pedido.chofer_id || null;
     this.clienteActual = pedido.clientes;
     this.clienteSearchText = this.clienteActual.nombre_razon_social;
     
@@ -413,7 +398,6 @@ export class ComercialFormComponent implements OnInit {
           estado: estado_doc,
           estado_pago: this.tipo_documento === 'COTIZACION' ? 'PENDIENTE' : this.estado_pago,
           tipo_entrega: this.tipo_entrega,
-          chofer_id: this.tipo_entrega === 'DOMICILIO' ? this.chofer_id : null,
           cliente_id: clienteId,
           lugar_entrega: this.lugar_entrega,
           direccion_entrega_detalle: this.lugar_entrega === 'OBRA' ? this.direccion_entrega_detalle : null,

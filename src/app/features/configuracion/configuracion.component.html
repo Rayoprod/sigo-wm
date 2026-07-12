@@ -16,15 +16,51 @@
                             <p-button label="Nuevo Usuario" icon="pi pi-user-plus" styleClass="p-button-primary shadow-2" (click)="abrirNuevoUsuario()"></p-button>
                         </div>
 
-                        <p-table [value]="usuarios" [loading]="loadingUsuarios" responsiveLayout="scroll" styleClass="p-datatable-striped p-datatable-gridlines">
+                        <!-- VISTA MÓVIL (Tarjetas) -->
+                        <div class="block md:hidden">
+                            <div class="flex flex-column">
+                                <div *ngFor="let user of usuarios" class="mobile-card">
+                                    <div class="flex justify-content-between align-items-center mb-3">
+                                        <div class="flex align-items-center">
+                                            <div class="bg-primary-50 border-circle flex align-items-center justify-content-center mr-3" style="width: 2.5rem; height: 2.5rem;">
+                                                <i class="pi pi-user text-primary"></i>
+                                            </div>
+                                            <span class="font-bold text-lg text-color">{{ user.nombre_completo || 'Sin nombre' }}</span>
+                                        </div>
+                                        <p-tag [value]="user.rol | uppercase" [severity]="user.rol === 'admin' ? 'danger' : (user.rol === 'vendedor' ? 'info' : 'warning')"></p-tag>
+                                    </div>
+                                    <div class="mobile-card-row mb-1">
+                                        <div class="mobile-card-label"><i class="pi pi-envelope mr-2"></i>Correo</div>
+                                        <div class="mobile-card-value text-sm">{{ user.correo }}</div>
+                                    </div>
+                                    <div class="mobile-card-row mb-3">
+                                        <div class="mobile-card-label"><i class="pi pi-check-circle mr-2"></i>Estado</div>
+                                        <div class="mobile-card-value">
+                                            <p-tag [value]="user.activo ? 'ACTIVO' : 'INACTIVO'" [severity]="user.activo ? 'success' : 'danger'"></p-tag>
+                                        </div>
+                                    </div>
+                                    <div class="flex gap-2 w-full">
+                                        <button pButton label="Editar" icon="pi pi-pencil" class="p-button-info p-button-outlined flex-1 p-button-sm border-round-lg font-bold" (click)="editarUsuario(user)"></button>
+                                        <button pButton [label]="user.activo ? 'Desactivar' : 'Activar'" [icon]="user.activo ? 'pi pi-ban' : 'pi pi-check-circle'" [class]="user.activo ? 'p-button-danger p-button-outlined flex-1 p-button-sm border-round-lg font-bold' : 'p-button-success p-button-outlined flex-1 p-button-sm border-round-lg font-bold'" (click)="toggleUserStatus(user)"></button>
+                                    </div>
+                                </div>
+                                <div *ngIf="!loadingUsuarios && usuarios.length === 0" class="text-center p-4 text-color-secondary">
+                                    No hay usuarios registrados además del administrador original.
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- VISTA ESCRITORIO (Tabla) -->
+                        <div class="hidden md:block">
+                            <p-table [value]="usuarios" [loading]="loadingUsuarios" responsiveLayout="scroll" styleClass="p-datatable-striped p-datatable-gridlines">
                             <ng-template pTemplate="header">
-                                <tr>
-                                    <th class="bg-blue-50 text-blue-800">Nombre Completo</th>
-                                    <th class="bg-blue-50 text-blue-800">Correo Electrónico</th>
-                                    <th class="bg-blue-50 text-blue-800 text-center">Rol Asignado</th>
-                                    <th class="bg-blue-50 text-blue-800 text-center">Estado</th>
-                                    <th class="bg-blue-50 text-blue-800 text-center">Acciones</th>
-                                </tr>
+                                    <tr>
+                                        <th pSortableColumn="nombre_completo">Nombre Completo <p-sortIcon field="nombre_completo"></p-sortIcon></th>
+                                        <th pSortableColumn="correo">Correo Electrónico <p-sortIcon field="correo"></p-sortIcon></th>
+                                        <th pSortableColumn="rol" class="text-center">Rol Asignado <p-sortIcon field="rol"></p-sortIcon></th>
+                                        <th pSortableColumn="activo" class="text-center">Estado <p-sortIcon field="activo"></p-sortIcon></th>
+                                        <th class="text-center">Acciones</th>
+                                    </tr>
                             </ng-template>
                             <ng-template pTemplate="body" let-user>
                                 <tr>
@@ -57,7 +93,8 @@
                                     <td colspan="4" class="text-center py-5 text-500">No hay usuarios registrados además del administrador original.</td>
                                 </tr>
                             </ng-template>
-                        </p-table>
+                            </p-table>
+                        </div>
                     </div>
                 </p-tabPanel>
 
@@ -131,7 +168,7 @@
                             <h3 class="m-0 text-800 font-semibold mb-4 text-center w-full">Logotipo Oficial</h3>
                             
                             <!-- Current Logo Preview -->
-                            <div class="w-15rem h-15rem border-circle border-2 border-dashed surface-border flex align-items-center justify-content-center bg-surface-50 overflow-hidden mb-4 relative" style="border-color: #cbd5e1 !important;">
+                            <div class="w-15rem h-15rem border-circle border-2 border-dashed surface-border flex align-items-center justify-content-center bg-surface-50 overflow-hidden mb-4 relative">
                                 <ng-container *ngIf="empresa.logo_url; else noLogo">
                                     <img [src]="empresa.logo_url" alt="Logo de la Empresa" class="w-full h-full" style="object-fit: contain; padding: 1rem;" />
                                 </ng-container>

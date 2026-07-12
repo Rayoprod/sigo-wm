@@ -13,52 +13,46 @@
                     <input pInputText type="text" #textInput (input)="dt.filterGlobal(textInput.value, 'contains')" placeholder="Buscar cliente, documento..." class="w-full" />
                 </span>
             </div>
-            <div class="flex flex-column gap-3">
-                <p-card *ngFor="let cliente of (dt.filteredValue || clientes)" styleClass="shadow-3 border-round-xl hover:shadow-5 transition-all transition-duration-200 p-0">
-                    <div class="flex flex-column gap-2 mb-2">
-                        <div class="flex align-items-center mb-2">
-                            <div class="bg-primary-50 border-circle flex align-items-center justify-content-center mr-3" style="width: 3rem; height: 3rem;">
-                                <i class="pi pi-user text-primary text-xl"></i>
-                            </div>
-                            <span class="font-bold text-xl text-900 line-height-2">{{ cliente.nombre_razon_social }}</span>
+            <div class="flex flex-column">
+                <div *ngFor="let cliente of (dt.filteredValue || clientes)" class="mobile-card">
+                    <div class="flex align-items-center mb-3">
+                        <div class="bg-primary-50 border-circle flex align-items-center justify-content-center mr-3" style="width: 2.5rem; height: 2.5rem;">
+                            <i class="pi pi-user text-primary"></i>
                         </div>
+                        <span class="font-bold text-lg text-color line-height-2">{{ cliente.nombre_razon_social }}</span>
+                    </div>
 
-                        <div class="flex justify-content-between surface-100 p-3 border-round-lg">
-                            <div>
-                                <span class="text-500 text-sm block mb-1"><i class="pi pi-id-card mr-1"></i>Doc. Identidad</span>
-                                <div class="inline-flex align-items-center font-medium text-900 mt-1">
-                                    <span *ngIf="cliente.documento_identidad" class="px-2 py-1 border-round text-xs font-bold mr-2" 
-                                        [ngClass]="{'bg-blue-100 text-blue-700': cliente.documento_identidad.length === 8, 'bg-purple-100 text-purple-700': cliente.documento_identidad.length === 11, 'bg-gray-100 text-gray-700': cliente.documento_identidad.length !== 8 && cliente.documento_identidad.length !== 11}">
-                                        {{cliente.documento_identidad.length === 8 ? 'DNI' : (cliente.documento_identidad.length === 11 ? 'RUC' : 'OTRO')}}
-                                    </span>
-                                    <span>{{ cliente.documento_identidad || 'No registrado' }}</span>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div *ngIf="cliente.telefono" class="flex align-items-center mt-2 px-2">
-                            <i class="pi pi-phone text-500 mr-2"></i>
-                            <span class="text-900">{{ cliente.telefono }}</span>
-                        </div>
-
-                        <div *ngIf="cliente.correo" class="flex align-items-center mt-2 px-2">
-                            <i class="pi pi-envelope text-500 mr-2"></i>
-                            <span class="text-900">{{ cliente.correo }}</span>
-                        </div>
-
-                        <div *ngIf="cliente.direccion" class="flex align-items-start mt-2 px-2">
-                            <i class="pi pi-map-marker text-500 mr-2 mt-1"></i>
-                            <span class="text-900 text-sm line-height-2">{{ cliente.direccion }}</span>
+                    <div class="mobile-card-row surface-50 p-2 border-round-lg mb-2">
+                        <div class="mobile-card-label flex align-items-center"><i class="pi pi-id-card mr-2"></i>Documento</div>
+                        <div class="inline-flex align-items-center font-medium text-color mt-1">
+                            <span *ngIf="cliente.documento_identidad" class="px-2 py-1 border-round text-xs font-bold mr-2" 
+                                [ngClass]="{'bg-blue-soft text-blue-500': cliente.documento_identidad.length === 8, 'bg-purple-100 text-purple-700': cliente.documento_identidad.length === 11, 'bg-surface-soft text-color-secondary': cliente.documento_identidad.length !== 8 && cliente.documento_identidad.length !== 11}">
+                                {{cliente.documento_identidad.length === 8 ? 'DNI' : (cliente.documento_identidad.length === 11 ? 'RUC' : 'OTRO')}}
+                            </span>
+                            <span>{{ cliente.documento_identidad || '-' }}</span>
                         </div>
                     </div>
 
-                    <ng-template pTemplate="footer">
-                        <div class="flex gap-2 w-full mt-1">
-                            <p-button label="Editar" icon="pi pi-pencil" styleClass="p-button-primary p-button-outlined flex-1 p-button-sm border-round-lg font-bold" (click)="abrirEditar(cliente)"></p-button>
-                            <p-button label="Eliminar" icon="pi pi-trash" styleClass="p-button-danger flex-1 p-button-sm border-round-lg font-bold" (click)="eliminarCliente(cliente)"></p-button>
-                        </div>
-                    </ng-template>
-                </p-card>
+                    <div *ngIf="cliente.telefono" class="mobile-card-row mb-1 px-1">
+                        <div class="mobile-card-label"><i class="pi pi-phone mr-2"></i>Teléfono</div>
+                        <div class="mobile-card-value">{{ cliente.telefono }}</div>
+                    </div>
+
+                    <div *ngIf="cliente.correo" class="mobile-card-row mb-1 px-1">
+                        <div class="mobile-card-label"><i class="pi pi-envelope mr-2"></i>Correo</div>
+                        <div class="mobile-card-value text-sm">{{ cliente.correo }}</div>
+                    </div>
+
+                    <div *ngIf="cliente.direccion" class="flex flex-column mt-2 px-1">
+                        <div class="mobile-card-label mb-1"><i class="pi pi-map-marker mr-2"></i>Dirección</div>
+                        <div class="text-color text-sm line-height-2">{{ cliente.direccion }}</div>
+                    </div>
+
+                    <div class="flex gap-2 w-full mt-3">
+                        <button pButton label="Editar" icon="pi pi-pencil" class="p-button-primary p-button-outlined flex-1 p-button-sm border-round-lg font-bold" (click)="abrirEditar(cliente)"></button>
+                        <button pButton label="Eliminar" icon="pi pi-trash" class="p-button-danger p-button-outlined flex-1 p-button-sm border-round-lg font-bold" (click)="eliminarCliente(cliente)"></button>
+                    </div>
+                </div>
             </div>
             <div *ngIf="!loading && (dt.filteredValue || clientes).length === 0" class="surface-card p-4 shadow-1 border-round text-center mt-3">
                 <div class="bg-blue-50 flex align-items-center justify-content-center border-circle mx-auto mb-3" style="width: 5rem; height: 5rem;"><i class="pi pi-users text-primary" style="font-size: 2rem"></i></div>
@@ -67,7 +61,7 @@
         </div>
 
         <!-- VISTA ESCRITORIO (Tabla) -->
-        <div class="hidden md:block surface-card p-4 shadow-1 border-round">
+        <div class="hidden md:block surface-card p-0 shadow-2 border-round-xl overflow-hidden">
             <p-table #dt [value]="clientes" [paginator]="true" [rows]="10" [globalFilterFields]="['nombre_razon_social', 'documento_identidad']" [loading]="loading" responsiveLayout="scroll" styleClass="p-datatable-striped p-datatable-gridlines">
                 <ng-template pTemplate="caption">
                     <div class="flex justify-content-end">
@@ -79,9 +73,9 @@
                 </ng-template>
                 <ng-template pTemplate="header">
                     <tr>
-                        <th>Razón Social / Nombre</th>
-                        <th>Documento (RUC/DNI)</th>
-                        <th>Dirección</th>
+                        <th pSortableColumn="nombre_razon_social">Razón Social / Nombre <p-sortIcon field="nombre_razon_social"></p-sortIcon></th>
+                        <th pSortableColumn="documento_identidad">Documento (RUC/DNI) <p-sortIcon field="documento_identidad"></p-sortIcon></th>
+                        <th pSortableColumn="direccion">Dirección <p-sortIcon field="direccion"></p-sortIcon></th>
                         <th>Teléfono</th>
                         <th>Correo</th>
                         <th class="text-center" style="width: 8rem">Acciones</th>

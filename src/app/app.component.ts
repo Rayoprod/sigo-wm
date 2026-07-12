@@ -3,6 +3,7 @@ import { RouterOutlet, Router, RouteConfigLoadStart, RouteConfigLoadEnd, Navigat
 import { ToastModule } from 'primeng/toast';
 import { MessageService } from 'primeng/api';
 import { SupabaseService } from './core/services/supabase.service';
+import { ThemeService } from './core/services/theme.service';
 import { SwUpdate, VersionReadyEvent } from '@angular/service-worker';
 import { filter } from 'rxjs';
 
@@ -14,11 +15,12 @@ import { filter } from 'rxjs';
   styleUrl: './app.component.scss'
 })
 export class AppComponent implements OnInit {
-  title = 'sigo-wm';
+  title = 'W&M';
   private swUpdate = inject(SwUpdate);
   private router = inject(Router);
   private messageService = inject(MessageService);
   private supabase = inject(SupabaseService).client;
+  private themeService = inject(ThemeService); // Instantiates and applies theme
 
   isNavigating = false;
 

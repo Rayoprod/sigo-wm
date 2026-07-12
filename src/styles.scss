@@ -1,6 +1,5 @@
 /* You can add global styles to this file, and also import other style files */
 @import "primeflex/primeflex.scss";
-@import "primeng/resources/themes/lara-light-teal/theme.css";
 @import "primeng/resources/primeng.css";
 @import "primeicons/primeicons.css";
 @import "leaflet/dist/leaflet.css";
@@ -34,73 +33,160 @@ html, body {
    ========================================================================== */
 
 /* Suavizar transiciones globales para botones y hover states */
-.p-button,
-.p-card,
-.surface-card,
-a,
-.p-menuitem-link {
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+html body .p-button,
+html body .p-card,
+html body .surface-card,
+html body a,
+html body .p-menuitem-link {
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 /* Elevación moderna para tarjetas (Shadow hover) */
-.surface-card:hover {
-  box-shadow: 0 4px 15px rgba(0,0,0,0.05) !important;
+html body .surface-card:hover {
+  box-shadow: 0 4px 15px rgba(0,0,0,0.05);
 }
 
 /* Redondear botones sutilmente */
-.p-button {
-  border-radius: 8px !important;
+html body .p-button {
+  border-radius: 8px;
 }
 
 /* Esquinas de tarjetas más estilizadas */
-.p-card, .surface-card {
-  border-radius: 12px !important;
-  border: 1px solid var(--surface-border) !important;
+html body .p-card, 
+html body .surface-card {
+  border-radius: 12px;
+  border: 1px solid var(--surface-border);
 }
 
 /* Estilizar inputs */
-.p-inputtext, .p-dropdown, .p-autocomplete-input {
-  border-radius: 8px !important;
+html body .p-inputtext, 
+html body .p-dropdown, 
+html body .p-autocomplete-input {
+  border-radius: 8px;
 }
-.p-inputtext:enabled:focus, .p-dropdown:not(.p-disabled).p-focus {
-  box-shadow: 0 0 0 0.2rem rgba(59, 130, 246, 0.15) !important;
-  border-color: var(--primary-color) !important;
+html body .p-inputtext:enabled:focus, 
+html body .p-dropdown:not(.p-disabled).p-focus {
+  box-shadow: 0 0 0 0.2rem rgba(59, 130, 246, 0.15);
+  border-color: var(--primary-color);
 }
 
 /* Modales redondos y suaves */
-.p-dialog .p-dialog-header {
-  border-top-left-radius: 12px !important;
-  border-top-right-radius: 12px !important;
-  padding: 1.5rem 1.5rem 1rem 1.5rem !important;
+html body .p-dialog .p-dialog-header {
+  border-top-left-radius: 12px;
+  border-top-right-radius: 12px;
+  padding: 1.5rem 1.5rem 1rem 1.5rem;
 }
-.p-dialog .p-dialog-content {
-  padding: 0 1.5rem 1.5rem 1.5rem !important;
+html body .p-dialog .p-dialog-content {
+  padding: 0 1.5rem 1.5rem 1.5rem;
 }
-.p-dialog .p-dialog-footer {
-  border-bottom-left-radius: 12px !important;
-  border-bottom-right-radius: 12px !important;
-  padding: 1rem 1.5rem 1.5rem 1.5rem !important;
-  border-top: 1px solid var(--surface-border) !important;
+html body .p-dialog .p-dialog-footer {
+  border-bottom-left-radius: 12px;
+  border-bottom-right-radius: 12px;
+  padding: 1rem 1.5rem 1.5rem 1.5rem;
+  border-top: 1px solid var(--surface-border);
 }
-.p-dialog {
-  border-radius: 12px !important;
-  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04) !important;
-  border: none !important;
+html body .p-dialog {
+  border-radius: 12px;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+  border: none;
 }
 
 /* Datatable (Mejoras de grilla) */
-.p-datatable .p-datatable-thead > tr > th {
-  background-color: #f8fafc !important; /* bg-slate-50 */
-  color: #334155 !important; /* text-slate-700 */
-  font-weight: 600 !important;
+html body .p-datatable .p-datatable-thead > tr > th {
+  background-color: var(--surface-50);
+  color: var(--text-color);
+  font-weight: 600;
   text-transform: uppercase;
   font-size: 0.75rem;
   letter-spacing: 0.05em;
-  padding: 1rem !important;
-  border-bottom: 2px solid #e2e8f0 !important;
+  padding: 1rem;
+  border-bottom: 2px solid var(--surface-border);
+  transition: background-color 0.2s, color 0.2s;
 }
-.p-datatable .p-datatable-tbody > tr > td {
-  padding: 1rem !important;
+html body .p-datatable .p-datatable-tbody > tr > td {
+  padding: 1rem;
+  border-bottom: 1px solid var(--surface-border);
+  color: var(--text-color);
+}
+html body .p-datatable-hoverable-rows .p-datatable-tbody > tr:not(.p-highlight):hover {
+  background-color: var(--surface-hover);
+}
+
+/* Clases utilitarias para las tarjetas móviles (Responsive Cards) */
+.mobile-card {
+  background-color: var(--surface-card);
+  border: 1px solid var(--surface-border);
+  border-radius: 12px;
+  padding: 1rem;
+  margin-bottom: 1rem;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+.mobile-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+}
+.mobile-card-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.5rem;
+}
+.mobile-card-row:last-child {
+  margin-bottom: 0;
+}
+.mobile-card-label {
+  color: var(--text-color-secondary);
+  font-size: 0.8rem;
+  font-weight: 500;
+}
+.mobile-card-value {
+  color: var(--text-color);
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+/* Ocultar scrollbar pero permitir scroll */
+.timeline-panel-responsive::-webkit-scrollbar {
+  display: none;
+}
+.timeline-panel-responsive {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* ==========================================================================
+   Smart Theme Classes (Auto-adaptables al modo oscuro)
+   ========================================================================== */
+
+/* Leaflet Map Dark Mode Filter */
+.dark-mode .leaflet-layer,
+.dark-mode .leaflet-control-zoom-in,
+.dark-mode .leaflet-control-zoom-out,
+.dark-mode .leaflet-control-attribution {
+  filter: invert(100%) hue-rotate(180deg) brightness(95%) contrast(90%);
+}
+
+/* Backgrounds adaptables para tarjetas semánticas (Reemplaza bg-orange-50, etc) */
+.bg-orange-soft { background-color: var(--orange-50); }
+.bg-green-soft { background-color: var(--green-50); }
+.bg-blue-soft { background-color: var(--blue-50); }
+.bg-surface-soft { background-color: var(--surface-50); }
+
+.dark-mode .bg-orange-soft {
+  background-color: rgba(245, 158, 11, 0.1) !important;
+}
+
+.dark-mode .bg-green-soft {
+  background-color: rgba(34, 197, 94, 0.1) !important;
+}
+
+.dark-mode .bg-blue-soft {
+  background-color: rgba(59, 130, 246, 0.1) !important;
+}
+
+.dark-mode .bg-surface-soft {
+  background-color: var(--surface-hover) !important;
 }
 
 /* Custom Dark Menu for Sidebar */
@@ -181,3 +267,95 @@ a,
 .border-primary {
   border-color: var(--primary-color, #3b82f6) !important;
 }
+
+/* ==========================================================================
+   DARK MODE OVERRIDES 
+   ========================================================================== */
+body.dark-mode {
+  --surface-ground: #121212;
+  --surface-border: #383838;
+  --text-color: rgba(255, 255, 255, 0.87);
+  --text-color-secondary: rgba(255, 255, 255, 0.6);
+
+  /* Background Fixes */
+  .bg-white, .surface-card, .surface-0 {
+    background-color: #1e1e1e !important;
+  }
+  .bg-blue-50, .surface-ground, .bg-surface-50, .surface-50 {
+    background-color: #121212 !important;
+  }
+  .surface-border {
+    border-color: #383838 !important;
+  }
+  
+  /* Text Color Fixes */
+  .text-900, .text-800, .text-700, .text-color {
+    color: rgba(255, 255, 255, 0.87) !important;
+  }
+  .text-600, .text-500, .text-400, .text-color-secondary {
+    color: rgba(255, 255, 255, 0.60) !important;
+  }
+  
+  /* Datatable Fixes */
+  .p-datatable .p-datatable-thead > tr > th {
+    background-color: var(--surface-50) !important;
+    color: var(--text-color) !important;
+    border-bottom-color: var(--surface-border) !important;
+  }
+  .p-datatable .p-datatable-tbody > tr > td {
+    border-bottom-color: var(--surface-border) !important;
+  }
+  .p-datatable-hoverable-rows .p-datatable-tbody > tr:not(.p-highlight):hover {
+    background-color: var(--surface-hover) !important;
+  }
+  
+  /* Menu Fixes */
+  .custom-dark-menu .p-menuitem-link.router-link-active {
+    background-color: rgba(0, 180, 182, 0.2) !important;
+    border-left-color: #00B4B6 !important;
+    .p-menuitem-icon, .p-menuitem-text {
+      color: #00B4B6 !important;
+    }
+  }
+
+  /* Modals */
+  .p-dialog .p-dialog-header,
+  .p-dialog .p-dialog-content,
+  .p-dialog .p-dialog-footer {
+    background-color: #1e1e1e !important;
+    color: rgba(255, 255, 255, 0.87) !important;
+  }
+
+  /* PrimeNG specific fallback overrides */
+  .p-tabview .p-tabview-panels {
+    background-color: #1e1e1e !important;
+    color: rgba(255, 255, 255, 0.87) !important;
+  }
+  .p-tabview .p-tabview-nav {
+    background-color: #1e1e1e !important;
+  }
+  .p-tabview .p-tabview-nav li .p-tabview-nav-link {
+    background-color: #1e1e1e !important;
+    color: rgba(255, 255, 255, 0.6) !important;
+    border-color: #383838 !important;
+  }
+  .p-tabview .p-tabview-nav li.p-highlight .p-tabview-nav-link {
+    color: #00B4B6 !important;
+    border-color: #00B4B6 !important;
+  }
+
+  /* Toolbar/Topbar (if styled globally) */
+  .border-bottom-1.surface-border {
+    border-color: #383838 !important;
+  }
+  
+  .topbar-glass {
+    background: rgba(30, 30, 30, 0.85) !important;
+  }
+}
+
+.topbar-glass {
+  background: rgba(255, 255, 255, 0.85) !important;
+  backdrop-filter: blur(10px);
+}
+

@@ -45,7 +45,25 @@ export class RastreoComponent implements OnInit, OnDestroy {
     const url = `/api/rastreo?token=${this.token}`;
     this.http.get(url).subscribe({
       next: (data: any) => {
-        this.trackingData = data;
+        // Normalizar fechas para Safari (reemplazar espacio por T en timestamps SQL)
+        if (data.fecha_pedido) {
+          data.fecha_pedido = data.fecha_pedido.replace(' ', 'T');
+        }
+        if (data.eventos) {
+          data.eventos.forEach((evento: any) => {
+            if (evento.timestamp) {
+              evento.timestamp = evento.timestamp.replace(' ', 'T');
+            }
+          });
+        }
+
+        // Evitar el parpadeo comparando el JSON stringificado
+        const newStr = JSON.stringify(data);
+        const oldStr = JSON.stringify(this.trackingData);
+        if (newStr !== oldStr) {
+          this.trackingData = data;
+        }
+
         if (isFirstLoad) {
           this.loading = false;
         }
@@ -92,5 +110,10 @@ export class RastreoComponent implements OnInit, OnDestroy {
     if (url) {
       window.open(url, '_blank');
     }
+  }
+
+  trackByEventId(index: number, evento: any): string {
+    // Retorna el ID del evento o un hash de sus propiedades si no tiene ID
+    return evento.id || (evento.tipo + evento.timestamp);
   }
 }

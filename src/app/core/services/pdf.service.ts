@@ -1,5 +1,6 @@
 import { Injectable, inject } from '@angular/core';
 import { SupabaseService } from './supabase.service';
+import { Pedidos, PedidosItems, ConfiguracionEmpresa } from '../models/app.models';
 
 declare let pdfMake: any;
 
@@ -41,7 +42,7 @@ export class PdfService {
       .join(' ');
   }
 
-  private color(empresa: any): string {
+  private color(empresa: ConfiguracionEmpresa | Partial<ConfiguracionEmpresa> | null): string {
     return empresa?.color_hex || empresa?.color || '#01696f';
   }
 
@@ -165,17 +166,17 @@ export class PdfService {
           { text: 'P. UNIT', style: 'thCell' },
           { text: 'IMPORTE', style: 'thCell' }
         ],
-        ...items.map((item: any, i: number) => {
+        ...items.map((item: PedidosItems, i: number) => {
           const bg = i % 2 === 0 ? '#ffffff' : '#f9fafb';
-          const desc = item.productos ? item.productos.descripcion : item.descripcion_manual;
-          const um = item.productos ? item.productos.unidad_medida : item.unidad_medida_manual;
+          const desc = (item as any).productos ? (item as any).productos.descripcion : item.descripcion_manual;
+          const um = (item as any).productos ? (item as any).productos.unidad_medida : item.unidad_medida_manual;
           return [
             { text: (i + 1).toString(), style: 'tdCell', alignment: 'center', fillColor: bg },
             { text: this.formatearTextoLargo(desc), style: 'tdCell', fillColor: bg },
             { text: um || '-', style: 'tdCell', alignment: 'center', fillColor: bg },
             { text: String(item.cantidad), style: 'tdCell', alignment: 'center', fillColor: bg },
-            { text: `S/ ${this.formatNumber(item.precio_unitario)}`, style: 'tdCell', alignment: 'right', fillColor: bg },
-            { text: `S/ ${this.formatNumber(item.subtotal)}`, style: 'tdCell', alignment: 'right', bold: true, fillColor: bg }
+            { text: `S/ ${this.formatNumber(item.precio_unitario || 0)}`, style: 'tdCell', alignment: 'right', fillColor: bg },
+            { text: `S/ ${this.formatNumber(item.subtotal || 0)}`, style: 'tdCell', alignment: 'right', bold: true, fillColor: bg }
           ];
         })
       ];

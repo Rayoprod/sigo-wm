@@ -25,6 +25,7 @@
     "leaflet": "^1.9.4",
     "openai": "^6.44.0",
     "pdfmake": "^0.3.11",
+    "pg": "^8.22.0",
     "primeflex": "^4.0.0",
     "primeicons": "^7.0.0",
     "primeng": "^17.18.15",

@@ -2,7 +2,9 @@
   <!-- Desktop Sidebar -->
   <div class="hidden lg:flex flex-column w-16rem flex-shrink-0 bg-bluegray-900 shadow-4 h-screen sticky top-0 z-5" style="border-top-right-radius: 12px; border-bottom-right-radius: 12px;">
     <div class="flex align-items-center justify-content-center h-5rem bg-bluegray-800 text-white" style="border-top-right-radius: 12px; border-bottom-right-radius: 20px;">
-      <i class="pi pi-box text-2xl mr-2 text-blue-300"></i>
+      <div class="flex align-items-center justify-content-center bg-white border-circle overflow-hidden p-1 mr-2" style="width: 32px; height: 32px;">
+        <img src="assets/logo.jpg" alt="W&M Logo" style="width: 100%; height: 100%; object-fit: contain;">
+      </div>
       <span class="text-2xl font-bold tracking-wide">W&M</span>
     </div>
     <div class="flex-grow-1 overflow-y-auto py-3 px-2">
@@ -17,7 +19,9 @@
   <p-sidebar [(visible)]="sidebarVisible" [fullScreen]="false" styleClass="w-16rem p-0">
     <ng-template pTemplate="header">
       <div class="flex align-items-center w-full">
-        <i class="pi pi-box text-xl text-primary mr-2"></i>
+        <div class="flex align-items-center justify-content-center bg-white border-circle overflow-hidden p-1 mr-2 shadow-1" style="width: 28px; height: 28px;">
+            <img src="assets/logo.jpg" alt="W&M Logo" style="width: 100%; height: 100%; object-fit: contain;">
+        </div>
         <span class="text-xl font-bold text-primary">W&M</span>
       </div>
     </ng-template>
@@ -29,7 +33,7 @@
   <!-- Main Content Area -->
   <div class="flex flex-column flex-grow-1 min-w-0">
     <!-- Topbar (Glassmorphism effect) -->
-    <div class="h-5rem flex align-items-center justify-content-between px-4 sticky top-0 z-4 border-bottom-1 surface-border" style="background: rgba(255, 255, 255, 0.85); backdrop-filter: blur(10px);">
+    <div class="topbar-glass h-5rem flex align-items-center justify-content-between px-4 sticky top-0 z-4 border-bottom-1 surface-border bg-white">
       <div class="flex align-items-center">
         <!-- Mobile menu button -->
         <p-button icon="pi pi-bars" (click)="sidebarVisible = true" styleClass="p-button-text p-button-secondary p-button-rounded lg:hidden mr-2"></p-button>
@@ -41,6 +45,7 @@
       
       <div class="flex align-items-center gap-3">
         <span class="text-xs font-bold px-3 py-2 border-round-3xl bg-blue-50 text-blue-700 shadow-1">{{ user()?.rol | uppercase }}</span>
+        <p-button [icon]="themeService.isDarkMode ? 'pi pi-sun' : 'pi pi-moon'" styleClass="p-button-rounded p-button-text p-button-secondary shadow-1" (click)="themeService.toggleTheme()" pTooltip="Cambiar Tema"></p-button>
         <p-button icon="pi pi-sign-out" styleClass="p-button-rounded p-button-text p-button-danger shadow-1" (click)="logout()" pTooltip="Cerrar Sesión"></p-button>
       </div>
     </div>

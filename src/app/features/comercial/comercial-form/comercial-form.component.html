@@ -126,11 +126,6 @@
                 </div>
 
                 <ng-container *ngIf="tipo_entrega === 'DOMICILIO'">
-                    <div class="field mb-0" *ngIf="tipo_documento === 'ORDEN_VENTA'">
-                        <label class="font-bold text-900 mb-2 block">Chofer Asignado (Ruta)</label>
-                        <p-dropdown [options]="choferesOptions" [(ngModel)]="chofer_id" optionLabel="label" optionValue="value" placeholder="Seleccionar chofer (Opcional)..." [showClear]="true" styleClass="w-full"></p-dropdown>
-                    </div>
-
                     <div class="field mb-0">
                         <label class="font-medium text-sm">Dirección de Obra / Referencias</label>
                         <input pInputText type="text" [(ngModel)]="direccion_entrega_detalle" placeholder="Ej: Km 4.5 Panamericana Sur..." class="w-full" />

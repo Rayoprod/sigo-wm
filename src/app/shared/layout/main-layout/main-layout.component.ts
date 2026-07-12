@@ -2,12 +2,14 @@ import { Component, inject, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterOutlet, RouterLink, RouterLinkActive } from '@angular/router';
 import { AuthService } from '../../../core/services/auth.service';
+import { ThemeService } from '../../../core/services/theme.service';
 import { ToolbarModule } from 'primeng/toolbar';
 import { ButtonModule } from 'primeng/button';
 import { SidebarModule } from 'primeng/sidebar';
 import { AvatarModule } from 'primeng/avatar';
 import { MenuModule } from 'primeng/menu';
 import { MenuItem } from 'primeng/api';
+import { TooltipModule } from 'primeng/tooltip';
 import { ChatBotComponent } from '../../components/chat-bot/chat-bot.component';
 
 @Component({
@@ -23,6 +25,7 @@ import { ChatBotComponent } from '../../components/chat-bot/chat-bot.component';
     SidebarModule,
     AvatarModule,
     MenuModule,
+    TooltipModule,
     ChatBotComponent
   ],
   templateUrl: './main-layout.component.html',
@@ -30,6 +33,7 @@ import { ChatBotComponent } from '../../components/chat-bot/chat-bot.component';
 })
 export class MainLayoutComponent {
   authService = inject(AuthService);
+  themeService = inject(ThemeService);
   sidebarVisible = false;
 
   user = this.authService.currentUser;

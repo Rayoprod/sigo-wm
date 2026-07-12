@@ -23,3 +23,43 @@
   0% { transform: scale(0.8); opacity: 0.8; }
   100% { transform: scale(2.5); opacity: 0; }
 }
+
+.map-panel-responsive {
+  height: 45vh;
+}
+.timeline-panel-responsive {
+  height: 55vh;
+}
+
+@media screen and (min-width: 992px) {
+  .map-panel-responsive {
+    height: 100vh;
+  }
+  .timeline-panel-responsive {
+    height: 100vh;
+  }
+}
+
+.map-floating-card {
+  position: absolute;
+  top: 4.5rem;
+  right: 1rem;
+  z-index: 1000;
+  width: 320px;
+  background-color: var(--surface-card);
+  opacity: 0.95;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+}
+
+@media screen and (max-width: 768px) {
+  .map-floating-card {
+    top: auto;
+    bottom: 1rem;
+    left: 5%;
+    width: 90%;
+    padding: 0.75rem !important;
+  }
+}
+
+
+

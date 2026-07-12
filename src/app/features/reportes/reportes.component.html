@@ -13,8 +13,12 @@
       <p-tabPanel header="Historial de Ventas" leftIcon="pi pi-chart-line">
         <div class="flex flex-column md:flex-row gap-3 mb-4 surface-50 p-3 border-round">
           <div class="field mb-0 w-full md:w-auto">
-            <label class="block text-sm font-medium mb-1">Rango de Fechas</label>
-            <p-calendar styleClass="w-full" [(ngModel)]="fechasVentas" selectionMode="range" [readonlyInput]="true" placeholder="Seleccione un rango..." (onSelect)="aplicarFiltrosVentas()" (onClear)="aplicarFiltrosVentas()" [showClear]="true" appendTo="body"></p-calendar>
+            <label class="block text-sm font-medium mb-1">Fecha Desde</label>
+            <p-calendar styleClass="w-full" [(ngModel)]="fechaInicioVentas" [maxDate]="fechaFinVentas || undefined" [readonlyInput]="true" placeholder="Desde..." (onSelect)="aplicarFiltrosVentas()" (onClear)="aplicarFiltrosVentas()" [showClear]="true" appendTo="body"></p-calendar>
+          </div>
+          <div class="field mb-0 w-full md:w-auto">
+            <label class="block text-sm font-medium mb-1">Fecha Hasta</label>
+            <p-calendar styleClass="w-full" [(ngModel)]="fechaFinVentas" [minDate]="fechaInicioVentas || undefined" [readonlyInput]="true" placeholder="Hasta..." (onSelect)="aplicarFiltrosVentas()" (onClear)="aplicarFiltrosVentas()" [showClear]="true" appendTo="body"></p-calendar>
           </div>
           <div class="field mb-0 w-full md:w-auto">
             <label class="block text-sm font-medium mb-1">Estado</label>
@@ -27,27 +31,27 @@
 
         <!-- VISTA PC (Tabla) -->
         <div class="hidden md:block overflow-x-auto w-full">
-          <p-table #dtVentas [columns]="colsVentas" [value]="ventas" [loading]="loadingVentas" [paginator]="true" [rows]="10" [exportFilename]="'Reporte_Ventas'" styleClass="p-datatable-sm" responsiveLayout="scroll">
+          <p-table #dtVentas [columns]="colsVentas" [value]="ventas" [loading]="loadingVentas" [paginator]="true" [rows]="10" [exportFilename]="'Reporte_Ventas'" styleClass="p-datatable-striped p-datatable-gridlines" responsiveLayout="scroll">
           <ng-template pTemplate="header">
             <tr>
               <th pSortableColumn="created_at">Fecha <p-sortIcon field="created_at"></p-sortIcon></th>
               <th pSortableColumn="folio">Folio <p-sortIcon field="folio"></p-sortIcon></th>
               <th pSortableColumn="cliente_nombre">Cliente <p-sortIcon field="cliente_nombre"></p-sortIcon></th>
-              <th pSortableColumn="total">Total Venta <p-sortIcon field="total"></p-sortIcon></th>
-              <th pSortableColumn="saldo_pendiente">Saldo Pendiente <p-sortIcon field="saldo_pendiente"></p-sortIcon></th>
+              <th pSortableColumn="total" class="text-right">Total Venta <p-sortIcon field="total"></p-sortIcon></th>
+              <th pSortableColumn="saldo_pendiente" class="text-right">Saldo Pendiente <p-sortIcon field="saldo_pendiente"></p-sortIcon></th>
               <th pSortableColumn="estado">Estado <p-sortIcon field="estado"></p-sortIcon></th>
             </tr>
           </ng-template>
           <ng-template pTemplate="body" let-v>
             <tr>
               <td>{{ v.created_at | date:'dd/MM/yyyy HH:mm' }}</td>
-              <td class="font-bold">{{ v.folio }}</td>
+              <td class="font-bold text-primary">{{ v.folio }}</td>
               <td>
                 <span class="font-medium block">{{ v.cliente_nombre }}</span>
-                <span class="text-500 text-xs">{{ v.cliente_doc }}</span>
+                <span class="text-color-secondary text-xs">{{ v.cliente_doc }}</span>
               </td>
-              <td class="font-bold text-green-700">S/ {{ v.total | number:'1.2-2' }}</td>
-              <td [ngClass]="{'text-red-500 font-bold': v.saldo_pendiente > 0}">S/ {{ v.saldo_pendiente | number:'1.2-2' }}</td>
+              <td class="font-bold text-green-600 text-right">S/ {{ v.total | number:'1.2-2' }}</td>
+              <td class="text-right" [ngClass]="{'text-red-500 font-bold': v.saldo_pendiente > 0}">S/ {{ v.saldo_pendiente | number:'1.2-2' }}</td>
               <td><p-tag [value]="v.estado" [severity]="getSeverity(v.estado)"></p-tag></td>
             </tr>
           </ng-template>
@@ -62,23 +66,24 @@
         <!-- VISTA MÓVIL (Tarjetas) -->
         <div class="block md:hidden">
           <div *ngIf="loadingVentas" class="text-center p-4"><i class="pi pi-spin pi-spinner text-3xl text-primary"></i></div>
-          <div *ngIf="!loadingVentas && ventas.length === 0" class="text-center p-4 text-600">No se encontraron ventas.</div>
-          <div class="flex flex-column gap-3">
-            <div *ngFor="let v of ventas" class="surface-card border-1 border-300 border-round p-3 shadow-1">
+          <div *ngIf="!loadingVentas && ventas.length === 0" class="text-center p-4 text-color-secondary">No se encontraron ventas.</div>
+          <div class="flex flex-column">
+            <div *ngFor="let v of ventas" class="mobile-card">
               <div class="flex justify-content-between align-items-center mb-2">
-                <span class="font-bold text-primary">{{ v.folio }}</span>
+                <span class="font-bold text-primary"><i class="pi pi-file mr-1"></i>{{ v.folio }}</span>
                 <p-tag [value]="v.estado" [severity]="getSeverity(v.estado)"></p-tag>
               </div>
-              <div class="text-sm text-600 mb-2"><i class="pi pi-calendar mr-1"></i>{{ v.created_at | date:'dd/MM/yyyy HH:mm' }}</div>
-              <div class="font-medium mb-3"><i class="pi pi-user mr-1 text-500"></i>{{ v.cliente_nombre }}</div>
-              <div class="flex justify-content-between border-top-1 surface-border pt-2">
-                <div>
-                  <span class="block text-xs text-600">Total Venta</span>
-                  <span class="font-bold text-green-700">S/ {{ v.total | number:'1.2-2' }}</span>
+              <div class="text-sm text-color-secondary mb-2"><i class="pi pi-calendar mr-1"></i>{{ v.created_at | date:'dd/MM/yyyy HH:mm' }}</div>
+              <div class="font-medium mb-3 text-color"><i class="pi pi-user mr-1 text-primary"></i>{{ v.cliente_nombre }}</div>
+              
+              <div class="mobile-card-row surface-50 p-2 border-round-lg">
+                <div class="flex flex-column">
+                  <span class="block text-xs text-color-secondary">Total Venta</span>
+                  <span class="font-bold text-green-600">S/ {{ v.total | number:'1.2-2' }}</span>
                 </div>
-                <div class="text-right">
-                  <span class="block text-xs text-600">Saldo Pendiente</span>
-                  <span class="font-bold" [ngClass]="{'text-red-500': v.saldo_pendiente > 0, 'text-600': v.saldo_pendiente === 0}">S/ {{ v.saldo_pendiente | number:'1.2-2' }}</span>
+                <div class="text-right border-left-1 surface-border pl-3">
+                  <span class="block text-xs text-color-secondary">Saldo Pendiente</span>
+                  <span class="font-bold" [ngClass]="{'text-red-500': v.saldo_pendiente > 0, 'text-color-secondary': v.saldo_pendiente === 0}">S/ {{ v.saldo_pendiente | number:'1.2-2' }}</span>
                 </div>
               </div>
             </div>
@@ -95,30 +100,30 @@
 
         <!-- VISTA PC (Tabla) -->
         <div class="hidden md:block overflow-x-auto w-full">
-          <p-table #dtDeudas [columns]="colsDeudas" [value]="deudas" [loading]="loadingDeudas" [paginator]="true" [rows]="10" [exportFilename]="'Reporte_Cuentas_por_Cobrar'" styleClass="p-datatable-sm" responsiveLayout="scroll">
+          <p-table #dtDeudas [columns]="colsDeudas" [value]="deudas" [loading]="loadingDeudas" [paginator]="true" [rows]="10" [exportFilename]="'Reporte_Cuentas_por_Cobrar'" styleClass="p-datatable-striped p-datatable-gridlines" responsiveLayout="scroll">
           <ng-template pTemplate="header">
             <tr>
               <th pSortableColumn="created_at">Fecha <p-sortIcon field="created_at"></p-sortIcon></th>
               <th pSortableColumn="folio">Folio <p-sortIcon field="folio"></p-sortIcon></th>
               <th pSortableColumn="cliente_nombre">Cliente <p-sortIcon field="cliente_nombre"></p-sortIcon></th>
               <th>Contacto</th>
-              <th pSortableColumn="total">Total <p-sortIcon field="total"></p-sortIcon></th>
-              <th pSortableColumn="saldo_pendiente">Deuda Pendiente <p-sortIcon field="saldo_pendiente"></p-sortIcon></th>
+              <th pSortableColumn="total" class="text-right">Total <p-sortIcon field="total"></p-sortIcon></th>
+              <th pSortableColumn="saldo_pendiente" class="text-right">Deuda Pendiente <p-sortIcon field="saldo_pendiente"></p-sortIcon></th>
             </tr>
           </ng-template>
           <ng-template pTemplate="body" let-d>
             <tr>
               <td>{{ d.created_at | date:'dd/MM/yyyy' }}</td>
-              <td class="font-bold">{{ d.folio }}</td>
+              <td class="font-bold text-primary">{{ d.folio }}</td>
               <td class="font-medium">{{ d.cliente_nombre }}</td>
               <td>{{ d.cliente_telefono }}</td>
-              <td>S/ {{ d.total | number:'1.2-2' }}</td>
-              <td class="text-red-500 font-bold">S/ {{ d.saldo_pendiente | number:'1.2-2' }}</td>
+              <td class="text-right">S/ {{ d.total | number:'1.2-2' }}</td>
+              <td class="text-red-500 font-bold text-right">S/ {{ d.saldo_pendiente | number:'1.2-2' }}</td>
             </tr>
           </ng-template>
           <ng-template pTemplate="emptymessage">
             <tr>
-              <td colspan="6" class="text-center p-4 text-green-600 font-bold"><i class="pi pi-check-circle mr-2"></i>¡Excelente! No hay deudas pendientes registradas.</td>
+              <td colspan="6" class="text-center p-4 text-green-500 font-bold"><i class="pi pi-check-circle mr-2"></i>¡Excelente! No hay deudas pendientes registradas.</td>
             </tr>
           </ng-template>
           </p-table>
@@ -127,24 +132,24 @@
         <!-- VISTA MÓVIL (Tarjetas) -->
         <div class="block md:hidden">
           <div *ngIf="loadingDeudas" class="text-center p-4"><i class="pi pi-spin pi-spinner text-3xl text-primary"></i></div>
-          <div *ngIf="!loadingDeudas && deudas.length === 0" class="text-center p-4 text-green-600 font-bold"><i class="pi pi-check-circle mr-2"></i>¡Excelente! No hay deudas pendientes.</div>
-          <div class="flex flex-column gap-3">
-            <div *ngFor="let d of deudas" class="surface-card border-1 border-red-200 border-round p-3 shadow-1">
+          <div *ngIf="!loadingDeudas && deudas.length === 0" class="text-center p-4 text-green-500 font-bold"><i class="pi pi-check-circle mr-2"></i>¡Excelente! No hay deudas pendientes.</div>
+          <div class="flex flex-column">
+            <div *ngFor="let d of deudas" class="mobile-card border-red-500" style="border-left: 4px solid var(--red-500)">
               <div class="flex justify-content-between align-items-center mb-2">
-                <span class="font-bold text-primary">{{ d.folio }}</span>
-                <span class="text-sm text-600"><i class="pi pi-calendar mr-1"></i>{{ d.created_at | date:'dd/MM/yyyy' }}</span>
+                <span class="font-bold text-primary"><i class="pi pi-file mr-1"></i>{{ d.folio }}</span>
+                <span class="text-sm text-color-secondary"><i class="pi pi-calendar mr-1"></i>{{ d.created_at | date:'dd/MM/yyyy' }}</span>
               </div>
-              <div class="font-medium mb-1"><i class="pi pi-user mr-1 text-500"></i>{{ d.cliente_nombre }}</div>
-              <div class="text-sm text-600 mb-3"><i class="pi pi-phone mr-1"></i>{{ d.cliente_telefono || 'Sin teléfono' }}</div>
+              <div class="font-medium mb-1 text-color"><i class="pi pi-user mr-1 text-primary"></i>{{ d.cliente_nombre }}</div>
+              <div class="text-sm text-color-secondary mb-3"><i class="pi pi-phone mr-1"></i>{{ d.cliente_telefono || 'Sin teléfono' }}</div>
               
-              <div class="flex justify-content-between border-top-1 surface-border pt-2">
-                <div>
-                  <span class="block text-xs text-600">Deuda Pendiente</span>
-                  <span class="font-bold text-red-500 text-xl">S/ {{ d.saldo_pendiente | number:'1.2-2' }}</span>
+              <div class="mobile-card-row surface-50 p-2 border-round-lg">
+                <div class="flex flex-column">
+                  <span class="block text-xs text-color-secondary">Total Venta</span>
+                  <span class="font-semibold text-color">S/ {{ d.total | number:'1.2-2' }}</span>
                 </div>
-                <div class="text-right">
-                  <span class="block text-xs text-600">Total Venta</span>
-                  <span class="font-semibold text-700">S/ {{ d.total | number:'1.2-2' }}</span>
+                <div class="text-right border-left-1 surface-border pl-3">
+                  <span class="block text-xs text-color-secondary">Deuda Pendiente</span>
+                  <span class="font-bold text-red-500 text-xl">S/ {{ d.saldo_pendiente | number:'1.2-2' }}</span>
                 </div>
               </div>
             </div>
@@ -161,23 +166,23 @@
 
         <!-- VISTA PC (Tabla) -->
         <div class="hidden md:block overflow-x-auto w-full">
-          <p-table #dtInventario [columns]="colsInventario" [value]="inventario" [loading]="loadingInventario" [paginator]="true" [rows]="20" [exportFilename]="'Reporte_Valorizacion_Inventario'" styleClass="p-datatable-sm" responsiveLayout="scroll">
+          <p-table #dtInventario [columns]="colsInventario" [value]="inventario" [loading]="loadingInventario" [paginator]="true" [rows]="20" [exportFilename]="'Reporte_Valorizacion_Inventario'" styleClass="p-datatable-striped p-datatable-gridlines" responsiveLayout="scroll">
           <ng-template pTemplate="header">
             <tr>
               <th pSortableColumn="descripcion">Producto <p-sortIcon field="descripcion"></p-sortIcon></th>
               <th pSortableColumn="unidad_medida">Unidad <p-sortIcon field="unidad_medida"></p-sortIcon></th>
-              <th pSortableColumn="stock_actual">Stock Físico <p-sortIcon field="stock_actual"></p-sortIcon></th>
-              <th pSortableColumn="precio_unitario_base">Precio Base <p-sortIcon field="precio_unitario_base"></p-sortIcon></th>
-              <th pSortableColumn="valor_inmovilizado">Valor Inmovilizado (Estimado) <p-sortIcon field="valor_inmovilizado"></p-sortIcon></th>
+              <th pSortableColumn="stock_actual" class="text-right">Stock Físico <p-sortIcon field="stock_actual"></p-sortIcon></th>
+              <th pSortableColumn="precio_unitario_base" class="text-right">Precio Base <p-sortIcon field="precio_unitario_base"></p-sortIcon></th>
+              <th pSortableColumn="valor_inmovilizado" class="text-right">Valor Inmovilizado (Estimado) <p-sortIcon field="valor_inmovilizado"></p-sortIcon></th>
             </tr>
           </ng-template>
           <ng-template pTemplate="body" let-p>
             <tr>
-              <td class="font-medium">{{ p.descripcion }}</td>
+              <td class="font-medium text-color">{{ p.descripcion }}</td>
               <td>{{ p.unidad_medida }}</td>
-              <td [ngClass]="{'text-red-500 font-bold': p.stock_actual <= p.stock_minimo}">{{ p.stock_actual | number:'1.0-2' }}</td>
-              <td>S/ {{ p.precio_unitario_base | number:'1.2-2' }}</td>
-              <td class="font-bold text-green-700">S/ {{ p.valor_inmovilizado | number:'1.2-2' }}</td>
+              <td class="text-right" [ngClass]="{'text-red-500 font-bold': p.stock_actual <= p.stock_minimo}">{{ p.stock_actual | number:'1.0-2' }}</td>
+              <td class="text-right">S/ {{ p.precio_unitario_base | number:'1.2-2' }}</td>
+              <td class="text-right font-bold text-green-600">S/ {{ p.valor_inmovilizado | number:'1.2-2' }}</td>
             </tr>
           </ng-template>
           <ng-template pTemplate="emptymessage">
@@ -191,28 +196,28 @@
         <!-- VISTA MÓVIL (Tarjetas) -->
         <div class="block md:hidden">
           <div *ngIf="loadingInventario" class="text-center p-4"><i class="pi pi-spin pi-spinner text-3xl text-primary"></i></div>
-          <div *ngIf="!loadingInventario && inventario.length === 0" class="text-center p-4 text-600">No hay productos en el inventario.</div>
-          <div class="flex flex-column gap-3">
-            <div *ngFor="let p of inventario" class="surface-card border-1 border-300 border-round p-3 shadow-1" [ngClass]="{'border-red-300 surface-50': p.stock_actual <= p.stock_minimo}">
+          <div *ngIf="!loadingInventario && inventario.length === 0" class="text-center p-4 text-color-secondary">No hay productos en el inventario.</div>
+          <div class="flex flex-column">
+            <div *ngFor="let p of inventario" class="mobile-card" [ngClass]="{'border-red-500': p.stock_actual <= p.stock_minimo}" [ngStyle]="p.stock_actual <= p.stock_minimo ? {'border-left': '4px solid var(--red-500)'} : {}">
               <div class="flex justify-content-between align-items-start mb-2">
-                <span class="font-bold text-700 flex-1">{{ p.descripcion }}</span>
-                <span class="text-sm font-medium bg-gray-200 text-600 px-2 py-1 border-round ml-2">{{ p.unidad_medida }}</span>
+                <span class="font-bold text-color flex-1"><i class="pi pi-box mr-1"></i>{{ p.descripcion }}</span>
+                <span class="text-sm font-medium bg-primary-reverse text-color px-2 py-1 border-round ml-2">{{ p.unidad_medida }}</span>
               </div>
-              <div class="flex justify-content-between align-items-center mb-3">
-                <div class="text-sm">
-                  <span class="text-600 block">Stock Físico</span>
-                  <span class="font-bold text-lg" [ngClass]="{'text-red-500': p.stock_actual <= p.stock_minimo, 'text-900': p.stock_actual > p.stock_minimo}">
+              <div class="mobile-card-row surface-50 p-2 border-round-lg mb-2 mt-3">
+                <div class="flex flex-column text-sm">
+                  <span class="text-color-secondary block mb-1">Stock Físico</span>
+                  <span class="font-bold text-lg" [ngClass]="{'text-red-500': p.stock_actual <= p.stock_minimo, 'text-color': p.stock_actual > p.stock_minimo}">
                     {{ p.stock_actual | number:'1.0-2' }} <i *ngIf="p.stock_actual <= p.stock_minimo" class="pi pi-exclamation-triangle text-red-500 text-sm ml-1"></i>
                   </span>
                 </div>
-                <div class="text-right text-sm">
-                  <span class="text-600 block">Precio Base</span>
-                  <span class="font-medium text-700">S/ {{ p.precio_unitario_base | number:'1.2-2' }}</span>
+                <div class="text-right text-sm border-left-1 surface-border pl-3">
+                  <span class="text-color-secondary block mb-1">Precio Base</span>
+                  <span class="font-medium text-color">S/ {{ p.precio_unitario_base | number:'1.2-2' }}</span>
                 </div>
               </div>
-              <div class="border-top-1 surface-border pt-2 flex justify-content-between align-items-center">
-                <span class="text-sm text-600">Valor Inmovilizado</span>
-                <span class="font-bold text-green-700 text-lg">S/ {{ p.valor_inmovilizado | number:'1.2-2' }}</span>
+              <div class="mobile-card-row mb-1">
+                <div class="mobile-card-label"><i class="pi pi-money-bill mr-2"></i>Valor Inmovilizado</div>
+                <div class="mobile-card-value font-bold text-green-600 text-lg">S/ {{ p.valor_inmovilizado | number:'1.2-2' }}</div>
               </div>
             </div>
           </div>

@@ -42,7 +42,8 @@ export class ReportesComponent implements OnInit {
   inventario: any[] = [];
 
   // Filtros Ventas
-  fechasVentas: Date[] | undefined;
+  fechaInicioVentas: Date | null = null;
+  fechaFinVentas: Date | null = null;
   estadosVentas = [
     { label: 'Todos', value: null },
     { label: 'Aprobada', value: 'APROBADA' },
@@ -112,13 +113,15 @@ export class ReportesComponent implements OnInit {
       }
 
       // Filtro de Fechas
-      if (this.fechasVentas && this.fechasVentas.length === 2 && this.fechasVentas[0] && this.fechasVentas[1]) {
-        const fromDate = new Date(this.fechasVentas[0]);
+      if (this.fechaInicioVentas) {
+        const fromDate = new Date(this.fechaInicioVentas);
         fromDate.setHours(0, 0, 0, 0);
-        const toDate = new Date(this.fechasVentas[1]);
-        toDate.setHours(23, 59, 59, 999);
-        
         query = query.gte('created_at', fromDate.toISOString());
+      }
+      
+      if (this.fechaFinVentas) {
+        const toDate = new Date(this.fechaFinVentas);
+        toDate.setHours(23, 59, 59, 999);
         query = query.lte('created_at', toDate.toISOString());
       }
 

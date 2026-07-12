@@ -5,7 +5,7 @@
     <div *ngIf="loading" class="loader-glass-card">
       <div class="spinner-premium"></div>
       <h3>Rastreando Pedido</h3>
-      <p>Buscando en la red de Sigo W&M...</p>
+      <p>Buscando en la red de W&M...</p>
     </div>
 
     <!-- ERROR STATE -->
@@ -22,8 +22,8 @@
       <!-- HEADER GLASS CARD -->
       <header class="glass-card header-premium">
         <div class="header-top">
-          <div class="brand-badge">SIGO W&M</div>
-          <div class="folio-badge">FOLIO {{ trackingData.folio }}</div>
+          <div class="brand-badge">W&M</div>
+          <div class="folio-badge">ORDEN N° {{ trackingData.folio }}</div>
         </div>
         <h1 class="main-status-title" [ngClass]="{'delivered-text': isDelivered, 'dispatched-text': isDispatched && !isDelivered}">
           {{ isDelivered ? 'Entregado con Éxito' : (isDispatched ? 'Pedido en Camino' : 'Preparando Despacho') }}
@@ -55,7 +55,7 @@
             </div>
             <div class="step-info">
               <span class="step-label">Registrado</span>
-              <span class="step-date">{{ trackingData.fecha_pedido | date:'shortTime' }}</span>
+              <span class="step-date">{{ trackingData.fecha_pedido | date:'dd/MM/yyyy HH:mm' }}</span>
             </div>
           </div>
 
@@ -106,9 +106,9 @@
             <span class="info-label">Cliente</span>
             <span class="info-value">{{ trackingData.cliente }}</span>
           </div>
-          <div class="info-item" *ngIf="trackingData.despachador">
-            <span class="info-label">Despachador</span>
-            <span class="info-value">{{ trackingData.despachador }}</span>
+          <div class="info-item" *ngIf="trackingData.chofer">
+            <span class="info-label">Chofer</span>
+            <span class="info-value">{{ trackingData.chofer }}</span>
           </div>
           <div class="info-item" *ngIf="trackingData.placa_vehiculo">
             <span class="info-label">Vehículo</span>
@@ -142,14 +142,14 @@
             <div class="timeline-body">
               <div class="timeline-header">
                 <h3>Orden Creada y Aprobada</h3>
-                <span class="timeline-time">{{ trackingData.fecha_pedido | date:'short' }}</span>
+                <span class="timeline-time">{{ trackingData.fecha_pedido | date:'dd/MM/yyyy HH:mm' }}</span>
               </div>
               <p class="timeline-desc">El pedido ha sido ingresado al sistema de logística y está en fila para despacho.</p>
             </div>
           </div>
 
           <!-- Dynamic Events -->
-          <div class="timeline-item glass-card" *ngFor="let evento of eventosFiltrados">
+          <div class="timeline-item glass-card" *ngFor="let evento of eventosFiltrados; trackBy: trackByEventId">
             <div class="timeline-marker">
               <div class="timeline-dot" [ngClass]="{'bg-orange': evento.tipo === 'DESPACHO_INICIADO', 'bg-green': evento.tipo === 'ENTREGA_REALIZADA'}"></div>
               <div class="timeline-connector"></div>
@@ -157,7 +157,7 @@
             <div class="timeline-body">
               <div class="timeline-header">
                 <h3>{{ evento.tipo === 'DESPACHO_INICIADO' ? 'Pedido Despachado (Salida de Planta)' : 'Pedido Entregado (Llegada a Destino)' }}</h3>
-                <span class="timeline-time">{{ evento.timestamp | date:'short' }}</span>
+                <span class="timeline-time">{{ evento.timestamp | date:'dd/MM/yyyy HH:mm' }}</span>
               </div>
               <p class="timeline-desc">{{ evento.detalle }}</p>
               

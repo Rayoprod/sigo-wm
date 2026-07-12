@@ -106,27 +106,27 @@
             <p-table *ngIf="actividadReciente.length > 0" [value]="actividadReciente" [tableStyle]="{'min-width': '100%'}" styleClass="p-datatable-sm">
                 <ng-template pTemplate="header">
                     <tr>
-                        <th>Folio</th>
+                        <th pSortableColumn="folio">Folio <p-sortIcon field="folio"></p-sortIcon></th>
                         <th>Cliente</th>
                         <th>Estado</th>
-                        <th>Total</th>
+                        <th class="text-right">Total</th>
                     </tr>
                 </ng-template>
                 <ng-template pTemplate="body" let-pedido>
                     <tr>
-                        <td class="font-bold">{{pedido.folio}}</td>
-                        <td>{{pedido.clientes?.nombre_razon_social || 'Cliente Local'}}</td>
+                        <td class="font-bold text-primary">{{pedido.folio}}</td>
+                        <td class="text-color">{{pedido.clientes?.nombre_razon_social || 'Cliente Local'}}</td>
                         <td>
-                            <span class="px-2 py-1 border-round text-sm font-medium" 
+                            <span class="px-2 py-1 border-round text-xs font-bold" 
                                   [ngClass]="{
-                                    'bg-orange-100 text-orange-700': pedido.estado === 'PENDIENTE',
-                                    'bg-green-100 text-green-700': pedido.estado === 'APROBADA' || pedido.estado === 'COMPLETADA',
-                                    'bg-red-100 text-red-700': pedido.estado === 'ANULADA'
+                                    'bg-orange-soft text-orange-500': pedido.estado === 'PENDIENTE',
+                                    'bg-green-soft text-green-500': pedido.estado === 'APROBADA' || pedido.estado === 'COMPLETADA',
+                                    'bg-red-soft text-red-500': pedido.estado === 'ANULADA'
                                   }">
                                 {{pedido.estado}}
                             </span>
                         </td>
-                        <td class="font-bold text-green-600">{{pedido.total | currency:'PEN':'symbol':'1.2-2'}}</td>
+                        <td class="font-bold text-green-600 text-right">{{pedido.total | currency:'PEN':'symbol':'1.2-2'}}</td>
                     </tr>
                 </ng-template>
             </p-table>
@@ -143,21 +143,21 @@
             <p-table *ngIf="deudasProximas.length > 0" [value]="deudasProximas" [tableStyle]="{'min-width': '100%'}" styleClass="p-datatable-sm p-datatable-striped">
                 <ng-template pTemplate="header">
                     <tr>
-                        <th>Folio</th>
+                        <th pSortableColumn="folio">Folio <p-sortIcon field="folio"></p-sortIcon></th>
                         <th>Cliente</th>
-                        <th>Vencimiento</th>
-                        <th>Saldo Pend.</th>
+                        <th pSortableColumn="fecha_vencimiento">Vencimiento <p-sortIcon field="fecha_vencimiento"></p-sortIcon></th>
+                        <th pSortableColumn="saldo_pendiente" class="text-right">Saldo Pend. <p-sortIcon field="saldo_pendiente"></p-sortIcon></th>
                     </tr>
                 </ng-template>
                 <ng-template pTemplate="body" let-deuda>
                     <tr>
                         <td class="font-bold text-primary cursor-pointer" routerLink="/finanzas">{{deuda.folio}}</td>
-                        <td class="text-sm">{{deuda.clientes?.nombre_razon_social || 'Cliente Local'}}</td>
+                        <td class="text-sm text-color">{{deuda.clientes?.nombre_razon_social || 'Cliente Local'}}</td>
                         <td>
                             <span class="font-bold text-red-500" *ngIf="deuda.fecha_vencimiento">{{deuda.fecha_vencimiento | date:'dd/MM/yyyy'}}</span>
-                            <span class="text-500 italic" *ngIf="!deuda.fecha_vencimiento">Sin fecha</span>
+                            <span class="text-color-secondary italic" *ngIf="!deuda.fecha_vencimiento">Sin fecha</span>
                         </td>
-                        <td class="font-bold text-red-600">{{deuda.saldo_pendiente | currency:'PEN':'symbol':'1.2-2'}}</td>
+                        <td class="font-bold text-red-600 text-right">{{deuda.saldo_pendiente | currency:'PEN':'symbol':'1.2-2'}}</td>
                     </tr>
                 </ng-template>
             </p-table>

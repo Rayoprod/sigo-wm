@@ -4,6 +4,7 @@ import { SupabaseService } from '../../core/services/supabase.service';
 import { AuthService } from '../../core/services/auth.service';
 import { FormsModule } from '@angular/forms';
 import * as L from 'leaflet';
+import { Pedidos, DespachosViajesCabecera, PedidosItems, ViajesEntregas, SesionesGps, RutasGps } from '../../core/models/app.models';
 
 import { CardModule } from 'primeng/card';
 import { ButtonModule } from 'primeng/button';
@@ -16,6 +17,8 @@ import { TooltipModule } from 'primeng/tooltip';
 import { DropdownModule } from 'primeng/dropdown';
 import { InputTextModule } from 'primeng/inputtext';
 import { ImageModule } from 'primeng/image';
+import { TimelineModule } from 'primeng/timeline';
+import { DividerModule } from 'primeng/divider';
 
 @Component({
   selector: 'app-logistica',
@@ -33,7 +36,9 @@ import { ImageModule } from 'primeng/image';
     TooltipModule,
     DropdownModule,
     InputTextModule,
-    ImageModule
+    ImageModule,
+    TimelineModule,
+    DividerModule
   ],
   templateUrl: './logistica.component.html',
   styleUrl: './logistica.component.scss'
@@ -43,24 +48,24 @@ export class LogisticaComponent implements OnInit, OnDestroy {
   auth = inject(AuthService);
   ngZone = inject(NgZone);
 
-  pedidos: any[] = [];
+  pedidos: Pedidos[] = [];
   loading = true;
-  vehiculosOptions: any[] = [];
-  choferesOptions: any[] = [];
+  vehiculosOptions: { label: string, value: string }[] = [];
 
   // Detalles expandidos (Mobile y Desktop)
   expandedPedidoId: string | null = null;
   expandedRows: { [key: string]: boolean } = {};
-  itemsDelPedidoMap: { [key: string]: any[] } = {};
+  itemsDelPedidoMap: { [key: string]: PedidosItems[] } = {};
   loadingItemsMap: { [key: string]: boolean } = {};
   
-  viajesDelPedidoMap: { [key: string]: any[] } = {};
+  viajesDelPedidoMap: { [key: string]: DespachosViajesCabecera[] } = {};
   loadingViajesMap: { [key: string]: boolean } = {};
+  expandedViajeMap: { [key: number]: boolean } = {};
 
   displayViajeModal = false;
   displayAsignarModal = false;
   selectedChoferId: string | null = null;
-  selectedPedido: any = null;
+  selectedPedido: Pedidos | null = null;
   viajeForm = {
     placa: '',
     lat: null as number | null,
@@ -74,36 +79,38 @@ export class LogisticaComponent implements OnInit, OnDestroy {
 
   // Auditoría
   displayAuditoriaModal = false;
-  viajesAuditoria: any[] = [];
+  viajesAuditoria: any[] = []; // Unified map object
   loadingAuditoria = false;
 
   // Mapa y Rastreo
   displayRutaModal = false;
-  selectedPedidoParaRuta: any = null;
+  displayImageModal = false;
+  selectedImageUrl = '';
+  selectedPedidoParaRuta: Pedidos | null = null;
   loadingRuta = false;
-  puntosRuta: any[] = [];
-  entregasRuta: any[] = [];
+  puntosRuta: RutasGps[] = [];
+  entregasRuta: ViajesEntregas[] = [];
   historialTracking: any[] = []; // Línea de tiempo unificada
   map: L.Map | null = null;
   polyline: L.Polyline | null = null;
   selectedAuditoriaItem: any = null;
 
+  // Track showing GPS list independently of polling overwrites
+  mostrarGpsMap: { [numeroViaje: number]: boolean } = {};
+
   realtimeChannel: any;
   rutaRealtimeChannel: any;
   rutaPollingInterval: any;
+  globalPollingInterval: any;
   currentUserRole: string | undefined;
 
   sesionesHuerfanas: any[] = [];
-
-  globalPollingInterval: any;
 
   async ngOnInit() {
     const user = this.auth.currentUser();
     this.currentUserRole = user?.rol;
     await this.cargarPedidos();
     await this.cargarVehiculos();
-    await this.cargarChoferes();
-    await this.cargarSesionesHuerfanas();
     this.suscribirCambiosViajes();
   }
 
@@ -145,39 +152,42 @@ export class LogisticaComponent implements OnInit, OnDestroy {
     }
   }
 
-  async cargarChoferes() {
-    const { data } = await this.supabase.from('usuarios').select('id, nombre_completo').eq('rol', 'chofer').order('nombre_completo');
-    if (data) {
-      this.choferesOptions = data.map(c => ({ label: c.nombre_completo, value: c.id }));
-    }
-  }
-
 
 
   suscribirCambiosViajes() {
     this.realtimeChannel = this.supabase.channel('custom-viajes-channel')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'despachos_viajes_detalle' }, payload => {
-        if (this.expandedPedidoId) {
-          // Forzar la recarga ignorando el caché
-          delete this.itemsDelPedidoMap[this.expandedPedidoId];
-          delete this.viajesDelPedidoMap[this.expandedPedidoId];
-          this.cargarItemsPedido(this.expandedPedidoId);
-          this.cargarViajesPedido(this.expandedPedidoId);
+        const targets = new Set<string>();
+        if (this.expandedPedidoId) targets.add(this.expandedPedidoId);
+        Object.keys(this.expandedRows).forEach(id => {
+          if (this.expandedRows[id]) targets.add(id);
+        });
+
+        for (const targetId of targets) {
+          this.cargarItemsPedido(targetId, true);
+          this.cargarViajesPedido(targetId, true);
         }
       })
       .subscribe();
 
     // Polling Híbrido Global: Se ejecuta cada 15 segundos para garantizar que 
     // la tabla principal, el modal de auditoría y los detalles expandidos 
-    // se mantengan actualizados (útil si los WebSockets fallan).
+    // se mantengan actualizados.
     this.globalPollingInterval = setInterval(() => {
       this.ngZone.run(async () => {
         // Refrescar lista de pedidos principal silenciosamente
         await this.cargarPedidos(true);
         
-        // Si hay una fila expandida o modal de auditoría, refrescar sus items y viajes silenciosamente
-        if (this.expandedPedidoId || (this.displayAuditoriaModal && this.selectedPedido)) {
-          const targetId = this.expandedPedidoId || this.selectedPedido.id;
+        // Si hay filas expandidas o modal de auditoría, refrescar sus items y viajes silenciosamente
+        const targets = new Set<string>();
+        if (this.expandedPedidoId) targets.add(this.expandedPedidoId);
+        if (this.displayAuditoriaModal && this.selectedPedido) targets.add(this.selectedPedido.id);
+        
+        Object.keys(this.expandedRows).forEach(id => {
+          if (this.expandedRows[id]) targets.add(id);
+        });
+
+        for (const targetId of targets) {
           await this.cargarItemsPedido(targetId, true);
           await this.cargarViajesPedido(targetId, true);
         }
@@ -198,6 +208,19 @@ export class LogisticaComponent implements OnInit, OnDestroy {
       this.pedidos = data || [];
     }
     if (!silent) this.loading = false;
+  }
+
+  // KPIs
+  get kpiPendientes() {
+    return this.pedidos.filter(p => p.estado === 'APROBADA').length;
+  }
+  
+  get kpiCompletados() {
+    return this.pedidos.filter(p => p.estado === 'COMPLETADA').length;
+  }
+  
+  get kpiTotal() {
+    return this.pedidos.length;
   }
 
   async togglePedido(pedidoId: string) {
@@ -428,7 +451,7 @@ export class LogisticaComponent implements OnInit, OnDestroy {
       const { data: maxViajeData, error: maxViajeError } = await this.supabase
         .from('despachos_viajes_cabecera')
         .select('numero_viaje_secuencial')
-        .eq('pedido_id', this.selectedPedido.id)
+        .eq('pedido_id', this.selectedPedido!.id)
         .order('numero_viaje_secuencial', { ascending: false })
         .limit(1);
         
@@ -457,9 +480,8 @@ export class LogisticaComponent implements OnInit, OnDestroy {
       const { data: cabeceraData, error: insertError } = await this.supabase
         .from('despachos_viajes_cabecera')
         .insert({
-          pedido_id: this.selectedPedido.id,
+          pedido_id: this.selectedPedido!.id,
           despachador_id: user?.id,
-          chofer_id: this.selectedPedido.chofer_id || user?.id,
           placa_vehiculo: this.viajeForm.placa?.trim().toUpperCase(),
           numero_viaje_secuencial: numSecuencial,
           estado_viaje: estadoViajeInicial,
@@ -494,9 +516,8 @@ export class LogisticaComponent implements OnInit, OnDestroy {
         const { error: entregaError } = await this.supabase
           .from('viajes_entregas')
           .insert({
-            pedido_id: this.selectedPedido.id,
+            pedido_id: this.selectedPedido!.id,
             numero_viaje_secuencial: numSecuencial,
-            chofer_id: this.selectedPedido.chofer_id || user?.id,
             latitud: this.viajeForm.lat,
             longitud: this.viajeForm.lng,
             fecha_dispositivo: new Date().toISOString()
@@ -514,9 +535,9 @@ export class LogisticaComponent implements OnInit, OnDestroy {
       this.displayViajeModal = false;
       
       // Refrescar el ítem y los viajes del pedido
-      delete this.viajesDelPedidoMap[this.selectedPedido.id];
-      await this.cargarViajesPedido(this.selectedPedido.id);
-      await this.cargarItemsPedido(this.selectedPedido.id);
+      delete this.viajesDelPedidoMap[this.selectedPedido!.id];
+      await this.cargarViajesPedido(this.selectedPedido!.id);
+      await this.cargarItemsPedido(this.selectedPedido!.id);
       await this.cargarPedidos();
 
     } catch (error: any) {
@@ -551,7 +572,6 @@ export class LogisticaComponent implements OnInit, OnDestroy {
         .insert({
           pedido_id: viaje.pedido_id,
           numero_viaje_secuencial: viaje.numero_viaje_secuencial,
-          chofer_id: viaje.chofer_id || user?.id,
           fecha_dispositivo: new Date().toISOString()
         });
 
@@ -596,115 +616,7 @@ export class LogisticaComponent implements OnInit, OnDestroy {
     }
   }
 
-  async openAsignarModal(pedido: any) {
-    this.selectedPedido = pedido;
-    this.selectedChoferId = pedido.chofer_id || (pedido.chofer ? pedido.chofer.id : null);
-    this.displayAsignarModal = true;
-    
-    // Cargar los items si no están en caché
-    if (!this.itemsDelPedidoMap[pedido.id]) {
-      await this.cargarItemsPedido(pedido.id);
-    }
-  }
 
-  async asignarChofer() {
-    if (!this.selectedChoferId) {
-      alert("Debes seleccionar un chofer.");
-      return;
-    }
-
-    const choferAnterior = this.selectedPedido.chofer_id;
-    const esCambioChofer = choferAnterior && choferAnterior !== this.selectedChoferId;
-
-    if (esCambioChofer) {
-      const enRuta = await this.tieneRutaEnCurso(this.selectedPedido.id);
-      if (enRuta) {
-        alert("🔒 No se puede reasignar el chofer mientras hay un viaje o sesión GPS EN RUTA. El chofer actual está transmitiendo su ubicación en vivo para esta entrega.");
-        return;
-      }
-
-      const confirmado = confirm("⚠️ ¿Estás seguro de que deseas reasignar el chofer de este pedido? El nuevo chofer visualizará la orden en su app móvil.");
-      if (!confirmado) return;
-    }
-
-    this.isSavingViaje = true;
-    try {
-      const { error: updateError } = await this.supabase
-        .from('pedidos')
-        .update({
-          chofer_id: this.selectedChoferId
-        })
-        .eq('id', this.selectedPedido.id);
-
-      if (updateError) throw updateError;
-
-      alert("Chofer asignado al pedido con éxito. Todos los viajes registrados para este pedido se le asignarán automáticamente.");
-      this.displayAsignarModal = false;
-      
-      // Refrescar los pedidos para que se muestre la asignación
-      await this.cargarPedidos();
-
-    } catch (error: any) {
-      alert("Error al asignar el chofer: " + error.message);
-    } finally {
-      this.isSavingViaje = false;
-    }
-  }
-
-  // --- ASIGNAR CHOFER A VIAJE YA CREADO ---
-  displayAsignarViajeExistenteModal = false;
-  selectedViajeToAssign: any = null;
-
-  openAsignarViajeExistenteModal(viaje: any) {
-    this.selectedViajeToAssign = viaje;
-    this.selectedChoferId = viaje.chofer_id || null;
-    this.displayAsignarViajeExistenteModal = true;
-  }
-
-  async asignarChoferAViajeExistente() {
-    if (!this.selectedChoferId) {
-      alert("Debes seleccionar un chofer.");
-      return;
-    }
-
-    if (this.selectedViajeToAssign?.estado_viaje === 'EN RUTA') {
-      alert("🔒 No se puede reasignar el chofer de un viaje que se encuentra actualmente EN RUTA.");
-      return;
-    }
-
-    const choferAnterior = this.selectedViajeToAssign?.chofer_id;
-    if (choferAnterior && choferAnterior !== this.selectedChoferId) {
-      const confirmado = confirm("⚠️ ¿Estás seguro de que deseas reasignar el chofer para este viaje?");
-      if (!confirmado) return;
-    }
-
-    this.isSavingViaje = true;
-    try {
-      const { error: updateError } = await this.supabase
-        .from('despachos_viajes_cabecera')
-        .update({
-          chofer_id: this.selectedChoferId,
-          estado_viaje: 'ASIGNADO'
-        })
-        .eq('id', this.selectedViajeToAssign.id);
-
-      if (updateError) throw updateError;
-
-      alert("Chofer asignado al viaje con éxito.");
-      this.displayAsignarViajeExistenteModal = false;
-      
-      // Refrescar los viajes del pedido para que se vea el nombre del chofer
-      delete this.viajesDelPedidoMap[this.selectedViajeToAssign.pedido_id]; // invalidar cache
-      await this.cargarViajesPedido(this.selectedViajeToAssign.pedido_id);
-
-    } catch (error: any) {
-      alert("Error al asignar el chofer: " + error.message);
-    } finally {
-      this.isSavingViaje = false;
-    }
-  }
-
-  // ====== HISTORIAL, RASTREO Y MAPAS ======
 
   async abrirRutaChofer(pedido: any) {
     this.selectedPedidoParaRuta = pedido;
@@ -713,6 +625,7 @@ export class LogisticaComponent implements OnInit, OnDestroy {
     this.puntosRuta = [];
     this.entregasRuta = [];
     this.viajesAuditoria = [];
+    this.expandedViajeMap = {};
     this.selectedAuditoriaItem = null;
 
     // Limpiar el mapa actual si existe
@@ -846,6 +759,12 @@ export class LogisticaComponent implements OnInit, OnDestroy {
       this.viajesAuditoria = Array.from(consolidadosMap.values())
         .sort((a, b) => b.numero_viaje_secuencial - a.numero_viaje_secuencial);
 
+      this.viajesAuditoria.forEach((v, idx) => {
+        if (this.expandedViajeMap[v.numero_viaje_secuencial] === undefined) {
+          this.expandedViajeMap[v.numero_viaje_secuencial] = (idx === 0);
+        }
+      });
+
       // 5. Construir Historial Unificado para la línea de tiempo y colores
       this.historialTracking = [];
       const TRAMO_COLORS = ['#3b82f6', '#8b5cf6', '#10b981', '#f59e0b', '#06b6d4', '#ec4899'];
@@ -935,6 +854,10 @@ export class LogisticaComponent implements OnInit, OnDestroy {
         this.map!.removeLayer(layer);
       });
     }
+
+    setTimeout(() => {
+        if(this.map) this.map.invalidateSize();
+    }, 100);
 
     const bounds = L.latLngBounds([]);
     let pointsAdded = 0;
@@ -1173,6 +1096,41 @@ export class LogisticaComponent implements OnInit, OnDestroy {
         .setContent(`<b>${title}</b><br>${timestamp.toLocaleString()}`)
         .openOn(this.map);
     }
+  }
+
+  getTimelineEvents(viajeItem: any) {
+    return [
+      {
+        status: 'Carga y Salida en Planta',
+        date: viajeItem.despacho?.created_at, // This step is done on Web, so created_at is accurate
+        icon: 'pi pi-truck',
+        color: '#3B82F6',
+        data: viajeItem.despacho,
+        type: 'carga'
+      },
+      {
+        status: 'Confirmación del Chofer',
+        date: viajeItem.despacho?.fecha_recepcion_chofer, 
+        icon: 'pi pi-check-circle',
+        color: viajeItem.despacho?.fecha_recepcion_chofer ? '#F59E0B' : '#d1d5db',
+        data: viajeItem.despacho,
+        type: 'confirmacion'
+      },
+      {
+        status: 'Entrega en Obra',
+        date: viajeItem.chofer?.fecha_dispositivo,
+        icon: 'pi pi-map-marker',
+        color: viajeItem.chofer ? '#10B981' : '#d1d5db',
+        data: viajeItem.chofer,
+        type: 'entrega'
+      }
+    ];
+  }
+
+  abrirImagen(url: string) {
+    console.log('Abriendo imagen:', url);
+    this.selectedImageUrl = url;
+    this.displayImageModal = true;
   }
 
   cerrarRutaModal() {

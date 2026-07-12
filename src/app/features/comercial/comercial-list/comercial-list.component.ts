@@ -10,7 +10,7 @@ import { TagModule } from 'primeng/tag';
 import { InputTextModule } from 'primeng/inputtext';
 import { DropdownModule } from 'primeng/dropdown';
 import { ConfirmDialogModule } from 'primeng/confirmdialog';
-import { ConfirmationService } from 'primeng/api';
+import { ConfirmationService, MessageService } from 'primeng/api';
 import { DialogModule } from 'primeng/dialog';
 import { InputNumberModule } from 'primeng/inputnumber';
 import { FormsModule } from '@angular/forms';
@@ -36,7 +36,7 @@ import { InventarioService } from '../../../core/services/inventario.service';
     InputNumberModule,
     CardModule
   ],
-  providers: [ConfirmationService],
+  providers: [ConfirmationService, MessageService],
   templateUrl: './comercial-list.component.html',
   styleUrl: './comercial-list.component.scss'
 })
@@ -44,6 +44,7 @@ export class ComercialListComponent implements OnInit {
   supabase = inject(SupabaseService).client;
   pdfService = inject(PdfService);
   confirmationService = inject(ConfirmationService);
+  messageService = inject(MessageService);
   inventarioService = inject(InventarioService);
   authService = inject(AuthService);
 
@@ -101,6 +102,39 @@ export class ComercialListComponent implements OnInit {
     { label: 'Otro', value: 'OTRO' }
   ];
   isSavingPago = false;
+
+  async eliminarPedidoPruebas(pedido: any) {
+    this.confirmationService.confirm({
+      message: `¡ATENCIÓN! Esta acción borrará el pedido ${pedido.folio}, TODOS sus viajes, historial GPS, pagos, y borrará las fotos de la nube. Es un borrado físico irreversible (solo usar para limpieza de pruebas).<br><br>¿Estás completamente seguro de borrarlo?`,
+      header: 'Eliminar Pedido (Modo Pruebas)',
+      icon: 'pi pi-exclamation-triangle text-red-500',
+      acceptButtonStyleClass: 'p-button-danger',
+      rejectButtonStyleClass: 'p-button-text',
+      acceptLabel: 'Sí, Borrar Todo',
+      rejectLabel: 'Cancelar',
+      accept: async () => {
+        try {
+          // 1. Borrar fotos del bucket
+          const folderPath = `evidencias/pedidos/${pedido.folio}`;
+          const { data: files, error: listError } = await this.supabase.storage.from('assets').list(folderPath, { limit: 100 });
+          if (!listError && files && files.length > 0) {
+            const filePaths = files.map(x => `${folderPath}/${x.name}`);
+            await this.supabase.storage.from('assets').remove(filePaths);
+          }
+          
+          // 2. Ejecutar RPC de borrado en cascada
+          const { error: rpcError } = await this.supabase.rpc('delete_pedido_cascade', { p_pedido_id: pedido.id });
+          if (rpcError) throw rpcError;
+          
+          this.messageService.add({ severity: 'success', summary: 'Borrado Exitoso', detail: `El pedido ${pedido.folio} y todas sus dependencias fueron eliminados permanentemente.` });
+          this.loadPedidos();
+        } catch (error: any) {
+          console.error(error);
+          this.messageService.add({ severity: 'error', summary: 'Error', detail: 'No se pudo eliminar el pedido: ' + error.message });
+        }
+      }
+    });
+  }
 
   async ngOnInit() {
     await this.loadPedidos();

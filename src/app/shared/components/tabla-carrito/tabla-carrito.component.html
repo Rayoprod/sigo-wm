@@ -1,6 +1,5 @@
-<!-- Vista Escritorio (Tabla tradicional) -->
 <div class="hidden md:block">
-    <p-table [value]="items" styleClass="p-datatable-sm p-datatable-striped">
+    <p-table [value]="items" styleClass="p-datatable-striped p-datatable-gridlines">
         <ng-template pTemplate="header">
             <tr>
                 <th style="width: 3rem">#</th>
@@ -9,7 +8,7 @@
                 <th style="width: 12%">Cantidad</th>
                 <th style="width: 15%">Precio Unit.</th>
                 <th style="width: 15%">Subtotal</th>
-                <th style="width: 4rem"></th>
+                <th style="width: 4rem" class="text-center"></th>
             </tr>
         </ng-template>
         <ng-template pTemplate="body" let-item let-rowIndex="rowIndex">
@@ -33,7 +32,7 @@
                             <ng-template let-prod pTemplate="item">
                                 <div class="flex justify-content-between align-items-center w-full">
                                     <span>{{prod.descripcion}}</span>
-                                    <span class="text-500 text-sm ml-2">{{prod.unidad_medida}}</span>
+                                    <span class="text-color-secondary text-sm ml-2">{{prod.unidad_medida}}</span>
                                 </div>
                             </ng-template>
                         </p-autoComplete>
@@ -41,8 +40,8 @@
                     </div>
                 </td>
                 <td class="p-fluid text-center">
-                    <span *ngIf="item.unidad_medida" class="text-700 font-bold border-round surface-200 px-2 py-1">{{ item.unidad_medida }}</span>
-                    <span *ngIf="!item.unidad_medida" class="text-500 text-sm italic">-</span>
+                    <span *ngIf="item.unidad_medida" class="text-color font-bold border-round surface-200 px-2 py-1">{{ item.unidad_medida }}</span>
+                    <span *ngIf="!item.unidad_medida" class="text-color-secondary text-sm italic">-</span>
                 </td>
                 <td class="p-fluid">
                     <p-inputNumber 
@@ -86,85 +85,87 @@
 
 <!-- Vista Móvil (Tarjetas / Cards) -->
 <div class="block md:hidden">
-    <div *ngFor="let item of items; let rowIndex = index" class="surface-card border-1 surface-border border-round p-3 mb-3 shadow-1 relative">
-        <div class="absolute top-0 right-0 mt-2 mr-2">
-            <p-button icon="pi pi-times" styleClass="p-button-rounded p-button-danger p-button-text" (click)="eliminarFila(rowIndex)"></p-button>
-        </div>
-        <div class="font-bold text-600 mb-2 border-bottom-1 surface-border pb-2">Ítem #{{ rowIndex + 1 }}</div>
-        
-        <div class="p-fluid grid">
-            <div class="field col-12 mb-2">
-                <label class="text-sm font-semibold">Descripción</label>
-                <div class="p-inputgroup">
-                    <p-autoComplete 
-                        [(ngModel)]="item.producto_obj" 
-                        [suggestions]="filteredProductos" 
-                        (completeMethod)="buscarProductos($event)" 
-                        field="descripcion"
-                        [minLength]="1"
-                        placeholder="Buscar producto en catálogo..."
-                        (onSelect)="onProductoSelect($event, item)"
-                        (onBlur)="onProductoBlur(item, $event)"
-                        [forceSelection]="true"
-                        appendTo="body"
-                        styleClass="w-full"
-                        inputStyleClass="w-full">
-                        <ng-template let-prod pTemplate="item">
-                            <div class="flex flex-column w-full">
-                                <span>{{prod.descripcion}}</span>
-                                <span class="text-500 text-xs">{{prod.unidad_medida}}</span>
-                            </div>
-                        </ng-template>
-                    </p-autoComplete>
-                    <button type="button" pButton icon="pi pi-plus" class="p-button-success p-button-outlined" (click)="abrirNuevoProducto(item)" pTooltip="Crear Nuevo"></button>
+    <div class="flex flex-column">
+        <div *ngFor="let item of items; let rowIndex = index" class="mobile-card">
+            <div class="flex justify-content-between align-items-center mb-3">
+                <span class="font-bold text-color">Ítem #{{ rowIndex + 1 }}</span>
+                <p-button icon="pi pi-times" styleClass="p-button-rounded p-button-danger p-button-text p-button-sm" (click)="eliminarFila(rowIndex)"></p-button>
+            </div>
+            
+            <div class="p-fluid grid">
+                <div class="field col-12 mb-2">
+                    <label class="text-sm font-semibold text-color-secondary">Descripción</label>
+                    <div class="p-inputgroup">
+                        <p-autoComplete 
+                            [(ngModel)]="item.producto_obj" 
+                            [suggestions]="filteredProductos" 
+                            (completeMethod)="buscarProductos($event)" 
+                            field="descripcion"
+                            [minLength]="1"
+                            placeholder="Buscar producto..."
+                            (onSelect)="onProductoSelect($event, item)"
+                            (onBlur)="onProductoBlur(item, $event)"
+                            [forceSelection]="true"
+                            appendTo="body"
+                            styleClass="w-full"
+                            inputStyleClass="w-full">
+                            <ng-template let-prod pTemplate="item">
+                                <div class="flex flex-column w-full">
+                                    <span class="text-color">{{prod.descripcion}}</span>
+                                    <span class="text-color-secondary text-xs">{{prod.unidad_medida}}</span>
+                                </div>
+                            </ng-template>
+                        </p-autoComplete>
+                        <button type="button" pButton icon="pi pi-plus" class="p-button-success p-button-outlined" (click)="abrirNuevoProducto(item)" pTooltip="Crear Nuevo"></button>
+                    </div>
                 </div>
-            </div>
-            
-            <div class="field col-6 mb-2">
-                <label class="text-sm font-semibold">U. Medida</label>
-                <div class="mt-2">
-                    <span *ngIf="item.unidad_medida" class="text-700 font-bold border-round surface-200 px-2 py-1">{{ item.unidad_medida }}</span>
-                    <span *ngIf="!item.unidad_medida" class="text-500 text-sm italic">-</span>
+                
+                <div class="field col-6 mb-2">
+                    <label class="text-sm font-semibold text-color-secondary">U. Medida</label>
+                    <div class="mt-2">
+                        <span *ngIf="item.unidad_medida" class="text-color font-bold border-round surface-200 px-2 py-1">{{ item.unidad_medida }}</span>
+                        <span *ngIf="!item.unidad_medida" class="text-color-secondary text-sm italic">-</span>
+                    </div>
                 </div>
-            </div>
-            
-            <div class="field col-6 mb-2">
-                <label class="text-sm font-semibold">Cantidad</label>
-                <p-inputNumber 
-                    [(ngModel)]="item.cantidad" 
-                    (ngModelChange)="recalcularSubtotal(item)" 
-                    [minFractionDigits]="0" 
-                    [maxFractionDigits]="3"
-                    mode="decimal" 
-                    [min]="0.001">
-                </p-inputNumber>
-                <small *ngIf="isStockInsuficiente(item)" class="text-red-500 font-bold block mt-1"><i class="pi pi-exclamation-triangle"></i> ¡Stock: {{item.stock_actual}}!</small>
-                <small *ngIf="isStockMinimo(item)" class="text-orange-500 font-bold block mt-1"><i class="pi pi-info-circle"></i> Alerta Mínimo</small>
-            </div>
-            
-            <div class="field col-6 mb-0">
-                <label class="text-sm font-semibold">Precio Unit.</label>
-                <p-inputNumber 
-                    [(ngModel)]="item.precio_unitario" 
-                    (ngModelChange)="recalcularSubtotal(item)" 
-                    mode="decimal" 
-                    prefix="S/ " 
-                    [minFractionDigits]="2"
-                    [maxFractionDigits]="2">
-                </p-inputNumber>
-                <small *ngIf="isPrecioBajo(item)" class="text-orange-500 font-bold block mt-1"><i class="pi pi-exclamation-triangle"></i> Base: {{item.precio_base | currency:'PEN':'symbol':'1.2-2'}}</small>
-            </div>
-            
-            <div class="field col-6 mb-0">
-                <label class="text-sm font-bold text-primary">Subtotal</label>
-                <p-inputNumber 
-                    [(ngModel)]="item.subtotal" 
-                    mode="currency" 
-                    currency="PEN" 
-                    locale="es-PE" 
-                    [readonly]="true"
-                    styleClass="bg-surface-100 font-bold text-primary">
-                </p-inputNumber>
+                
+                <div class="field col-6 mb-2">
+                    <label class="text-sm font-semibold text-color-secondary">Cantidad</label>
+                    <p-inputNumber 
+                        [(ngModel)]="item.cantidad" 
+                        (ngModelChange)="recalcularSubtotal(item)" 
+                        [minFractionDigits]="0" 
+                        [maxFractionDigits]="3"
+                        mode="decimal" 
+                        [min]="0.001">
+                    </p-inputNumber>
+                    <small *ngIf="isStockInsuficiente(item)" class="text-red-500 font-bold block mt-1"><i class="pi pi-exclamation-triangle"></i> ¡Stock: {{item.stock_actual}}!</small>
+                    <small *ngIf="isStockMinimo(item)" class="text-orange-500 font-bold block mt-1"><i class="pi pi-info-circle"></i> Alerta Mínimo</small>
+                </div>
+                
+                <div class="field col-6 mb-0">
+                    <label class="text-sm font-semibold text-color-secondary">Precio Unit.</label>
+                    <p-inputNumber 
+                        [(ngModel)]="item.precio_unitario" 
+                        (ngModelChange)="recalcularSubtotal(item)" 
+                        mode="decimal" 
+                        prefix="S/ " 
+                        [minFractionDigits]="2"
+                        [maxFractionDigits]="2">
+                    </p-inputNumber>
+                    <small *ngIf="isPrecioBajo(item)" class="text-orange-500 font-bold block mt-1"><i class="pi pi-exclamation-triangle"></i> Base: {{item.precio_base | currency:'PEN':'symbol':'1.2-2'}}</small>
+                </div>
+                
+                <div class="field col-6 mb-0">
+                    <label class="text-sm font-bold text-primary">Subtotal</label>
+                    <p-inputNumber 
+                        [(ngModel)]="item.subtotal" 
+                        mode="currency" 
+                        currency="PEN" 
+                        locale="es-PE" 
+                        [readonly]="true"
+                        styleClass="bg-surface-100 font-bold text-primary">
+                    </p-inputNumber>
+                </div>
             </div>
         </div>
     </div>

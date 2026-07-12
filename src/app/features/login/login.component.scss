@@ -18,8 +18,9 @@
     }
 }
 
+:host ::ng-deep .p-card.glass-card,
 .glass-card {
-    background: rgba(255, 255, 255, 0.08) !important;
+    background: rgba(255, 255, 255, 0.08);
     backdrop-filter: blur(24px);
     -webkit-backdrop-filter: blur(24px);
     border: 1px solid rgba(255, 255, 255, 0.15);
@@ -74,7 +75,9 @@
         }
     }
 
-    .p-password-clear-icon, .p-password-show-icon, .p-password-hide-icon {
-        color: rgba(255, 255, 255, 0.5) !important;
+    .glass-card .p-password-clear-icon, 
+    .glass-card .p-password-show-icon, 
+    .glass-card .p-password-hide-icon {
+        color: rgba(255, 255, 255, 0.5);
     }
 }

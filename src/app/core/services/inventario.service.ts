@@ -1,6 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import { SupabaseService } from './supabase.service';
 import { AuthService } from './auth.service';
+import { Productos, MovimientosInventario, PedidosItems } from '../models/app.models';
 
 @Injectable({ providedIn: 'root' })
 export class InventarioService {
