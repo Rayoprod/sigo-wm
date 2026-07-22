@@ -67,7 +67,7 @@
                     </div>
 
                     <div class="flex gap-2 w-full mt-3">
-                        <button pButton icon="pi pi-file-pdf" [loading]="isGeneratingPdf" class="p-button-danger p-button-outlined flex-1 p-button-sm border-round-lg font-bold" (click)="generarPDF(pedido)"></button>
+                        <button pButton icon="pi pi-file-pdf" [loading]="generatingPdfId === pedido.id" class="p-button-danger p-button-outlined flex-1 p-button-sm border-round-lg font-bold" (click)="generarPDF(pedido)"></button>
                         <button pButton *ngIf="pedido.tipo_documento === 'COTIZACION'" icon="pi pi-pencil" class="p-button-info p-button-outlined flex-1 p-button-sm border-round-lg font-bold" [routerLink]="['/comercial/editar', pedido.id]"></button>
                         <button pButton *ngIf="pedido.tipo_documento !== 'COTIZACION'" icon="pi pi-whatsapp" class="p-button-success p-button-outlined flex-1 p-button-sm border-round-lg font-bold" (click)="compartirWhatsApp(pedido)"></button>
                         <button pButton *ngIf="pedido.tipo_documento !== 'COTIZACION'" icon="pi pi-wallet" class="p-button-primary p-button-outlined flex-1 p-button-sm border-round-lg font-bold" (click)="openCobro(pedido)"></button>
@@ -153,7 +153,7 @@
                         </td>
                         <td class="text-center">
                             <div class="flex justify-content-center gap-2">
-                                <p-button icon="pi pi-file-pdf" [loading]="isGeneratingPdf" styleClass="p-button-rounded p-button-danger p-button-text" (click)="generarPDF(pedido)" pTooltip="Ver PDF"></p-button>
+                                <p-button icon="pi pi-file-pdf" [loading]="generatingPdfId === pedido.id" styleClass="p-button-rounded p-button-danger p-button-text" (click)="generarPDF(pedido)" pTooltip="Ver PDF"></p-button>
                                 <p-button *ngIf="pedido.tipo_documento === 'COTIZACION'" icon="pi pi-pencil" styleClass="p-button-rounded p-button-info p-button-text" [routerLink]="['/comercial/editar', pedido.id]" pTooltip="Editar/Aprobar"></p-button>
                                 <p-button *ngIf="pedido.tipo_documento !== 'COTIZACION'" icon="pi pi-whatsapp" styleClass="p-button-rounded p-button-success p-button-text" (click)="compartirWhatsApp(pedido)" pTooltip="Compartir Rastreo"></p-button>
                                 <p-button *ngIf="pedido.tipo_documento !== 'COTIZACION'" icon="pi pi-wallet" styleClass="p-button-rounded p-button-primary p-button-text" (click)="openCobro(pedido)" pTooltip="Ver / Registrar Pagos"></p-button>

@@ -4,229 +4,196 @@
         <p class="text-500 mt-2 mb-0">Resumen de operaciones y estado del negocio.</p>
     </div>
 
-    <!-- Admin Content -->
+    <!-- Vista Admin -->
     <ng-container *ngIf="isAdmin">
+
         <!-- KPI Cards -->
-    <div class="col-12 md:col-6 lg:col-3">
-        <div class="surface-card shadow-2 p-4 border-round-xl">
-            <div class="flex justify-content-between mb-3">
-                <div>
-                    <span class="block text-500 font-medium mb-3">Clientes Activos</span>
-                    <div class="text-900 font-bold text-xl">{{ totalClientes }}</div>
-                </div>
-                <div class="flex align-items-center justify-content-center bg-blue-100 border-round" style="width:2.5rem;height:2.5rem">
-                    <i class="pi pi-users text-blue-500 text-xl"></i>
-                </div>
-            </div>
-            <span class="text-green-500 font-medium">Actualizado </span>
-            <span class="text-500">recientemente</span>
-        </div>
-    </div>
-    
-    <div class="col-12 md:col-6 lg:col-3">
-        <div class="surface-card shadow-2 p-4 border-round-xl">
-            <div class="flex justify-content-between mb-3">
-                <div>
-                    <span class="block text-500 font-medium mb-3">Ventas Concretadas</span>
-                    <div class="text-900 font-bold text-xl">{{ totalVentas }}</div>
-                </div>
-                <div class="flex align-items-center justify-content-center bg-orange-100 border-round" style="width:2.5rem;height:2.5rem">
-                    <i class="pi pi-shopping-cart text-orange-500 text-xl"></i>
-                </div>
-            </div>
-            <span class="text-green-500 font-medium">Órdenes </span>
-            <span class="text-500">registradas</span>
-        </div>
-    </div>
-    
-    <div class="col-12 md:col-6 lg:col-3">
-        <div class="surface-card shadow-2 p-4 border-round-xl">
-            <div class="flex justify-content-between mb-3">
-                <div>
-                    <span class="block text-500 font-medium mb-3">Ingresos (Ventas)</span>
-                    <div class="text-900 font-bold text-xl">{{ montoVentas | currency:'PEN':'symbol':'1.2-2' }}</div>
-                </div>
-                <div class="flex align-items-center justify-content-center bg-green-100 border-round" style="width:2.5rem;height:2.5rem">
-                    <i class="pi pi-money-bill text-green-500 text-xl"></i>
-                </div>
-            </div>
-            <span class="text-green-500 font-medium">Total </span>
-            <span class="text-500">acumulado</span>
-        </div>
-    </div>
-    
-    <div class="col-12 md:col-6 lg:col-3">
-        <div class="surface-card shadow-2 p-4 border-round-xl">
-            <div class="flex justify-content-between mb-3">
-                <div>
-                    <span class="block text-500 font-medium mb-3">Deuda por Cobrar</span>
-                    <div class="text-900 font-bold text-xl">{{ montoDeuda | currency:'PEN':'symbol':'1.2-2' }}</div>
-                </div>
-                <div class="flex align-items-center justify-content-center bg-red-100 border-round" style="width:2.5rem;height:2.5rem">
-                    <i class="pi pi-exclamation-triangle text-red-500 text-xl"></i>
-                </div>
-            </div>
-            <span class="text-red-500 font-medium">Atención </span>
-            <span class="text-500">requerida</span>
-        </div>
-    </div>
-    
-    <!-- Gráficos Visuales -->
-    <div class="col-12 lg:col-8 mt-4">
-        <div class="surface-card shadow-2 p-4 border-round-xl h-full">
-            <h5 class="mt-0 mb-3 text-900 font-bold"><i class="pi pi-chart-line mr-2 text-blue-500"></i>Curva de Ventas (Últimos 7 días)</h5>
-            <div *ngIf="ventasChartData">
-                <p-chart type="line" [data]="ventasChartData" [options]="ventasChartOptions" height="300px"></p-chart>
-            </div>
-            <div *ngIf="!ventasChartData" class="flex align-items-center justify-content-center h-15rem">
-                <i class="pi pi-spin pi-spinner text-3xl text-blue-500"></i>
-            </div>
-        </div>
-    </div>
-
-    <div class="col-12 lg:col-4 mt-4">
-        <div class="surface-card shadow-2 p-4 border-round-xl h-full">
-            <h5 class="mt-0 mb-3 text-900 font-bold"><i class="pi pi-chart-pie mr-2 text-orange-500"></i>Estado de Despachos</h5>
-            <div *ngIf="despachosChartData" class="flex justify-content-center">
-                <p-chart type="doughnut" [data]="despachosChartData" [options]="despachosChartOptions" height="300px"></p-chart>
-            </div>
-            <div *ngIf="!despachosChartData" class="flex align-items-center justify-content-center h-15rem">
-                <i class="pi pi-spin pi-spinner text-3xl text-orange-500"></i>
-            </div>
-        </div>
-    </div>
-
-    <!-- Recent Activity Area -->
-    <div class="col-12 lg:col-6 mt-4">
-        <div class="surface-card shadow-2 p-4 border-round-xl h-full">
-            <h5 class="mt-0 mb-3 text-900 font-bold">Actividad Reciente</h5>
-            <div *ngIf="actividadReciente.length === 0" class="flex align-items-center justify-content-center border-round border-dashed border-2 surface-border h-15rem">
-                <span class="text-500">El gráfico de rendimiento se mostrará aquí al registrar más actividad.</span>
-            </div>
-            <p-table *ngIf="actividadReciente.length > 0" [value]="actividadReciente" [tableStyle]="{'min-width': '100%'}" styleClass="p-datatable-sm">
-                <ng-template pTemplate="header">
-                    <tr>
-                        <th pSortableColumn="folio">Folio <p-sortIcon field="folio"></p-sortIcon></th>
-                        <th>Cliente</th>
-                        <th>Estado</th>
-                        <th class="text-right">Total</th>
-                    </tr>
-                </ng-template>
-                <ng-template pTemplate="body" let-pedido>
-                    <tr>
-                        <td class="font-bold text-primary">{{pedido.folio}}</td>
-                        <td class="text-color">{{pedido.clientes?.nombre_razon_social || 'Cliente Local'}}</td>
-                        <td>
-                            <span class="px-2 py-1 border-round text-xs font-bold" 
-                                  [ngClass]="{
-                                    'bg-orange-soft text-orange-500': pedido.estado === 'PENDIENTE',
-                                    'bg-green-soft text-green-500': pedido.estado === 'APROBADA' || pedido.estado === 'COMPLETADA',
-                                    'bg-red-soft text-red-500': pedido.estado === 'ANULADA'
-                                  }">
-                                {{pedido.estado}}
-                            </span>
-                        </td>
-                        <td class="font-bold text-green-600 text-right">{{pedido.total | currency:'PEN':'symbol':'1.2-2'}}</td>
-                    </tr>
-                </ng-template>
-            </p-table>
-        </div>
-    </div>
-
-    <!-- Próximos Vencimientos Area -->
-    <div class="col-12 lg:col-6 mt-4">
-        <div class="surface-card shadow-2 p-4 border-round-xl h-full">
-            <h5 class="mt-0 mb-3 text-900 font-bold text-red-600"><i class="pi pi-clock mr-2"></i>Deudas Próximas a Vencer</h5>
-            <div *ngIf="deudasProximas.length === 0" class="flex align-items-center justify-content-center border-round border-dashed border-2 surface-border h-15rem">
-                <span class="text-500"><i class="pi pi-check-circle mr-2 text-green-500"></i>No hay deudas pendientes por cobrar.</span>
-            </div>
-            <p-table *ngIf="deudasProximas.length > 0" [value]="deudasProximas" [tableStyle]="{'min-width': '100%'}" styleClass="p-datatable-sm p-datatable-striped">
-                <ng-template pTemplate="header">
-                    <tr>
-                        <th pSortableColumn="folio">Folio <p-sortIcon field="folio"></p-sortIcon></th>
-                        <th>Cliente</th>
-                        <th pSortableColumn="fecha_vencimiento">Vencimiento <p-sortIcon field="fecha_vencimiento"></p-sortIcon></th>
-                        <th pSortableColumn="saldo_pendiente" class="text-right">Saldo Pend. <p-sortIcon field="saldo_pendiente"></p-sortIcon></th>
-                    </tr>
-                </ng-template>
-                <ng-template pTemplate="body" let-deuda>
-                    <tr>
-                        <td class="font-bold text-primary cursor-pointer" routerLink="/finanzas">{{deuda.folio}}</td>
-                        <td class="text-sm text-color">{{deuda.clientes?.nombre_razon_social || 'Cliente Local'}}</td>
-                        <td>
-                            <span class="font-bold text-red-500" *ngIf="deuda.fecha_vencimiento">{{deuda.fecha_vencimiento | date:'dd/MM/yyyy'}}</span>
-                            <span class="text-color-secondary italic" *ngIf="!deuda.fecha_vencimiento">Sin fecha</span>
-                        </td>
-                        <td class="font-bold text-red-600 text-right">{{deuda.saldo_pendiente | currency:'PEN':'symbol':'1.2-2'}}</td>
-                    </tr>
-                </ng-template>
-            </p-table>
-        </div>
-    </div>
-
-    <!-- Quick Actions -->
-    <div class="col-12 lg:col-4 mt-4">
-        <div class="surface-card shadow-2 p-4 border-round-xl h-full">
-            <h5 class="mt-0 mb-3 text-900 font-bold">Acciones Rápidas</h5>
-            <ul class="list-none p-0 m-0">
-                <li routerLink="/comercial" class="flex align-items-center py-3 px-2 border-top-1 surface-border hover:surface-100 cursor-pointer border-round transition-colors transition-duration-150">
-                    <div class="w-3rem h-3rem flex align-items-center justify-content-center bg-blue-100 border-circle mr-3 flex-shrink-0">
-                        <i class="pi pi-plus text-xl text-blue-500"></i>
+        <div class="col-12 md:col-6 lg:col-3">
+            <div class="surface-card shadow-2 p-4 border-round-xl">
+                <div class="flex justify-content-between mb-3">
+                    <div>
+                        <span class="block text-500 font-medium mb-3">Clientes Registrados</span>
+                        <div class="text-900 font-bold text-xl">{{ totalClientes }}</div>
                     </div>
-                    <span class="text-900 font-medium line-height-3">Nueva Venta</span>
-                </li>
-                <li routerLink="/comercial" class="flex align-items-center py-3 px-2 border-top-1 surface-border hover:surface-100 cursor-pointer border-round transition-colors transition-duration-150">
-                    <div class="w-3rem h-3rem flex align-items-center justify-content-center bg-orange-100 border-circle mr-3 flex-shrink-0">
-                        <i class="pi pi-file text-xl text-orange-500"></i>
+                    <div class="flex align-items-center justify-content-center bg-blue-100 border-round" style="width:2.5rem;height:2.5rem">
+                        <i class="pi pi-users text-blue-500 text-xl"></i>
                     </div>
-                    <span class="text-900 font-medium line-height-3">Generar Cotización</span>
-                </li>
-                <li routerLink="/clientes" class="flex align-items-center py-3 px-2 border-top-1 border-bottom-1 surface-border hover:surface-100 cursor-pointer border-round transition-colors transition-duration-150">
-                    <div class="w-3rem h-3rem flex align-items-center justify-content-center bg-green-100 border-circle mr-3 flex-shrink-0">
-                        <i class="pi pi-user-plus text-xl text-green-500"></i>
-                    </div>
-                    <span class="text-900 font-medium line-height-3">Añadir Cliente</span>
-                </li>
-            </ul>
-        </div>
-    </div>
-    </ng-container>
-
-    <!-- Non-Admin Content -->
-    <ng-container *ngIf="!isAdmin">
-        <div class="col-12 lg:col-8">
-            <div class="surface-card shadow-2 p-6 border-round-xl text-center">
-                <i class="pi pi-verified text-6xl text-blue-500 mb-4"></i>
-                <h2 class="text-900 font-bold text-3xl mb-3">¡Bienvenido a W&M!</h2>
-                <p class="text-600 line-height-3 text-lg mb-4">
-                    Tu cuenta ha sido verificada correctamente. Puedes usar el menú lateral para acceder a tus herramientas de trabajo, o utilizar los botones de acceso rápido a continuación para empezar a gestionar tus tareas.
-                </p>
-                <div class="flex flex-wrap justify-content-center gap-3">
-                    <button pButton label="Nueva Venta" icon="pi pi-plus" class="p-button-outlined p-button-primary" routerLink="/comercial"></button>
-                    <button pButton label="Ver Catálogo" icon="pi pi-box" class="p-button-outlined p-button-purple" routerLink="/catalogo"></button>
                 </div>
+                <span class="text-500 text-sm">Total en directorio</span>
             </div>
         </div>
-        
-        <!-- Acciones Rápidas para Non-Admins -->
-        <div class="col-12 lg:col-4">
+
+        <div class="col-12 md:col-6 lg:col-3">
+            <div class="surface-card shadow-2 p-4 border-round-xl">
+                <div class="flex justify-content-between mb-3">
+                    <div>
+                        <span class="block text-500 font-medium mb-3">Órdenes de Venta</span>
+                        <div class="text-900 font-bold text-xl">{{ totalVentas }}</div>
+                    </div>
+                    <div class="flex align-items-center justify-content-center bg-orange-100 border-round" style="width:2.5rem;height:2.5rem">
+                        <i class="pi pi-shopping-cart text-orange-500 text-xl"></i>
+                    </div>
+                </div>
+                <span class="text-500 text-sm">No anuladas</span>
+            </div>
+        </div>
+
+        <div class="col-12 md:col-6 lg:col-3">
+            <div class="surface-card shadow-2 p-4 border-round-xl">
+                <div class="flex justify-content-between mb-3">
+                    <div>
+                        <span class="block text-500 font-medium mb-3">Ingresos Totales</span>
+                        <div class="text-900 font-bold text-xl">{{ montoVentas | currency:'PEN':'symbol':'1.2-2' }}</div>
+                    </div>
+                    <div class="flex align-items-center justify-content-center bg-green-100 border-round" style="width:2.5rem;height:2.5rem">
+                        <i class="pi pi-money-bill text-green-500 text-xl"></i>
+                    </div>
+                </div>
+                <span class="text-500 text-sm">Suma acumulada de ventas</span>
+            </div>
+        </div>
+
+        <div class="col-12 md:col-6 lg:col-3">
+            <div class="surface-card shadow-2 p-4 border-round-xl">
+                <div class="flex justify-content-between mb-3">
+                    <div>
+                        <span class="block text-500 font-medium mb-3">Deuda por Cobrar</span>
+                        <div class="text-900 font-bold text-xl" [ngClass]="montoDeuda > 0 ? 'text-red-600' : 'text-green-600'">
+                            {{ montoDeuda | currency:'PEN':'symbol':'1.2-2' }}
+                        </div>
+                    </div>
+                    <div class="flex align-items-center justify-content-center border-round" style="width:2.5rem;height:2.5rem"
+                         [ngClass]="montoDeuda > 0 ? 'bg-red-100' : 'bg-green-100'">
+                        <i class="pi text-xl" [ngClass]="montoDeuda > 0 ? 'pi-exclamation-triangle text-red-500' : 'pi-check-circle text-green-500'"></i>
+                    </div>
+                </div>
+                <span class="text-500 text-sm">{{ montoDeuda > 0 ? 'Saldo pendiente de clientes' : 'Sin deudas pendientes' }}</span>
+            </div>
+        </div>
+
+        <!-- Gráficos -->
+        <div class="col-12 lg:col-8 mt-4">
             <div class="surface-card shadow-2 p-4 border-round-xl h-full">
-                <h5 class="mt-0 mb-3 text-900 font-bold">Acciones Rápidas</h5>
-                <ul class="list-none p-0 m-0">
-                    <li routerLink="/comercial" class="flex align-items-center py-3 px-2 border-top-1 surface-border hover:surface-100 cursor-pointer border-round transition-colors transition-duration-150">
-                        <div class="w-3rem h-3rem flex align-items-center justify-content-center bg-blue-100 border-circle mr-3 flex-shrink-0">
-                            <i class="pi pi-plus text-xl text-blue-500"></i>
-                        </div>
-                        <span class="text-900 font-medium line-height-3">Nueva Venta</span>
-                    </li>
-                    <li routerLink="/clientes" class="flex align-items-center py-3 px-2 border-top-1 border-bottom-1 surface-border hover:surface-100 cursor-pointer border-round transition-colors transition-duration-150">
-                        <div class="w-3rem h-3rem flex align-items-center justify-content-center bg-green-100 border-circle mr-3 flex-shrink-0">
-                            <i class="pi pi-user-plus text-xl text-green-500"></i>
-                        </div>
-                        <span class="text-900 font-medium line-height-3">Añadir Cliente</span>
-                    </li>
-                </ul>
+                <h5 class="mt-0 mb-3 text-900 font-bold">
+                    <i class="pi pi-chart-line mr-2 text-blue-500"></i>Curva de Ventas (Últimos 7 días)
+                </h5>
+                <div *ngIf="ventasChartData">
+                    <p-chart type="line" [data]="ventasChartData" [options]="ventasChartOptions" height="300px"></p-chart>
+                </div>
+                <div *ngIf="!ventasChartData" class="flex align-items-center justify-content-center h-15rem">
+                    <i class="pi pi-spin pi-spinner text-3xl text-blue-500"></i>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-12 lg:col-4 mt-4">
+            <div class="surface-card shadow-2 p-4 border-round-xl h-full">
+                <h5 class="mt-0 mb-3 text-900 font-bold">
+                    <i class="pi pi-chart-pie mr-2 text-orange-500"></i>Estado de Despachos
+                </h5>
+                <div *ngIf="despachosChartData" class="flex justify-content-center">
+                    <p-chart type="doughnut" [data]="despachosChartData" [options]="despachosChartOptions" height="300px"></p-chart>
+                </div>
+                <div *ngIf="!despachosChartData" class="flex align-items-center justify-content-center h-15rem">
+                    <i class="pi pi-spin pi-spinner text-3xl text-orange-500"></i>
+                </div>
+            </div>
+        </div>
+
+        <!-- Actividad Reciente -->
+        <div class="col-12 lg:col-6 mt-4">
+            <div class="surface-card shadow-2 p-4 border-round-xl h-full">
+                <h5 class="mt-0 mb-3 text-900 font-bold">Últimas Órdenes</h5>
+                <div *ngIf="actividadReciente.length === 0"
+                     class="flex align-items-center justify-content-center border-round border-dashed border-2 surface-border h-10rem">
+                    <span class="text-500">Sin órdenes registradas.</span>
+                </div>
+                <p-table *ngIf="actividadReciente.length > 0"
+                         [value]="actividadReciente"
+                         [tableStyle]="{'min-width': '100%'}"
+                         styleClass="p-datatable-sm">
+                    <ng-template pTemplate="header">
+                        <tr>
+                            <th>Folio</th>
+                            <th>Cliente</th>
+                            <th>Estado</th>
+                            <th class="text-right">Total</th>
+                        </tr>
+                    </ng-template>
+                    <ng-template pTemplate="body" let-pedido>
+                        <tr>
+                            <td class="font-bold text-primary">{{pedido.folio}}</td>
+                            <td class="text-color">{{pedido.clientes?.nombre_razon_social || 'Consumidor Final'}}</td>
+                            <td>
+                                <span class="px-2 py-1 border-round text-xs font-bold"
+                                      [ngClass]="{
+                                        'bg-orange-soft text-orange-500': pedido.estado === 'PENDIENTE',
+                                        'bg-green-soft text-green-500': pedido.estado === 'APROBADA' || pedido.estado === 'COMPLETADA',
+                                        'bg-blue-soft text-blue-500': pedido.estado === 'BORRADOR',
+                                        'surface-200 text-500': pedido.estado === 'ANULADA'
+                                      }">
+                                    {{pedido.estado}}
+                                </span>
+                            </td>
+                            <td class="font-bold text-green-600 text-right">{{pedido.total | currency:'PEN':'symbol':'1.2-2'}}</td>
+                        </tr>
+                    </ng-template>
+                </p-table>
+            </div>
+        </div>
+
+        <!-- Deudas próximas a vencer -->
+        <div class="col-12 lg:col-6 mt-4">
+            <div class="surface-card shadow-2 p-4 border-round-xl h-full">
+                <h5 class="mt-0 mb-3 text-900 font-bold text-red-600">
+                    <i class="pi pi-clock mr-2"></i>Deudas Próximas a Vencer
+                </h5>
+                <div *ngIf="deudasProximas.length === 0"
+                     class="flex align-items-center justify-content-center border-round border-dashed border-2 surface-border h-10rem">
+                    <span class="text-500"><i class="pi pi-check-circle mr-2 text-green-500"></i>Sin deudas pendientes.</span>
+                </div>
+                <p-table *ngIf="deudasProximas.length > 0"
+                         [value]="deudasProximas"
+                         [tableStyle]="{'min-width': '100%'}"
+                         styleClass="p-datatable-sm p-datatable-striped">
+                    <ng-template pTemplate="header">
+                        <tr>
+                            <th>Folio</th>
+                            <th>Cliente</th>
+                            <th>Vencimiento</th>
+                            <th class="text-right">Saldo</th>
+                        </tr>
+                    </ng-template>
+                    <ng-template pTemplate="body" let-deuda>
+                        <tr>
+                            <td class="font-bold text-primary">{{deuda.folio}}</td>
+                            <td class="text-sm text-color">{{deuda.clientes?.nombre_razon_social || 'Consumidor Final'}}</td>
+                            <td>
+                                <span class="font-bold text-red-500" *ngIf="deuda.fecha_vencimiento">
+                                    {{deuda.fecha_vencimiento | date:'dd/MM/yyyy'}}
+                                </span>
+                                <span class="text-color-secondary italic" *ngIf="!deuda.fecha_vencimiento">Sin fecha</span>
+                            </td>
+                            <td class="font-bold text-red-600 text-right">{{deuda.saldo_pendiente | currency:'PEN':'symbol':'1.2-2'}}</td>
+                        </tr>
+                    </ng-template>
+                </p-table>
+            </div>
+        </div>
+
+    </ng-container>
+
+    <!-- Vista Vendedor (no admin) -->
+    <ng-container *ngIf="!isAdmin">
+        <div class="col-12">
+            <div class="surface-card shadow-2 p-5 border-round-xl text-center">
+                <i class="pi pi-verified text-6xl text-blue-500 mb-4 block"></i>
+                <h2 class="text-900 font-bold text-2xl mb-2">¡Bienvenido a W&M!</h2>
+                <p class="text-500 line-height-3 mb-0">
+                    Usa el menú lateral para acceder a tus herramientas.
+                </p>
             </div>
         </div>
     </ng-container>
+
 </div>

@@ -6,8 +6,8 @@ import { AutoCompleteModule } from 'primeng/autocomplete';
 import { DropdownModule } from 'primeng/dropdown';
 import { InputNumberModule } from 'primeng/inputnumber';
 import { ButtonModule } from 'primeng/button';
-import { SupabaseService } from '../../../core/services/supabase.service';
-import { AuthService } from '../../../core/services/auth.service';
+import { SupabaseService } from '../../../../core/services/supabase.service';
+import { AuthService } from '../../../../core/services/auth.service';
 import { DialogModule } from 'primeng/dialog';
 import { InputTextModule } from 'primeng/inputtext';
 

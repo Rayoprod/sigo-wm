@@ -10,7 +10,7 @@ import { AvatarModule } from 'primeng/avatar';
 import { MenuModule } from 'primeng/menu';
 import { MenuItem } from 'primeng/api';
 import { TooltipModule } from 'primeng/tooltip';
-import { ChatBotComponent } from '../../components/chat-bot/chat-bot.component';
+import { ChatBotComponent } from '../chat-bot/chat-bot.component';
 
 @Component({
   selector: 'app-main-layout',
@@ -47,13 +47,16 @@ export class MainLayoutComponent {
 
     if (rol === 'admin' || rol === 'vendedor') {
       items.push({ label: 'Ventas y Cotizaciones', icon: 'pi pi-shopping-cart', routerLink: '/comercial' });
-      items.push({ label: 'Catálogo de Productos', icon: 'pi pi-box', routerLink: '/catalogo' });
-      items.push({ label: 'Control de Inventario', icon: 'pi pi-warehouse', routerLink: '/inventario' });
+      items.push({ label: 'Productos e Inventario', icon: 'pi pi-box', routerLink: '/catalogo' });
       items.push({ label: 'Clientes', icon: 'pi pi-users', routerLink: '/clientes' });
     }
 
     if (rol === 'admin' || rol === 'despachador' || rol === 'vendedor') {
       items.push({ label: 'Logística y Despachos', icon: 'pi pi-truck', routerLink: '/logistica' });
+    }
+
+    if (rol === 'despachador') {
+      items.push({ label: 'Productos e Inventario', icon: 'pi pi-box', routerLink: '/catalogo' });
     }
 
     if (rol === 'admin') {

@@ -1,78 +1,74 @@
-<div class="grid">
-    <div class="col-12">
-        <div class="flex justify-content-between align-items-center mb-4">
+<p-tabView>
+
+    <!-- ═══════════════════════════════════════════════════════════
+         TAB 1: CATÁLOGO DE PRODUCTOS
+    ═══════════════════════════════════════════════════════════ -->
+    <p-tabPanel header="Catálogo de Productos" leftIcon="pi pi-box">
+
+        <div class="flex justify-content-between align-items-center mb-4 pt-2">
             <div>
                 <h2 class="m-0 text-900 font-bold">Catálogo de Productos</h2>
-                <p class="text-500 mt-1 mb-0">Gestiona los materiales y productos disponibles para la venta.</p>
+                <p class="text-500 mt-1 mb-0">Materiales y servicios disponibles para venta.</p>
             </div>
             <p-button label="Nuevo Producto" icon="pi pi-plus" styleClass="p-button-primary shadow-2" (click)="abrirNuevo()"></p-button>
         </div>
 
-        <!-- VISTA MÓVIL (Tarjetas) -->
+        <!-- VISTA MÓVIL -->
         <div class="block md:hidden">
             <div class="mb-3">
                 <span class="p-input-icon-left w-full">
                     <i class="pi pi-search"></i>
-                    <input pInputText type="text" #textInput (input)="dt.filterGlobal(textInput.value, 'contains')" placeholder="Buscar SKU, descripción..." class="w-full" />
+                    <input pInputText type="text" #txtCat (input)="dtCat.filterGlobal(txtCat.value, 'contains')" placeholder="Buscar producto..." class="w-full" />
                 </span>
             </div>
-            <div class="flex flex-column">
-                <div *ngFor="let producto of (dt.filteredValue || productos)" class="mobile-card">
-                    <div class="flex justify-content-between align-items-start mb-2">
-                        <div class="flex-1 pr-3">
-                            <span class="text-color-secondary font-medium text-sm flex align-items-center"><i class="pi pi-barcode mr-1"></i>{{ producto.codigo_sku || 'Sin SKU' }}</span>
-                            <div class="text-color font-bold text-lg mt-1 line-height-2">{{ producto.descripcion }}</div>
-                        </div>
-                        <p-tag [value]="producto.unidad_medida" severity="secondary" styleClass="font-bold surface-200 text-700"></p-tag>
+            <div *ngFor="let producto of (dtCat.filteredValue || productos)" class="mobile-card">
+                <div class="flex justify-content-between align-items-start mb-2">
+                    <div class="flex-1 pr-3">
+                        <span class="text-color-secondary font-medium text-sm">{{ producto.codigo_sku || 'Sin SKU' }}</span>
+                        <div class="text-color font-bold text-lg mt-1">{{ producto.descripcion }}</div>
                     </div>
-
-                    <div class="mobile-card-row surface-50 p-2 border-round-lg mt-2">
-                        <div class="mobile-card-label flex align-items-center gap-2">
-                            <i class="pi pi-tag"></i> Precio Base
-                        </div>
-                        <div class="font-bold text-green-600 text-xl">{{ producto.precio_unitario_base | currency:'PEN':'symbol':'1.2-2' }}</div>
-                    </div>
-
-                    <div class="flex gap-2 w-full mt-3">
-                        <button pButton label="Editar" icon="pi pi-pencil" class="p-button-primary p-button-outlined flex-1 p-button-sm border-round-lg font-bold" (click)="abrirEditar(producto)"></button>
-                        <button pButton label="Eliminar" icon="pi pi-trash" class="p-button-danger p-button-outlined flex-1 p-button-sm border-round-lg font-bold" (click)="eliminarProducto(producto)"></button>
-                    </div>
+                    <p-tag [value]="producto.unidad_medida" severity="secondary"></p-tag>
+                </div>
+                <div class="mobile-card-row surface-50 p-2 border-round-lg mt-2">
+                    <span class="text-color-secondary text-sm">Precio Base</span>
+                    <div class="font-bold text-green-600 text-lg">{{ producto.precio_unitario_base | currency:'PEN':'symbol':'1.2-2' }}</div>
+                </div>
+                <div class="flex gap-2 mt-3">
+                    <button pButton label="Editar" icon="pi pi-pencil" class="p-button-primary p-button-outlined flex-1 p-button-sm" (click)="abrirEditar(producto)"></button>
+                    <button pButton label="Eliminar" icon="pi pi-trash" class="p-button-danger p-button-outlined flex-1 p-button-sm" (click)="eliminarProducto(producto)"></button>
                 </div>
             </div>
-            
-            <div *ngIf="!loading && (dt.filteredValue || productos).length === 0" class="surface-card p-4 shadow-1 border-round text-center mt-3">
-                <div class="bg-blue-50 flex align-items-center justify-content-center border-circle mx-auto mb-3" style="width: 5rem; height: 5rem;">
-                    <i class="pi pi-box text-blue-500 text-4xl"></i>
-                </div>
-                <h5 class="m-0 text-900 font-bold mb-2">Tu catálogo está vacío</h5>
-                <p class="text-500 m-0">Comienza agregando tu primer producto o material.</p>
+            <div *ngIf="!loading && (dtCat.filteredValue || productos).length === 0" class="surface-card p-4 shadow-1 border-round text-center mt-3">
+                <p class="text-500 m-0">Tu catálogo está vacío. Agrega el primer producto.</p>
             </div>
         </div>
 
-        <!-- VISTA ESCRITORIO (Tabla) -->
+        <!-- VISTA ESCRITORIO -->
         <div class="hidden md:block surface-card p-0 shadow-2 border-round-xl overflow-hidden">
-            <p-table #dt [value]="productos" [paginator]="true" [rows]="10" [globalFilterFields]="['codigo_sku', 'descripcion']" [loading]="loading" responsiveLayout="scroll" styleClass="p-datatable-striped p-datatable-gridlines">
+            <p-table #dtCat [value]="productos" [loading]="loading" [rows]="10" [paginator]="true"
+                     [globalFilterFields]="['codigo_sku','descripcion']" [rowHover]="true"
+                     styleClass="p-datatable-striped p-datatable-gridlines" responsiveLayout="scroll">
                 <ng-template pTemplate="caption">
                     <div class="flex justify-content-end">
                         <span class="p-input-icon-left">
                             <i class="pi pi-search"></i>
-                            <input pInputText type="text" #textInput (input)="dt.filterGlobal(textInput.value, 'contains')" placeholder="Buscar SKU, descripción..." />
+                            <input pInputText type="text" #txtCatD (input)="dtCat.filterGlobal(txtCatD.value, 'contains')" placeholder="Buscar SKU, producto..." />
                         </span>
                     </div>
                 </ng-template>
                 <ng-template pTemplate="header">
                     <tr>
-                        <th pSortableColumn="codigo_sku">Código SKU <p-sortIcon field="codigo_sku"></p-sortIcon></th>
+                        <th pSortableColumn="codigo_sku">SKU <p-sortIcon field="codigo_sku"></p-sortIcon></th>
                         <th pSortableColumn="descripcion">Descripción <p-sortIcon field="descripcion"></p-sortIcon></th>
-                        <th pSortableColumn="unidad_medida">Unidad <p-sortIcon field="unidad_medida"></p-sortIcon></th>
+                        <th pSortableColumn="unidad_medida">U.M. <p-sortIcon field="unidad_medida"></p-sortIcon></th>
                         <th pSortableColumn="precio_unitario_base" class="text-right">Precio Base <p-sortIcon field="precio_unitario_base"></p-sortIcon></th>
-                        <th class="text-center" style="width: 8rem">Acciones</th>
+                        <th class="text-center" style="width:8rem">Acciones</th>
                     </tr>
                 </ng-template>
                 <ng-template pTemplate="body" let-producto>
                     <tr>
                         <td class="font-semibold text-primary"><span class="bg-blue-soft px-2 py-1 border-round">{{ producto.codigo_sku || '-' }}</span></td>
-                        <td class="text-color font-medium">{{ producto.descripcion }}</td>
+                        <td class="font-medium text-color">{{ producto.descripcion }}</td>
                         <td><span class="text-color-secondary bg-surface-soft px-2 py-1 border-round text-sm">{{ producto.unidad_medida }}</span></td>
                         <td class="text-green-600 font-bold text-right">{{ producto.precio_unitario_base | currency:'PEN':'symbol':'1.2-2' }}</td>
                         <td class="text-center">
@@ -84,65 +80,229 @@
                     </tr>
                 </ng-template>
                 <ng-template pTemplate="emptymessage">
+                    <tr><td colspan="5" class="text-center py-5 text-500">Tu catálogo está vacío. Agrega el primer producto.</td></tr>
+                </ng-template>
+            </p-table>
+        </div>
+
+    </p-tabPanel>
+
+    <!-- ═══════════════════════════════════════════════════════════
+         TAB 2: CONTROL DE STOCK
+    ═══════════════════════════════════════════════════════════ -->
+    <p-tabPanel header="Control de Stock" leftIcon="pi pi-warehouse">
+
+        <div class="flex justify-content-between align-items-center mb-4 pt-2">
+            <div>
+                <h2 class="m-0 text-900 font-bold">Control de Stock</h2>
+                <p class="text-500 mt-1 mb-0">Ajusta existencias y consulta el historial de movimientos.</p>
+            </div>
+            <button pButton label="Historial General" icon="pi pi-history" class="p-button-outlined" (click)="abrirHistorial()"></button>
+        </div>
+
+        <!-- VISTA MÓVIL -->
+        <div class="block md:hidden">
+            <div class="mb-3">
+                <span class="p-input-icon-left w-full">
+                    <i class="pi pi-search"></i>
+                    <input pInputText type="text" #txtStock (input)="dtStock.filterGlobal(txtStock.value, 'contains')" placeholder="Buscar producto..." class="w-full" />
+                </span>
+            </div>
+            <div *ngFor="let prod of (dtStock.filteredValue || productos)" class="mobile-card">
+                <div class="flex justify-content-between align-items-start mb-2">
+                    <div>
+                        <span class="text-color-secondary font-medium text-sm">{{ prod.codigo_sku || 'Sin SKU' }}</span>
+                        <div class="text-color font-bold text-lg mt-1">{{ prod.descripcion }}</div>
+                    </div>
+                    <p-tag [value]="prod.unidad_medida" severity="info"></p-tag>
+                </div>
+                <div class="mobile-card-row surface-50 p-2 border-round-lg mt-2">
+                    <div class="flex flex-column">
+                        <span class="text-color-secondary text-sm mb-1">Stock Mínimo</span>
+                        <div class="flex align-items-center gap-2">
+                            <span class="font-medium">{{ prod.stock_minimo | number:'1.2-2' }}</span>
+                            <p-button icon="pi pi-pencil" styleClass="p-button-rounded p-button-text p-button-sm p-button-secondary p-0" (click)="abrirEditarMinimo(prod)"></p-button>
+                        </div>
+                    </div>
+                    <div class="text-right border-left-1 surface-border pl-3">
+                        <span class="text-color-secondary text-sm block mb-1">Stock Actual</span>
+                        <span class="font-bold text-xl" [ngClass]="{'text-red-500': prod.stock_actual <= prod.stock_minimo, 'text-green-500': prod.stock_actual > prod.stock_minimo}">
+                            {{ prod.stock_actual | number:'1.2-2' }}
+                        </span>
+                    </div>
+                </div>
+                <div class="flex gap-2 w-full mt-3">
+                    <button pButton label="Historial" icon="pi pi-history" class="p-button-info p-button-outlined flex-1 p-button-sm" (click)="abrirHistorial(prod)"></button>
+                    <button pButton label="Ajustar" icon="pi pi-sliders-h" class="p-button-success p-button-outlined flex-1 p-button-sm" (click)="abrirAjuste(prod)"></button>
+                </div>
+            </div>
+        </div>
+
+        <!-- VISTA ESCRITORIO -->
+        <div class="hidden md:block surface-card p-0 shadow-2 border-round-xl overflow-hidden">
+            <p-table #dtStock [value]="productos" [loading]="loading" [rows]="10" [paginator]="true"
+                     [globalFilterFields]="['codigo_sku','descripcion']" [rowHover]="true"
+                     styleClass="p-datatable-striped p-datatable-gridlines" responsiveLayout="scroll">
+                <ng-template pTemplate="caption">
+                    <div class="flex justify-content-end">
+                        <span class="p-input-icon-left">
+                            <i class="pi pi-search"></i>
+                            <input pInputText type="text" #txtStockD (input)="dtStock.filterGlobal(txtStockD.value, 'contains')" placeholder="Buscar SKU, producto..." />
+                        </span>
+                    </div>
+                </ng-template>
+                <ng-template pTemplate="header">
                     <tr>
-                        <td colspan="5">
-                            <div class="flex flex-column align-items-center justify-content-center py-6">
-                                <div class="bg-blue-soft flex align-items-center justify-content-center border-circle mb-3" style="width: 5rem; height: 5rem;">
-                                    <i class="pi pi-box text-blue-500 text-4xl"></i>
-                                </div>
-                                <h5 class="m-0 text-color font-bold mb-2">Tu catálogo está vacío</h5>
-                                <p class="text-color-secondary m-0">Comienza agregando tu primer producto o material.</p>
+                        <th pSortableColumn="codigo_sku" style="width:15%">SKU <p-sortIcon field="codigo_sku"></p-sortIcon></th>
+                        <th pSortableColumn="descripcion" style="width:35%">Producto <p-sortIcon field="descripcion"></p-sortIcon></th>
+                        <th pSortableColumn="unidad_medida" style="width:10%">U.M. <p-sortIcon field="unidad_medida"></p-sortIcon></th>
+                        <th pSortableColumn="stock_actual" style="width:15%" class="text-center">Stock Actual <p-sortIcon field="stock_actual"></p-sortIcon></th>
+                        <th pSortableColumn="stock_minimo" style="width:10%" class="text-center">Mínimo <p-sortIcon field="stock_minimo"></p-sortIcon></th>
+                        <th style="width:15%" class="text-center">Acciones</th>
+                    </tr>
+                </ng-template>
+                <ng-template pTemplate="body" let-prod>
+                    <tr>
+                        <td>{{ prod.codigo_sku }}</td>
+                        <td class="font-bold">{{ prod.descripcion }}</td>
+                        <td><p-tag [value]="prod.unidad_medida" severity="info"></p-tag></td>
+                        <td class="text-center">
+                            <span class="font-bold text-lg" [ngClass]="{'text-red-500': prod.stock_actual <= prod.stock_minimo, 'text-green-500': prod.stock_actual > prod.stock_minimo}">
+                                {{ prod.stock_actual | number:'1.2-2' }}
+                            </span>
+                        </td>
+                        <td class="text-center">
+                            <div class="flex align-items-center justify-content-center gap-2">
+                                <span>{{ prod.stock_minimo | number:'1.2-2' }}</span>
+                                <p-button icon="pi pi-pencil" styleClass="p-button-rounded p-button-text p-button-sm p-button-secondary p-0" (click)="abrirEditarMinimo(prod)" pTooltip="Editar mínimo"></p-button>
+                            </div>
+                        </td>
+                        <td class="text-center">
+                            <div class="flex justify-content-center gap-2">
+                                <p-button icon="pi pi-history" styleClass="p-button-rounded p-button-info p-button-text" pTooltip="Ver Historial" (click)="abrirHistorial(prod)"></p-button>
+                                <p-button icon="pi pi-sliders-h" styleClass="p-button-rounded p-button-success p-button-text" pTooltip="Ajustar Stock" (click)="abrirAjuste(prod)"></p-button>
                             </div>
                         </td>
                     </tr>
                 </ng-template>
+                <ng-template pTemplate="emptymessage">
+                    <tr><td colspan="6" class="text-center py-5 text-500">No hay productos en el inventario.</td></tr>
+                </ng-template>
             </p-table>
         </div>
-    </div>
-</div>
 
-<p-dialog header="Nuevo Producto" [(visible)]="displayModal" [modal]="true" [style]="{width: '500px'}" styleClass="p-fluid">
+    </p-tabPanel>
+
+</p-tabView>
+
+<!-- ── DIALOGS ─────────────────────────────────────────────────────────── -->
+
+<!-- Nuevo / Editar Producto -->
+<p-dialog [header]="productoForm.id ? 'Editar Producto' : 'Nuevo Producto'"
+          [(visible)]="displayModalProducto" [modal]="true" [style]="{width:'500px'}" styleClass="p-fluid">
     <div class="grid formgrid pt-3">
         <div class="field col-12 md:col-4">
-            <label class="font-medium text-900">Código SKU</label>
-            <div class="p-inputgroup">
-                <span class="p-inputgroup-addon bg-blue-50"><i class="pi pi-barcode text-blue-500"></i></span>
-                <input pInputText type="text" [value]="nuevoProducto.id ? nuevoProducto.codigo_sku : 'Automático'" readonly class="font-bold text-primary bg-surface-100" />
-            </div>
+            <label class="font-medium">Código SKU</label>
+            <input pInputText [value]="productoForm.id ? productoForm.codigo_sku : 'Automático'" readonly class="font-bold text-primary" />
         </div>
-        
         <div class="field col-12 md:col-8">
-            <label class="font-medium text-900">Descripción (*)</label>
-            <input pInputText type="text" [(ngModel)]="nuevoProducto.descripcion" placeholder="Ej: Arena Fina, Cemento Pacasmayo..." />
+            <label class="font-medium">Descripción (*)</label>
+            <input pInputText [(ngModel)]="productoForm.descripcion" placeholder="Ej: Arena Fina, Cemento..." />
         </div>
-        
         <div class="field col-12 md:col-6">
-            <label class="font-medium text-900">Unidad de Medida</label>
-            <p-dropdown [options]="unidadesMedida" [(ngModel)]="nuevoProducto.unidad_medida" optionLabel="label" optionValue="value" placeholder="Seleccione U.M." appendTo="body"></p-dropdown>
+            <label class="font-medium">Unidad de Medida</label>
+            <p-dropdown [options]="unidadesMedida" [(ngModel)]="productoForm.unidad_medida" optionLabel="label" optionValue="value" appendTo="body"></p-dropdown>
         </div>
-        
         <div class="field col-12 md:col-6">
-            <label class="font-medium text-900">Precio Base (Ref.)</label>
-            <p-inputNumber [(ngModel)]="nuevoProducto.precio_unitario_base" mode="decimal" prefix="S/ " [minFractionDigits]="2" [maxFractionDigits]="2" [min]="0" class="w-full"></p-inputNumber>
+            <label class="font-medium">Precio Base (Ref.)</label>
+            <p-inputNumber [(ngModel)]="productoForm.precio_unitario_base" mode="decimal" prefix="S/ " [minFractionDigits]="2" [min]="0"></p-inputNumber>
         </div>
-
         <div class="field col-12 md:col-6">
-            <label class="font-medium text-900">Tipo de Producto</label>
-            <p-dropdown [options]="tiposInventario" [(ngModel)]="nuevoProducto.tipo_inventario" optionLabel="label" optionValue="value" appendTo="body" styleClass="w-full"></p-dropdown>
+            <label class="font-medium">Tipo de Producto</label>
+            <p-dropdown [options]="tiposInventario" [(ngModel)]="productoForm.tipo_inventario" optionLabel="label" optionValue="value" appendTo="body"></p-dropdown>
         </div>
-        
-        <div class="field col-12 md:col-6" *ngIf="!nuevoProducto.id">
-            <label class="font-medium text-900">Stock Inicial (Opcional)</label>
-            <p-inputNumber [(ngModel)]="nuevoProducto.stock_actual" [minFractionDigits]="2" [maxFractionDigits]="2" [min]="0" placeholder="Ej: 100.50"></p-inputNumber>
+        <div class="field col-12 md:col-6" *ngIf="!productoForm.id">
+            <label class="font-medium">Stock Inicial</label>
+            <p-inputNumber [(ngModel)]="productoForm.stock_actual" [minFractionDigits]="2" [min]="0" placeholder="0.00"></p-inputNumber>
         </div>
-
         <div class="field col-12 md:col-6">
-            <label class="font-medium text-900">Stock Mínimo (Alerta)</label>
-            <p-inputNumber [(ngModel)]="nuevoProducto.stock_minimo" [minFractionDigits]="2" [maxFractionDigits]="2" [min]="0" placeholder="Ej: 10.00"></p-inputNumber>
+            <label class="font-medium">Stock Mínimo (Alerta)</label>
+            <p-inputNumber [(ngModel)]="productoForm.stock_minimo" [minFractionDigits]="2" [min]="0" placeholder="0.00"></p-inputNumber>
         </div>
     </div>
     <ng-template pTemplate="footer">
-        <p-button label="Cancelar" icon="pi pi-times" (click)="displayModal=false" styleClass="p-button-text p-button-secondary"></p-button>
-        <p-button label="Guardar Producto" icon="pi pi-check" (click)="guardarProducto()" [loading]="isSaving" styleClass="p-button-primary"></p-button>
+        <p-button label="Cancelar" icon="pi pi-times" (click)="displayModalProducto=false" styleClass="p-button-text p-button-secondary"></p-button>
+        <p-button label="Guardar" icon="pi pi-check" (click)="guardarProducto()" [loading]="isSavingProducto" styleClass="p-button-primary"></p-button>
     </ng-template>
+</p-dialog>
+
+<!-- Ajuste de Stock -->
+<p-dialog [header]="'Ajustar Stock: ' + (productoSeleccionado?.descripcion || '')"
+          [(visible)]="displayModalAjuste" [modal]="true" [style]="{width:'420px'}" styleClass="p-fluid">
+    <div class="field mt-3">
+        <label>Tipo de Movimiento</label>
+        <p-dropdown [options]="tiposMovimiento" [(ngModel)]="ajuste.tipo" appendTo="body"></p-dropdown>
+    </div>
+    <div class="field">
+        <label>Cantidad a {{ ajuste.tipo === 'ENTRADA' ? 'Sumar' : 'Restar' }}</label>
+        <p-inputNumber [(ngModel)]="ajuste.cantidad" [minFractionDigits]="2" [maxFractionDigits]="2"></p-inputNumber>
+    </div>
+    <div class="field">
+        <label>Motivo / Observación</label>
+        <input type="text" pInputText [(ngModel)]="ajuste.motivo" placeholder="Ej: Compra a proveedor, Merma...">
+    </div>
+    <ng-template pTemplate="footer">
+        <button pButton label="Cancelar" icon="pi pi-times" class="p-button-text" (click)="displayModalAjuste=false"></button>
+        <button pButton label="Guardar Ajuste" icon="pi pi-check" class="p-button-primary" (click)="guardarAjuste()" [loading]="isSavingAjuste"></button>
+    </ng-template>
+</p-dialog>
+
+<!-- Editar Stock Mínimo -->
+<p-dialog [header]="'Stock Mínimo: ' + (productoSeleccionado?.descripcion || '')"
+          [(visible)]="displayModalMinimo" [modal]="true" [style]="{width:'380px'}" styleClass="p-fluid">
+    <div class="field mt-3">
+        <label>Stock Mínimo (Alerta de escasez)</label>
+        <p-inputNumber [(ngModel)]="minimoForm.stock_minimo" [minFractionDigits]="2" [min]="0"></p-inputNumber>
+        <small class="block text-500 mt-2">Cuando el stock baje de este número se mostrará en rojo.</small>
+    </div>
+    <ng-template pTemplate="footer">
+        <button pButton label="Cancelar" icon="pi pi-times" class="p-button-text p-button-secondary" (click)="displayModalMinimo=false"></button>
+        <button pButton label="Guardar" icon="pi pi-check" class="p-button-primary" (click)="guardarMinimo()" [loading]="isSavingMinimo"></button>
+    </ng-template>
+</p-dialog>
+
+<!-- Historial de Movimientos -->
+<p-dialog [header]="productoSeleccionado ? 'Historial: ' + productoSeleccionado.descripcion : 'Historial General de Inventario'"
+          [(visible)]="displayModalHistorial" [modal]="true" [style]="{width:'800px'}" styleClass="p-fluid">
+    <p-table [value]="historial" [loading]="loadingHistorial" [paginator]="true" [rows]="10" styleClass="p-datatable-sm p-datatable-striped">
+        <ng-template pTemplate="header">
+            <tr>
+                <th pSortableColumn="fecha_movimiento">Fecha <p-sortIcon field="fecha_movimiento"></p-sortIcon></th>
+                <th *ngIf="!productoSeleccionado">Producto</th>
+                <th>Tipo</th>
+                <th pSortableColumn="cantidad">Cantidad <p-sortIcon field="cantidad"></p-sortIcon></th>
+                <th>Motivo</th>
+                <th>Usuario</th>
+            </tr>
+        </ng-template>
+        <ng-template pTemplate="body" let-mov>
+            <tr>
+                <td>{{ mov.fecha_movimiento | date:'dd/MM/yyyy HH:mm' }}</td>
+                <td *ngIf="!productoSeleccionado">{{ mov.productos?.descripcion }}</td>
+                <td>
+                    <p-tag [value]="mov.tipo_movimiento"
+                           [severity]="mov.tipo_movimiento === 'ENTRADA' ? 'success' : (mov.tipo_movimiento === 'VENTA_AUTOMATICA' ? 'info' : 'warning')">
+                    </p-tag>
+                </td>
+                <td class="font-bold" [ngClass]="{'text-green-500': mov.tipo_movimiento === 'ENTRADA', 'text-red-500': mov.tipo_movimiento !== 'ENTRADA'}">
+                    {{ mov.tipo_movimiento === 'ENTRADA' ? '+' : '-' }}{{ mov.cantidad | number:'1.2-2' }}
+                </td>
+                <td>{{ mov.motivo }}</td>
+                <td class="text-sm text-500">{{ mov.usuarios?.nombre_completo || mov.usuarios?.correo }}</td>
+            </tr>
+        </ng-template>
+        <ng-template pTemplate="emptymessage">
+            <tr><td [attr.colspan]="productoSeleccionado ? 5 : 6" class="text-center py-4">No hay movimientos registrados.</td></tr>
+        </ng-template>
+    </p-table>
 </p-dialog>

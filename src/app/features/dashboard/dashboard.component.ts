@@ -16,7 +16,7 @@ import { AuthService } from '../../core/services/auth.service';
 export class DashboardComponent implements OnInit {
   supabase = inject(SupabaseService).client;
   auth = inject(AuthService);
-  
+
   isAdmin = false;
   totalClientes = 0;
   totalVentas = 0;
@@ -24,7 +24,7 @@ export class DashboardComponent implements OnInit {
   montoDeuda = 0;
   actividadReciente: any[] = [];
   deudasProximas: any[] = [];
-  
+
   // Datos para gráficos
   ventasChartData: any;
   ventasChartOptions: any;
@@ -58,7 +58,7 @@ export class DashboardComponent implements OnInit {
       .select('total')
       .eq('tipo_documento', 'ORDEN_VENTA')
       .neq('estado', 'ANULADA');
-      
+
     if (data) {
       this.totalVentas = data.length;
       this.montoVentas = data.reduce((acc, curr) => acc + Number(curr.total || 0), 0);
@@ -77,23 +77,17 @@ export class DashboardComponent implements OnInit {
       .neq('estado', 'ANULADA')
       .in('estado_pago', ['PENDIENTE', 'PARCIAL'])
       .order('fecha_vencimiento', { ascending: true });
-      
+
     if (data) {
       let totalDeudaAcc = 0;
       const deudasDetalladas = data.map((p: any) => {
         const totalPagado = p.pagos ? p.pagos.reduce((acc: number, pago: any) => acc + Number(pago.monto_pagado || 0), 0) : 0;
         const saldo_pendiente = Number(p.total || 0) - totalPagado;
-        if (saldo_pendiente > 0) {
-            totalDeudaAcc += saldo_pendiente;
-        }
-        return {
-          ...p,
-          saldo_pendiente
-        };
+        if (saldo_pendiente > 0) totalDeudaAcc += saldo_pendiente;
+        return { ...p, saldo_pendiente };
       }).filter((d: any) => d.saldo_pendiente > 0);
 
       this.montoDeuda = totalDeudaAcc;
-      // Solo tomar los 5 mas proximos
       this.deudasProximas = deudasDetalladas.slice(0, 5);
     }
   }
@@ -104,10 +98,8 @@ export class DashboardComponent implements OnInit {
       .select('folio, estado, total, created_at, clientes(nombre_razon_social)')
       .order('created_at', { ascending: false })
       .limit(5);
-    
-    if (data) {
-      this.actividadReciente = data;
-    }
+
+    if (data) this.actividadReciente = data;
   }
 
   initChartOptions() {
@@ -117,30 +109,30 @@ export class DashboardComponent implements OnInit {
     const surfaceBorder = documentStyle.getPropertyValue('--surface-border');
 
     this.ventasChartOptions = {
-        maintainAspectRatio: false,
-        aspectRatio: 0.6,
-        plugins: {
-            legend: { labels: { color: textColor } }
-        },
-        scales: {
-            x: { ticks: { color: textColorSecondary }, grid: { color: surfaceBorder, drawBorder: false } },
-            y: { ticks: { color: textColorSecondary }, grid: { color: surfaceBorder, drawBorder: false } }
-        }
+      maintainAspectRatio: false,
+      aspectRatio: 0.6,
+      plugins: {
+        legend: { labels: { color: textColor } }
+      },
+      scales: {
+        x: { ticks: { color: textColorSecondary }, grid: { color: surfaceBorder, drawBorder: false } },
+        y: { ticks: { color: textColorSecondary }, grid: { color: surfaceBorder, drawBorder: false } }
+      }
     };
 
     this.despachosChartOptions = {
-        plugins: {
-            legend: { labels: { usePointStyle: true, color: textColor } }
-        }
+      plugins: {
+        legend: { labels: { usePointStyle: true, color: textColor } }
+      }
     };
   }
 
   async loadGraficosData() {
-    // Grafico 1: Ventas ultimos 7 dias
+    // Gráfico 1: Ventas últimos 7 días
     const past7Days = new Date();
-    past7Days.setDate(past7Days.getDate() - 6); // 7 days including today
-    past7Days.setHours(0,0,0,0);
-    
+    past7Days.setDate(past7Days.getDate() - 6);
+    past7Days.setHours(0, 0, 0, 0);
+
     const { data: ventasRecientes } = await this.supabase
       .from('pedidos')
       .select('total, created_at')
@@ -149,79 +141,78 @@ export class DashboardComponent implements OnInit {
       .gte('created_at', past7Days.toISOString())
       .order('created_at', { ascending: true });
 
-    const labels7Days = [];
+    const labels7Days: string[] = [];
     const ventasPorDia = Array(7).fill(0);
-    
+
     for (let i = 0; i < 7; i++) {
-        const d = new Date(past7Days);
-        d.setDate(d.getDate() + i);
-        labels7Days.push(d.toLocaleDateString('es-PE', { weekday: 'short' }));
+      const d = new Date(past7Days);
+      d.setDate(d.getDate() + i);
+      labels7Days.push(d.toLocaleDateString('es-PE', { weekday: 'short', day: 'numeric' }));
     }
 
     if (ventasRecientes) {
-        ventasRecientes.forEach((v: any) => {
-            const fechaVenta = new Date(v.created_at);
-            // Ajuste GMT-5
-            fechaVenta.setHours(fechaVenta.getHours() - 5);
-            const today = new Date();
-            const diffTime = today.getTime() - fechaVenta.getTime();
-            const diffDays = Math.floor(diffTime / (1000 * 3600 * 24));
-            // Invertir índice (hoy = index 6)
-            const arrayIndex = 6 - diffDays;
-            if (arrayIndex >= 0 && arrayIndex < 7) {
-                ventasPorDia[arrayIndex] += Number(v.total || 0);
-            }
-        });
+      ventasRecientes.forEach((v: any) => {
+        const fechaVenta = new Date(v.created_at);
+        fechaVenta.setHours(fechaVenta.getHours() - 5); // UTC-5 Perú
+        const today = new Date();
+        const diffTime = today.getTime() - fechaVenta.getTime();
+        const diffDays = Math.floor(diffTime / (1000 * 3600 * 24));
+        const arrayIndex = 6 - diffDays;
+        if (arrayIndex >= 0 && arrayIndex < 7) {
+          ventasPorDia[arrayIndex] += Number(v.total || 0);
+        }
+      });
     }
 
     const documentStyle = getComputedStyle(document.documentElement);
     this.ventasChartData = {
-        labels: labels7Days,
-        datasets: [
-            {
-                label: 'Ventas Diarias (S/)',
-                data: ventasPorDia,
-                fill: false,
-                borderColor: documentStyle.getPropertyValue('--blue-500'),
-                tension: 0.4
-            }
-        ]
+      labels: labels7Days,
+      datasets: [
+        {
+          label: 'Ventas Diarias (S/)',
+          data: ventasPorDia,
+          fill: true,
+          borderColor: documentStyle.getPropertyValue('--blue-500'),
+          backgroundColor: 'rgba(59,130,246,0.08)',
+          tension: 0.4
+        }
+      ]
     };
 
-    // Gráfico 2: Viajes por Estado
+    // Gráfico 2: Viajes por Estado — estados reales: ASIGNADO, EN RUTA, ENTREGADO
     const { data: despachos } = await this.supabase
       .from('despachos_viajes_cabecera')
       .select('estado_viaje');
-      
-    let pendientes = 0;
-    let en_ruta = 0;
-    let completados = 0;
+
+    let asignados = 0;
+    let enRuta = 0;
+    let entregados = 0;
 
     if (despachos) {
-        despachos.forEach((d: any) => {
-            if (d.estado_viaje === 'PENDIENTE' || d.estado_viaje === 'ASIGNADO') pendientes++;
-            else if (d.estado_viaje === 'EN RUTA') en_ruta++;
-            else if (d.estado_viaje === 'COMPLETADO') completados++;
-        });
+      despachos.forEach((d: any) => {
+        if (d.estado_viaje === 'ASIGNADO') asignados++;
+        else if (d.estado_viaje === 'EN RUTA') enRuta++;
+        else if (d.estado_viaje === 'ENTREGADO') entregados++;
+      });
     }
 
     this.despachosChartData = {
-        labels: ['Pendientes', 'En Ruta', 'Completados'],
-        datasets: [
-            {
-                data: [pendientes, en_ruta, completados],
-                backgroundColor: [
-                    documentStyle.getPropertyValue('--orange-400'), 
-                    documentStyle.getPropertyValue('--blue-400'), 
-                    documentStyle.getPropertyValue('--green-400')
-                ],
-                hoverBackgroundColor: [
-                    documentStyle.getPropertyValue('--orange-500'), 
-                    documentStyle.getPropertyValue('--blue-500'), 
-                    documentStyle.getPropertyValue('--green-500')
-                ]
-            }
-        ]
+      labels: ['Asignados', 'En Ruta', 'Entregados'],
+      datasets: [
+        {
+          data: [asignados, enRuta, entregados],
+          backgroundColor: [
+            documentStyle.getPropertyValue('--orange-400'),
+            documentStyle.getPropertyValue('--blue-400'),
+            documentStyle.getPropertyValue('--green-400')
+          ],
+          hoverBackgroundColor: [
+            documentStyle.getPropertyValue('--orange-500'),
+            documentStyle.getPropertyValue('--blue-500'),
+            documentStyle.getPropertyValue('--green-500')
+          ]
+        }
+      ]
     };
   }
 }

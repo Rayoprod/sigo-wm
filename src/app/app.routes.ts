@@ -63,16 +63,11 @@ export const routes: Routes = [
         data: { roles: ['admin', 'vendedor'] },
         loadComponent: () => import('./features/clientes/clientes.component').then(m => m.ClientesComponent)
       },
-      {
-        path: 'inventario',
-        canActivate: [roleGuard],
-        data: { roles: ['admin', 'vendedor', 'despachador'] },
-        loadComponent: () => import('./features/inventario/inventario.component').then(m => m.InventarioComponent)
-      },
+
       {
         path: 'catalogo',
         canActivate: [roleGuard],
-        data: { roles: ['admin', 'vendedor'] },
+        data: { roles: ['admin', 'vendedor', 'despachador'] },
         loadComponent: () => import('./features/catalogo/catalogo.component').then(m => m.CatalogoComponent)
       },
       { path: '', redirectTo: 'dashboard', pathMatch: 'full' }

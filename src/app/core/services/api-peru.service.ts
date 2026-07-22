@@ -5,7 +5,6 @@ import { environment } from '../../../environments/environment';
   providedIn: 'root'
 })
 export class ApiPeruService {
-  private baseUrl = '/api-peru/v1'; // Uses the proxy setup in development
   private token = environment.apiPeruToken;
 
   async buscarDocumento(documento: string) {

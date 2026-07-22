@@ -6,12 +6,14 @@ import { InventarioService } from '../../core/services/inventario.service';
 
 import { TableModule } from 'primeng/table';
 import { ButtonModule } from 'primeng/button';
-import { DialogModule } from 'primeng/dialog';
-import { InputTextModule } from 'primeng/inputtext';
-import { InputNumberModule } from 'primeng/inputnumber';
-import { DropdownModule } from 'primeng/dropdown';
-import { CardModule } from 'primeng/card';
 import { TagModule } from 'primeng/tag';
+import { DialogModule } from 'primeng/dialog';
+import { DropdownModule } from 'primeng/dropdown';
+import { InputNumberModule } from 'primeng/inputnumber';
+import { InputTextModule } from 'primeng/inputtext';
+import { TooltipModule } from 'primeng/tooltip';
+import { CardModule } from 'primeng/card';
+import { TabViewModule } from 'primeng/tabview';
 
 @Component({
   selector: 'app-catalogo',
@@ -21,12 +23,14 @@ import { TagModule } from 'primeng/tag';
     FormsModule,
     TableModule,
     ButtonModule,
+    TagModule,
     DialogModule,
-    InputTextModule,
-    InputNumberModule,
     DropdownModule,
+    InputNumberModule,
+    InputTextModule,
+    TooltipModule,
     CardModule,
-    TagModule
+    TabViewModule
   ],
   templateUrl: './catalogo.component.html',
   styleUrl: './catalogo.component.scss'
@@ -38,10 +42,10 @@ export class CatalogoComponent implements OnInit {
   productos: any[] = [];
   loading = false;
 
-  displayModal = false;
-  isSaving = false;
-  isGeneratingSku = false;
-  
+  // ── CATÁLOGO ──────────────────────────────────────────────────
+  displayModalProducto = false;
+  isSavingProducto = false;
+
   unidadesMedida = [
     { label: 'M3 (Metros Cúbicos)', value: 'M3' },
     { label: 'TN (Toneladas)', value: 'TN' },
@@ -58,7 +62,7 @@ export class CatalogoComponent implements OnInit {
     { label: 'Empaquetado (Exacto)', value: 'EMPAQUETADO_EXACTO' }
   ];
 
-  nuevoProducto: any = {
+  productoForm: any = {
     id: null,
     codigo_sku: '',
     descripcion: '',
@@ -69,106 +73,153 @@ export class CatalogoComponent implements OnInit {
     stock_minimo: 0
   };
 
+  // ── STOCK / INVENTARIO ────────────────────────────────────────
+  displayModalAjuste = false;
+  isSavingAjuste = false;
+  displayModalMinimo = false;
+  isSavingMinimo = false;
+  displayModalHistorial = false;
+  loadingHistorial = false;
+
+  productoSeleccionado: any = null;
+  historial: any[] = [];
+  minimoForm = { id: '', stock_minimo: 0 };
+
+  ajuste = { tipo: 'ENTRADA', cantidad: 0, motivo: '' };
+  tiposMovimiento = [
+    { label: 'Entrada (Suma)', value: 'ENTRADA' },
+    { label: 'Salida / Merma (Resta)', value: 'SALIDA_MANUAL' }
+  ];
+
+  // ─────────────────────────────────────────────────────────────
+
   async ngOnInit() {
-    await this.loadProductos();
+    await this.cargarProductos();
   }
 
-  async loadProductos() {
+  async cargarProductos() {
     this.loading = true;
     const { data, error } = await this.supabase
       .from('productos')
       .select('*')
       .order('descripcion', { ascending: true });
-    
-    if (!error) {
-      this.productos = data || [];
-    }
+    if (!error) this.productos = data || [];
     this.loading = false;
   }
 
-  async abrirNuevo() {
-    this.nuevoProducto = {
-      id: null,
-      codigo_sku: 'Generando...',
-      descripcion: '',
-      unidad_medida: 'UND',
-      precio_unitario_base: null,
-      tipo_inventario: 'GRANEL_ESTIMADO',
-      stock_actual: null,
-      stock_minimo: 0
+  // ── CATÁLOGO: acciones ────────────────────────────────────────
+
+  abrirNuevo() {
+    this.productoForm = {
+      id: null, codigo_sku: '', descripcion: '',
+      unidad_medida: 'UND', precio_unitario_base: null,
+      tipo_inventario: 'GRANEL_ESTIMADO', stock_actual: null, stock_minimo: 0
     };
-    this.displayModal = true;
+    this.displayModalProducto = true;
   }
 
   abrirEditar(producto: any) {
-    this.nuevoProducto = { ...producto };
-    this.displayModal = true;
+    this.productoForm = { ...producto };
+    this.displayModalProducto = true;
   }
 
   async eliminarProducto(producto: any) {
-    if (confirm(`¿Estás seguro de eliminar el producto ${producto.descripcion}?`)) {
-      try {
-        const { error } = await this.supabase
-          .from('productos')
-          .delete()
-          .eq('id', producto.id);
-        
-        if (error) throw error;
-        await this.loadProductos();
-      } catch (error: any) {
-        alert('Error al eliminar: No se puede eliminar un producto si ya tiene movimientos o ventas.');
-      }
+    if (!confirm(`¿Eliminar el producto "${producto.descripcion}"?`)) return;
+    try {
+      const { error } = await this.supabase.from('productos').delete().eq('id', producto.id);
+      if (error) throw error;
+      await this.cargarProductos();
+    } catch {
+      alert('No se puede eliminar: el producto ya tiene ventas o movimientos de inventario asociados.');
     }
   }
 
-
-
   async guardarProducto() {
-    if (!this.nuevoProducto.descripcion) {
-      alert('La descripción es obligatoria');
-      return;
-    }
-
-    this.isSaving = true;
+    if (!this.productoForm.descripcion) { alert('La descripción es obligatoria.'); return; }
+    this.isSavingProducto = true;
     try {
-      if (this.nuevoProducto.id) {
-        // EDIT
-        const { id, created_at, ...updateData } = this.nuevoProducto;
-        const { error } = await this.supabase
-          .from('productos')
-          .update(updateData)
-          .eq('id', id);
+      if (this.productoForm.id) {
+        const { id, created_at, ...updateData } = this.productoForm;
+        const { error } = await this.supabase.from('productos').update(updateData).eq('id', id);
         if (error) throw error;
       } else {
-        // INSERT
-        const { id, stock_actual, codigo_sku, ...insertData } = this.nuevoProducto;
-        const dataToInsert = { ...insertData, stock_actual: 0 }; // Initialize at 0 to use history
-        
-        const { data: insertedProd, error } = await this.supabase
-          .from('productos')
-          .insert(dataToInsert)
-          .select('id')
-          .single();
-          
+        const { id, stock_actual, codigo_sku, ...insertData } = this.productoForm;
+        const { data: insertado, error } = await this.supabase
+          .from('productos').insert({ ...insertData, stock_actual: 0 }).select('id').single();
         if (error) throw error;
-        
-        // Log history if initial stock was provided
         if (stock_actual && stock_actual > 0) {
-            await this.inventarioService.registrarMovimientoManual(
-                insertedProd.id, 
-                'ENTRADA', 
-                stock_actual, 
-                'Inventario Inicial'
-            );
+          await this.inventarioService.registrarMovimientoManual(insertado.id, 'ENTRADA', stock_actual, 'Inventario Inicial');
         }
       }
-      
-      this.displayModal = false;
-      await this.loadProductos();
-    } catch (error: any) {
-      alert('Error al guardar: ' + error.message);
+      this.displayModalProducto = false;
+      await this.cargarProductos();
+    } catch (e: any) {
+      alert('Error al guardar: ' + e.message);
     } finally {
-      this.isSaving = false;
+      this.isSavingProducto = false;
     }
+  }
+
+  // ── STOCK: acciones ────────────────────────────────────────────
+
+  abrirAjuste(producto: any) {
+    this.productoSeleccionado = producto;
+    this.ajuste = { tipo: 'ENTRADA', cantidad: 0, motivo: '' };
+    this.displayModalAjuste = true;
+  }
+
+  async guardarAjuste() {
+    if (this.ajuste.cantidad <= 0) { alert('La cantidad debe ser mayor a cero.'); return; }
+    this.isSavingAjuste = true;
+    try {
+      await this.inventarioService.registrarMovimientoManual(
+        this.productoSeleccionado.id, this.ajuste.tipo,
+        this.ajuste.cantidad, this.ajuste.motivo || 'Ajuste manual'
+      );
+      this.displayModalAjuste = false;
+      await this.cargarProductos();
+    } catch (e: any) {
+      alert('Error al guardar: ' + e.message);
+    } finally {
+      this.isSavingAjuste = false;
+    }
+  }
+
+  abrirEditarMinimo(producto: any) {
+    this.productoSeleccionado = producto;
+    this.minimoForm = { id: producto.id, stock_minimo: producto.stock_minimo || 0 };
+    this.displayModalMinimo = true;
+  }
+
+  async guardarMinimo() {
+    this.isSavingMinimo = true;
+    try {
+      const { error } = await this.supabase.from('productos')
+        .update({ stock_minimo: this.minimoForm.stock_minimo }).eq('id', this.minimoForm.id);
+      if (error) throw error;
+      this.displayModalMinimo = false;
+      await this.cargarProductos();
+    } catch (e: any) {
+      alert('Error: ' + e.message);
+    } finally {
+      this.isSavingMinimo = false;
+    }
+  }
+
+  async abrirHistorial(producto?: any) {
+    this.productoSeleccionado = producto || null;
+    this.displayModalHistorial = true;
+    this.loadingHistorial = true;
+    this.historial = [];
+
+    let query = this.supabase.from('movimientos_inventario')
+      .select('*, productos(descripcion), usuarios(correo, nombre_completo)')
+      .order('fecha_movimiento', { ascending: false });
+
+    if (producto) query = query.eq('producto_id', producto.id);
+
+    const { data, error } = await query.limit(50);
+    if (!error) this.historial = data || [];
+    this.loadingHistorial = false;
   }
 }

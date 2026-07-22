@@ -5,7 +5,7 @@ import { Router, ActivatedRoute, RouterModule } from '@angular/router';
 import { SupabaseService } from '../../../core/services/supabase.service';
 import { AuthService } from '../../../core/services/auth.service';
 import { ApiPeruService } from '../../../core/services/api-peru.service';
-import { TablaCarritoComponent, CarritoItem } from '../../../shared/components/tabla-carrito/tabla-carrito.component';
+import { TablaCarritoComponent, CarritoItem } from './tabla-carrito/tabla-carrito.component';
 import { InventarioService } from '../../../core/services/inventario.service';
 
 // PrimeNG

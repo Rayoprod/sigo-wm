@@ -50,7 +50,7 @@ export class ComercialListComponent implements OnInit {
 
   pedidos: any[] = [];
   loading = true;
-  isGeneratingPdf = false;
+  generatingPdfId: string | null = null;
 
   estadosCotizacion = [
     { label: 'Pendiente', value: 'PENDIENTE' },
@@ -177,8 +177,8 @@ export class ComercialListComponent implements OnInit {
   }
 
   async generarPDF(pedido: any) {
-    if (this.isGeneratingPdf) return;
-    this.isGeneratingPdf = true;
+    if (this.generatingPdfId === pedido.id) return;
+    this.generatingPdfId = pedido.id;
     
     // Mostramos un alert simple temporalmente para asegurar que el botón funciona
     // ya que el usuario reporta que no hace "absolutamente nada"
@@ -190,7 +190,7 @@ export class ComercialListComponent implements OnInit {
       console.error('Error capturado en el componente:', e);
       alert('Error al generar PDF: ' + (e.message || JSON.stringify(e)));
     } finally {
-      this.isGeneratingPdf = false;
+      this.generatingPdfId = null;
     }
   }
 

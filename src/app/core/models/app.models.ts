@@ -1,20 +1,7 @@
-/* 
-  AUTO-GENERATED MODELS
+/*
+  MODELOS DE DATOS
   Basado en el esquema de Supabase.
 */
-
-export interface AppLogs {
-  id: string;
-  nivel: string;
-  mensaje: string;
-  detalles?: string;
-  usuario_id: string;
-  fecha_dispositivo?: string;
-  created_at?: string;
-  device_info?: string;
-  app_version?: string;
-  [key: string]: any; // Allow Supabase relation joins
-}
 
 export interface Clientes {
   id: string;
@@ -24,7 +11,7 @@ export interface Clientes {
   telefono?: string;
   correo?: string;
   created_at?: string;
-  [key: string]: any; // Allow Supabase relation joins
+  [key: string]: any;
 }
 
 export interface ConfiguracionEmpresa {
@@ -39,7 +26,7 @@ export interface ConfiguracionEmpresa {
   telefonos?: string;
   correo?: string;
   color_hex?: string;
-  [key: string]: any; // Allow Supabase relation joins
+  [key: string]: any;
 }
 
 export interface DespachosViajesCabecera {
@@ -57,7 +44,7 @@ export interface DespachosViajesCabecera {
   estado_viaje?: string;
   fotos_urls_recepcion_chofer?: any;
   fecha_recepcion_chofer?: string;
-  [key: string]: any; // Allow Supabase relation joins
+  [key: string]: any;
 }
 
 export interface DespachosViajesDetalle {
@@ -65,16 +52,7 @@ export interface DespachosViajesDetalle {
   viaje_id: string;
   pedido_item_id: string;
   cantidad_viaje?: number;
-  [key: string]: any; // Allow Supabase relation joins
-}
-
-export interface IaChatHistorial {
-  id: string;
-  usuario_id: string;
-  role: string;
-  content: string;
-  created_at?: string;
-  [key: string]: any; // Allow Supabase relation joins
+  [key: string]: any;
 }
 
 export interface MovimientosInventario {
@@ -85,7 +63,7 @@ export interface MovimientosInventario {
   motivo: string;
   usuario_id: string;
   fecha_movimiento?: string;
-  [key: string]: any; // Allow Supabase relation joins
+  [key: string]: any;
 }
 
 export interface Pagos {
@@ -96,7 +74,7 @@ export interface Pagos {
   referencia_operacion?: string;
   fecha_pago?: string;
   usuario_id: string;
-  [key: string]: any; // Allow Supabase relation joins
+  [key: string]: any;
 }
 
 export interface Pedidos {
@@ -123,7 +101,7 @@ export interface Pedidos {
   chofer_id: string;
   tracking_token?: string;
   tipo_entrega?: string;
-  [key: string]: any; // Allow Supabase relation joins
+  [key: string]: any;
 }
 
 export interface PedidosItems {
@@ -136,7 +114,7 @@ export interface PedidosItems {
   precio_unitario?: number;
   subtotal?: number;
   cantidad_despachada?: number;
-  [key: string]: any; // Allow Supabase relation joins
+  [key: string]: any;
 }
 
 export interface Productos {
@@ -149,7 +127,7 @@ export interface Productos {
   stock_actual?: number;
   stock_minimo?: number;
   created_at?: string;
-  [key: string]: any; // Allow Supabase relation joins
+  [key: string]: any;
 }
 
 export interface RutasGps {
@@ -162,7 +140,7 @@ export interface RutasGps {
   created_at?: string;
   numero_viaje_secuencial?: number;
   sesion_id: string;
-  [key: string]: any; // Allow Supabase relation joins
+  [key: string]: any;
 }
 
 export interface SesionesGps {
@@ -174,7 +152,7 @@ export interface SesionesGps {
   viaje_id: string;
   estado?: string;
   created_at?: string;
-  [key: string]: any; // Allow Supabase relation joins
+  [key: string]: any;
 }
 
 export interface Usuarios {
@@ -184,13 +162,13 @@ export interface Usuarios {
   activo?: boolean;
   created_at?: string;
   nombre_completo?: string;
-  [key: string]: any; // Allow Supabase relation joins
+  [key: string]: any;
 }
 
 export interface Vehiculos {
   placa: string;
   created_at?: string;
-  [key: string]: any; // Allow Supabase relation joins
+  [key: string]: any;
 }
 
 export interface ViajesEntregas {
@@ -204,6 +182,5 @@ export interface ViajesEntregas {
   created_at?: string;
   updated_at?: string;
   fotos_urls_entrega?: any;
-  [key: string]: any; // Allow Supabase relation joins
+  [key: string]: any;
 }
-
