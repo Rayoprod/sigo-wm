@@ -93,7 +93,23 @@ export class LogisticaComponent implements OnInit, OnDestroy {
   historialTracking: any[] = []; // Línea de tiempo unificada
   map: L.Map | null = null;
   polyline: L.Polyline | null = null;
-  selectedAuditoriaItem: any = null;
+
+  /**
+   * Estado de foco del mapa. Un único objeto que controla qué se muestra.
+   * null  → vista general: todos los viajes
+   * { type: 'ruta', viajeItem }  → solo la ruta GPS del viaje seleccionado
+   * { type: 'punto', lat, lng, label } → solo el punto del despachador
+   */
+  mapFocus: null | { type: 'ruta'; viajeItem: any } | { type: 'punto'; lat: number; lng: number; label: string } = null;
+
+  // Grupos de capas para actualizaciones diferenciales sin parpadeo
+  layerGroupTramos: L.LayerGroup | null = null;
+  layerGroupMarcadores: L.LayerGroup | null = null;
+  layerGroupVivo: L.LayerGroup | null = null;
+  liveMarker: L.Marker | null = null;
+
+  // ¿Ya se hizo el fitBounds inicial? Evita resetear el zoom en polling
+  mapInitialBoundsDone = false;
 
   // Track showing GPS list independently of polling overwrites
   mostrarGpsMap: { [numeroViaje: number]: boolean } = {};
@@ -626,7 +642,7 @@ export class LogisticaComponent implements OnInit, OnDestroy {
     this.entregasRuta = [];
     this.viajesAuditoria = [];
     this.expandedViajeMap = {};
-    this.selectedAuditoriaItem = null;
+    this.mapFocus = null;
 
     // Limpiar el mapa actual si existe
     if (this.map) {
@@ -828,7 +844,9 @@ export class LogisticaComponent implements OnInit, OnDestroy {
 
       // Renderizar el mapa de Leaflet
       setTimeout(() => {
-        this.initMapUnified();
+        this.initBaseMap();              // Inicializa tile layer + grupos si es la primera vez
+        const esPrimeraCarga = !this.mapInitialBoundsDone;
+        this.renderMap(esPrimeraCarga); // fitBounds solo en la primera carga
       }, 300);
 
     } catch (e) {
@@ -838,138 +856,232 @@ export class LogisticaComponent implements OnInit, OnDestroy {
   }
 
   // OSRM eliminado para graficar los puntos GPS reales (camino de puntos) sin "vueltones"
-  async initMapUnified() {
+  /** Inicializa el mapa base (tile layer + layer groups) una sola vez. */
+  initBaseMap() {
     const container = document.getElementById('ruta-mapa-unificado');
     if (!container) return;
 
-    if (!this.map) {
-      this.map = L.map(container);
-      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '© OpenStreetMap contributors'
-      }).addTo(this.map);
-    } else {
-      // Limpiar capas existentes (marcadores y polilíneas) excepto el mapa base
-      this.map.eachLayer((layer: any) => {
-        if (layer instanceof L.TileLayer) return;
-        this.map!.removeLayer(layer);
-      });
+    if (this.map) {
+      // Ya existe: solo refrescar tamaño
+      setTimeout(() => this.map?.invalidateSize(), 100);
+      return;
     }
 
-    setTimeout(() => {
-        if(this.map) this.map.invalidateSize();
-    }, 100);
+    const isDark = document.body.classList.contains('dark-mode') ||
+                   document.documentElement.getAttribute('data-theme') === 'dark' ||
+                   document.body.getAttribute('data-theme') === 'dark';
+
+    this.map = L.map(container, { zoomControl: true });
+
+    L.tileLayer(
+      isDark
+        ? 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'
+        : 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',
+      { attribution: '&copy; OpenStreetMap &copy; CARTO', subdomains: 'abcd', maxZoom: 20 }
+    ).addTo(this.map);
+
+    // Grupos de capas reutilizables
+    this.layerGroupTramos     = L.layerGroup().addTo(this.map);
+    this.layerGroupMarcadores = L.layerGroup().addTo(this.map);
+    this.layerGroupVivo       = L.layerGroup().addTo(this.map);
+
+    setTimeout(() => this.map?.invalidateSize(), 100);
+  }
+
+
+  // ─── Redibuja el mapa según el estado actual de mapFocus ─────────────────────
+  // Este método es la ÚNICA puerta de entrada para cambiar lo que se muestra.
+  // El polling lo llama sin fitBounds; los botones lo llaman con fitBounds=true.
+  renderMap(applyFitBounds: boolean = false) {
+    if (!this.map) return;
+
+    const TRAMO_COLORS = ['#3b82f6', '#8b5cf6', '#10b981', '#f59e0b', '#06b6d4', '#ec4899', '#f97316', '#14b8a6'];
+
+    // Limpiar grupos de datos (nunca se toca el tile layer ni el grupo de vivo)
+    this.layerGroupTramos?.clearLayers();
+    this.layerGroupMarcadores?.clearLayers();
 
     const bounds = L.latLngBounds([]);
     let pointsAdded = 0;
 
-    // Iconos
-    const iconStart = L.icon({
-      iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-orange.png',
-      shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
-      iconSize: [25, 41], iconAnchor: [12, 41], popupAnchor: [1, -34], shadowSize: [41, 41]
-    });
-    const iconEnd = L.icon({
-      iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-green.png',
-      shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
-      iconSize: [25, 41], iconAnchor: [12, 41], popupAnchor: [1, -34], shadowSize: [41, 41]
-    });
-    const iconPoint = L.icon({
-      iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-blue.png',
-      shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
-      iconSize: [12, 20], iconAnchor: [6, 20]
-    });
+    // ─── Helper: marcador circular numerado ──────────────────────────────────
+    const circulo = (latlng: L.LatLngTuple, num: number, bg: string, size = 28) => {
+      const icon = L.divIcon({
+        className: '',
+        html: `<div style="background:${bg};color:#fff;width:${size}px;height:${size}px;
+               display:flex;align-items:center;justify-content:center;border-radius:50%;
+               border:2.5px solid rgba(255,255,255,0.9);font-weight:700;
+               font-size:${Math.round(size * 0.42)}px;
+               box-shadow:0 2px 8px rgba(0,0,0,0.4);line-height:1;">${num}</div>`,
+        iconSize: [size, size],
+        iconAnchor: [size / 2, size / 2],
+        popupAnchor: [0, -(size / 2) - 4]
+      });
+      return L.marker(latlng, { icon });
+    };
 
-    const viajesADibujar = this.selectedAuditoriaItem ? [this.selectedAuditoriaItem] : this.viajesAuditoria;
+    // ── CASO 1: Foco en un PUNTO del despachador ────────────────────────────
+    if (this.mapFocus?.type === 'punto') {
+      const { lat, lng, label } = this.mapFocus;
+      const latlng: L.LatLngTuple = [lat, lng];
 
-    for (const aud of viajesADibujar) {
-      const pts = aud.mapaPuntos as L.LatLngTuple[];
-      if (pts && pts.length > 0) {
-        // Dibujar línea punteada directa ("camino de hormigas") usando los puntos crudos
-        L.polyline(pts, {
-          color: aud.mapaColor,
-          weight: 4,
-          opacity: 0.9,
-          dashArray: '10, 14', // Línea punteada según especificación
-        }).addTo(this.map);
+      // Solo un marcador morado grande con número del viaje no aplica,
+      // aquí es el punto exacto del despachador ya que no hay número de viaje en este contexto
+      const iconPunto = L.divIcon({
+        className: '',
+        html: `<div style="background:#7c3aed;color:#fff;width:36px;height:36px;
+               display:flex;align-items:center;justify-content:center;border-radius:50%;
+               border:3px solid rgba(255,255,255,0.95);
+               box-shadow:0 3px 12px rgba(124,58,237,0.55);font-size:1.2rem;">📍</div>`,
+        iconSize: [36, 36],
+        iconAnchor: [18, 18],
+        popupAnchor: [0, -20]
+      });
 
-        // Añadir marcadores
-        pts.forEach((p, index) => {
-          if (index === 0 && aud.despacho) {
-            L.marker(p, { icon: iconStart }).addTo(this.map!);
-          } else if (index === pts.length - 1 && aud.chofer) {
-            L.marker(p, { icon: iconEnd }).addTo(this.map!);
-          } else {
-            // Puntos intermedios pasivos del chofer
-            L.circleMarker(p, { radius: 3, color: aud.mapaColor, fillOpacity: 0.8 }).addTo(this.map!);
-          }
-          bounds.extend(p);
+      L.marker(latlng, { icon: iconPunto })
+        .bindPopup(`<b>🟣 ${label}</b>`, { autoClose: false })
+        .openPopup()
+        .addTo(this.layerGroupMarcadores!);
+
+      bounds.extend(latlng);
+      pointsAdded++;
+
+    // ── CASO 2: Foco en la RUTA de un viaje específico ─────────────────────
+    } else if (this.mapFocus?.type === 'ruta') {
+      const aud = this.mapFocus.viajeItem;
+      const numViaje = aud.numero_viaje_secuencial;
+      const color = TRAMO_COLORS[(numViaje - 1) % TRAMO_COLORS.length];
+
+      const gps: L.LatLngTuple[] = (aud.gpsPuntos || []).map((p: any) => [p.latitud, p.longitud] as L.LatLngTuple);
+
+      if (gps.length >= 2) {
+        L.polyline(gps, { color, weight: 4, opacity: 0.95 }).addTo(this.layerGroupTramos!);
+        gps.forEach(p => { bounds.extend(p); pointsAdded++; });
+      }
+
+      // Inicio verde
+      if (gps.length > 0) {
+        circulo(gps[0], numViaje, '#16a34a', 30)
+          .bindPopup(`<b>🟢 Inicio Viaje #${numViaje}</b>`)
+          .addTo(this.layerGroupMarcadores!);
+        bounds.extend(gps[0]);
+        pointsAdded++;
+      }
+
+      // Fin rojo (si tiene entrega)
+      if (aud.chofer?.latitud && aud.chofer?.longitud) {
+        const fin: L.LatLngTuple = [aud.chofer.latitud, aud.chofer.longitud];
+        circulo(fin, numViaje, '#dc2626', 30)
+          .bindPopup(`<b>🔴 Fin Viaje #${numViaje}</b><br>${aud.chofer.chofer?.nombre_completo || 'Chofer'}`)
+          .addTo(this.layerGroupMarcadores!);
+        bounds.extend(fin);
+        pointsAdded++;
+      }
+
+    // ── CASO 3: Vista general (todos los viajes) ────────────────────────────
+    } else {
+      const viajes = [...this.viajesAuditoria].sort((a, b) => a.numero_viaje_secuencial - b.numero_viaje_secuencial);
+
+      for (let idx = 0; idx < viajes.length; idx++) {
+        const aud = viajes[idx];
+        const color = TRAMO_COLORS[idx % TRAMO_COLORS.length];
+        const num = aud.numero_viaje_secuencial;
+
+        const gps: L.LatLngTuple[] = (aud.gpsPuntos || []).map((p: any) => [p.latitud, p.longitud] as L.LatLngTuple);
+
+        if (gps.length >= 2) {
+          L.polyline(gps, { color, weight: 4, opacity: 0.9 }).addTo(this.layerGroupTramos!);
+          gps.forEach(p => { bounds.extend(p); pointsAdded++; });
+        }
+
+        if (gps.length > 0) {
+          circulo(gps[0], num, '#16a34a', 28)
+            .bindPopup(`<b>🟢 Inicio Viaje #${num}</b>`)
+            .addTo(this.layerGroupMarcadores!);
+          bounds.extend(gps[0]);
           pointsAdded++;
-        });
+        }
+
+        if (aud.chofer?.latitud && aud.chofer?.longitud) {
+          const fin: L.LatLngTuple = [aud.chofer.latitud, aud.chofer.longitud];
+          circulo(fin, num, '#dc2626', 28)
+            .bindPopup(`<b>🔴 Fin Viaje #${num}</b>`)
+            .addTo(this.layerGroupMarcadores!);
+          bounds.extend(fin);
+          pointsAdded++;
+        }
+
+        if (aud.despacho?.latitud && aud.despacho?.longitud) {
+          const pd: L.LatLngTuple = [aud.despacho.latitud, aud.despacho.longitud];
+          circulo(pd, num, '#7c3aed', 24)
+            .bindPopup(`<b>🟣 Despacho #${num}</b><br>${aud.despacho.usuarios?.nombre_completo || 'Despachador'}`)
+            .addTo(this.layerGroupMarcadores!);
+          bounds.extend(pd);
+          pointsAdded++;
+        }
       }
     }
 
-    // Marcador de camión en vivo si hay un punto GPS reciente (< 2 minutos)
+    // ── Marcador vivo (independiente del foco, siempre visible) ───────────────
     if (this.puntosRuta.length > 0) {
       const sorted = [...this.puntosRuta].sort(
         (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
       );
-      
-      // Si estamos filtrando, usamos el último punto del viaje filtrado, si no, el último general
-      let ultimoPunto = sorted[0];
-      if (this.selectedAuditoriaItem && this.selectedAuditoriaItem.gpsPuntos && this.selectedAuditoriaItem.gpsPuntos.length > 0) {
-          const sortedViaje = [...this.selectedAuditoriaItem.gpsPuntos].sort(
-              (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
-          );
-          ultimoPunto = sortedViaje[0];
-      }
+      const ultimo = sorted[0];
+      const edadMs = Date.now() - new Date(ultimo.timestamp).getTime();
 
-      const esReciente = (Date.now() - new Date(ultimoPunto.timestamp).getTime()) < 120000;
-
-      if (esReciente && !this.selectedAuditoriaItem) { // Solo mostrar "en vivo" si vemos todo
+      if (edadMs < 180000) {
+        const lv: L.LatLngTuple = [ultimo.latitud, ultimo.longitud];
         const iconVivo = L.divIcon({
-          className: '',
-          html: `<div style="background-color: #3b82f6; color: white; width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; border-radius: 50%; border: 3px solid white; box-shadow: 0 0 15px rgba(59, 130, 246, 0.8);">
-                   <i class="pi pi-truck" style="font-size: 1.4rem;"></i>
-                 </div>`,
-          iconSize: [40, 40],
-          iconAnchor: [20, 20],
+          className: 'gps-live-icon-host',
+          html: `<div class="gps-live-dot"><span class="gps-live-pulse"></span></div>`,
+          iconSize: [28, 28], iconAnchor: [14, 14], popupAnchor: [0, -16]
         });
-        L.marker([ultimoPunto.latitud, ultimoPunto.longitud], { icon: iconVivo })
-          .addTo(this.map!)
-          .bindPopup('🚛 Chofer activo ahora', { autoClose: false })
-          .openPopup();
-      } else if (this.selectedAuditoriaItem && this.selectedAuditoriaItem.chofer == null) {
-        // Si filtramos un viaje y AUN NO ESTA ENTREGADO, pintamos el camión en la última posición conocida de ese viaje
-        const iconCamion = L.divIcon({
-          className: '',
-          html: `<div style="background-color: #f59e0b; color: white; width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; border-radius: 50%; border: 2px solid white; box-shadow: 0 0 10px rgba(245, 158, 11, 0.6);">
-                   <i class="pi pi-truck" style="font-size: 1.2rem;"></i>
-                 </div>`,
-          iconSize: [36, 36],
-          iconAnchor: [18, 18],
-        });
-        L.marker([ultimoPunto.latitud, ultimoPunto.longitud], { icon: iconCamion })
-          .addTo(this.map!)
-          .bindPopup('🚛 Última posición en este viaje');
+        if (this.liveMarker) {
+          this.liveMarker.setLatLng(lv);
+          if (!this.map!.hasLayer(this.liveMarker)) {
+            this.liveMarker.addTo(this.layerGroupVivo!);
+          }
+        } else {
+          this.liveMarker = L.marker(lv, { icon: iconVivo, zIndexOffset: 1000 })
+            .bindPopup('🔵 Chofer en ruta ahora mismo')
+            .addTo(this.layerGroupVivo!);
+        }
+      } else if (this.liveMarker) {
+        this.layerGroupVivo?.removeLayer(this.liveMarker);
+        this.liveMarker = null;
       }
     }
 
-    if (pointsAdded > 0) {
-      this.map.fitBounds(bounds, { padding: [40, 40] });
-    } else {
-      this.map.setView([-12.046374, -77.042793], 13); // Lima por defecto
+    // ── fitBounds: solo cuando se solicita explícitamente ────────────────────
+    if (applyFitBounds) {
+      if (pointsAdded > 0 && bounds.isValid()) {
+        this.map!.fitBounds(bounds, { padding: [50, 50], maxZoom: 17 });
+      } else if (!this.mapInitialBoundsDone) {
+        this.map!.setView([-12.046374, -77.042793], 13);
+      }
+      this.mapInitialBoundsDone = true;
     }
   }
 
+  // ─── Acciones de foco ─────────────────────────────────────────────────────
+
+  /** Botón "Ver ruta completa" de un viaje */
   enfocarEnViaje(viajeItem: any) {
-    if (this.selectedAuditoriaItem === viajeItem) {
-        this.selectedAuditoriaItem = null; // Toggle off
-    } else {
-        this.selectedAuditoriaItem = viajeItem; // Toggle on
-    }
-    
-    this.initMapUnified();
+    const esMismo = this.mapFocus?.type === 'ruta' && this.mapFocus.viajeItem === viajeItem;
+    this.mapFocus = esMismo ? null : { type: 'ruta', viajeItem };
+    this.renderMap(true); // fitBounds porque el usuario eligió un foco nuevo
   }
+
+  /** Botón "Ver ubicación exacta" del despachador */
+  enfocarEnPunto(lat: number, lng: number, label: string) {
+    const esMismo = this.mapFocus?.type === 'punto'
+      && this.mapFocus.lat === lat
+      && this.mapFocus.lng === lng;
+    this.mapFocus = esMismo ? null : { type: 'punto', lat, lng, label };
+    this.renderMap(true); // fitBounds porque el usuario eligió un foco nuevo
+  }
+
 
   initMap() {
     // Si no hay puntos, no se inicializa el mapa (se muestra el mensaje de vacío en HTML)
@@ -1127,6 +1239,10 @@ export class LogisticaComponent implements OnInit, OnDestroy {
     ];
   }
 
+  trackByEventType(index: number, event: any): string {
+    return event.type;
+  }
+
   abrirImagen(url: string) {
     console.log('Abriendo imagen:', url);
     this.selectedImageUrl = url;
@@ -1140,6 +1256,14 @@ export class LogisticaComponent implements OnInit, OnDestroy {
       this.map.remove();
       this.map = null;
     }
+    // Reset completo del estado del mapa
+    this.layerGroupTramos     = null;
+    this.layerGroupMarcadores = null;
+    this.layerGroupVivo       = null;
+    this.liveMarker           = null;
+    this.mapFocus             = null;
+    this.mapInitialBoundsDone = false;
+
     if (this.rutaRealtimeChannel) {
       this.supabase.removeChannel(this.rutaRealtimeChannel);
       this.rutaRealtimeChannel = null;
@@ -1156,5 +1280,16 @@ export class LogisticaComponent implements OnInit, OnDestroy {
 
   abrirFoto(url: string) {
     window.open(url, '_blank');
+  }
+
+  // ─── Helpers para el template (evita errores de tipo con union discriminada) ─
+  isFocusRuta(viajeItem: any): boolean {
+    return this.mapFocus?.type === 'ruta' && (this.mapFocus as any).viajeItem === viajeItem;
+  }
+
+  isFocusPunto(lat: number, lng: number): boolean {
+    return this.mapFocus?.type === 'punto'
+      && (this.mapFocus as any).lat === lat
+      && (this.mapFocus as any).lng === lng;
   }
 }

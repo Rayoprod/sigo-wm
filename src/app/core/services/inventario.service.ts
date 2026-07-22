@@ -8,8 +8,7 @@ export class InventarioService {
   supabase = inject(SupabaseService).client;
   auth = inject(AuthService);
 
-  /**
-   * Registra un movimiento manual (ajuste) y actualiza el stock actual del producto.
+  /* Registra un movimiento manual (ajuste) y actualiza el stock actual del producto.
    */
   async registrarMovimientoManual(productoId: string, tipo: string, cantidad: number, motivo: string) {
     if (!productoId || cantidad <= 0) throw new Error("Datos inválidos para el movimiento.");
@@ -49,8 +48,7 @@ export class InventarioService {
     if (errUpd) throw errUpd;
   }
 
-  /**
-   * Descuenta automáticamente el inventario al aprobar una Orden de Venta
+  /*Descuenta automáticamente el inventario al aprobar una Orden de Venta
    */
   async descontarStockPorVenta(pedidoId: string, folioPedido: string) {
     // 1. Obtener los ítems de la venta que están ligados a un producto real del catálogo
@@ -106,9 +104,7 @@ export class InventarioService {
     }
   }
 
-  /**
-   * Repone automáticamente el inventario al anular o editar una Orden de Venta
-   */
+  /** Repone automáticamente el inventario al anular o editar una Orden de Venta */
   async reponerStockPorVenta(pedidoId: string, folioPedido: string, prefijoMotivo: string = 'Anulación') {
     const { data: items, error: errItems } = await this.supabase
       .from('pedidos_items')

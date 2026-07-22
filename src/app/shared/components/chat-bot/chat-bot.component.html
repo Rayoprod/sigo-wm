@@ -34,15 +34,15 @@
         </div>
     </ng-template>
 
-    <div class="flex flex-column h-full w-full bg-bluegray-50">
+    <div class="flex flex-column h-full w-full surface-ground">
         <!-- Chat History -->
         <div #chatScroll class="flex-grow-1 overflow-y-auto px-3 py-4 w-full" style="height: calc(100vh - 180px); scroll-behavior: smooth;">
             
             <!-- Pantalla de Bienvenida (Vacío) -->
             <div *ngIf="chatMessages.length === 0" class="flex flex-column align-items-center justify-content-center h-full text-center fadein">
                 <i class="pi pi-sparkles text-5xl text-primary-200 mb-3"></i>
-                <h3 class="text-700 m-0 mb-2 text-lg">Hola, soy Monito</h3>
-                <p class="text-500 text-sm max-w-15rem">Estoy conectado a tu base de datos. Pregúntame lo que necesites saber.</p>
+                <h3 class="text-color m-0 mb-2 text-lg">Hola, soy Monito</h3>
+                <p class="text-color-secondary text-sm max-w-15rem">Estoy conectado a tu base de datos. Pregúntame lo que necesites saber.</p>
                 <div class="mt-4 flex flex-column gap-2 w-full">
                     <p-chip label="¿Quiénes me deben dinero?" icon="pi pi-wallet" styleClass="w-full surface-0 hover:surface-100 cursor-pointer transition-colors shadow-1 justify-content-center py-2" (click)="enviarMensajeIA('¿Quiénes me deben dinero?')"></p-chip>
                     <p-chip label="Valor de mi inventario" icon="pi pi-box" styleClass="w-full surface-0 hover:surface-100 cursor-pointer transition-colors shadow-1 justify-content-center py-2" (click)="enviarMensajeIA('¿Cuál es el valor total inmovilizado en mi inventario?')"></p-chip>
@@ -54,7 +54,7 @@
                 
                 <!-- Avatar IA -->
                 <div *ngIf="msg.role === 'ai'" class="flex-shrink-0 mr-2 mt-1">
-                    <div class="flex align-items-center justify-content-center bg-white border-circle w-2rem h-2rem shadow-1">
+                    <div class="flex align-items-center justify-content-center surface-card border-circle w-2rem h-2rem shadow-1">
                         <i class="pi pi-bolt text-primary" style="font-size: 0.8rem;"></i>
                     </div>
                 </div>
@@ -63,7 +63,7 @@
                 <div class="p-3 shadow-1 chat-bubble" 
                      [ngClass]="{
                        'bg-primary text-white': msg.role === 'user', 
-                       'bg-white text-800': msg.role === 'ai'
+                       'surface-card text-color': msg.role === 'ai'
                      }"
                      [style]="msg.role === 'user' ? 'max-width: 85%; font-size: 0.95rem; line-height: 1.5; border-radius: 18px 18px 4px 18px;' : 'max-width: 90%; font-size: 0.95rem; line-height: 1.5; border-radius: 4px 18px 18px 18px;'"
                      [innerHTML]="msg.text">
@@ -73,11 +73,11 @@
             <!-- Indicador de Escribiendo -->
             <div *ngIf="isChatLoading" class="mb-4 flex justify-content-start fadein w-full">
                 <div class="flex-shrink-0 mr-2 mt-1">
-                    <div class="flex align-items-center justify-content-center bg-white border-circle w-2rem h-2rem shadow-1">
+                    <div class="flex align-items-center justify-content-center surface-card border-circle w-2rem h-2rem shadow-1">
                         <i class="pi pi-spin pi-spinner text-primary" style="font-size: 0.8rem;"></i>
                     </div>
                 </div>
-                <div class="p-3 bg-white text-500 shadow-1 flex align-items-center gap-2" style="border-radius: 4px 18px 18px 18px; font-size: 0.95rem;">
+                <div class="p-3 surface-card text-color-secondary shadow-1 flex align-items-center gap-2" style="border-radius: 4px 18px 18px 18px; font-size: 0.95rem;">
                     <span class="block w-0.5rem h-0.5rem border-circle bg-300"></span>
                     <span class="block w-0.5rem h-0.5rem border-circle bg-400"></span>
                     <span class="block w-0.5rem h-0.5rem border-circle bg-500"></span>
@@ -87,9 +87,17 @@
         </div>
 
         <!-- Chat Input Box (Pegado al fondo) -->
-        <div class="bg-white p-3 border-top-1 surface-border shadow-2 w-full mt-auto z-5">
-            <div class="p-inputgroup border-round-3xl overflow-hidden bg-bluegray-50 border-1 surface-border hover:border-primary transition-colors transition-duration-200">
-                <input type="text" pInputText class="w-full p-2 text-md border-none focus:shadow-none text-900 bg-transparent" placeholder="Pregúntale a la IA..." [(ngModel)]="chatInput" (keyup.enter)="enviarMensajeIA()" [disabled]="isChatLoading" style="outline: none;">
+        <div class="surface-card p-3 border-top-1 surface-border shadow-2 w-full mt-auto z-5">
+            <div class="p-inputgroup border-round-3xl overflow-hidden surface-ground border-1 surface-border hover:border-primary transition-colors transition-duration-200">
+                <input type="text" pInputText class="w-full p-2 text-md border-none focus:shadow-none text-color bg-transparent" [placeholder]="isRecording ? 'Escuchando...' : 'Pregúntale a la IA...'" [(ngModel)]="chatInput" (keyup.enter)="enviarMensajeIA()" [disabled]="isChatLoading" style="outline: none;">
+                
+                <button type="button" pButton [icon]="isRecording ? 'pi pi-stop-circle' : 'pi pi-microphone'" 
+                        [class]="isRecording ? 'p-button-danger px-3 border-none font-bold fadein' : 'p-button-secondary p-button-text px-3 border-none font-bold'" 
+                        (click)="toggleRecording()" 
+                        [disabled]="isChatLoading"
+                        pTooltip="Dictar por voz" tooltipPosition="top">
+                </button>
+
                 <button type="button" pButton icon="pi pi-send" class="p-button-primary px-3 border-none font-bold" (click)="enviarMensajeIA()" [disabled]="isChatLoading || !chatInput.trim()">
                 </button>
             </div>

@@ -180,12 +180,28 @@ export class ConfiguracionComponent implements OnInit {
           options: {
             data: {
               rol: this.nuevoUsuario.rol,
-              nombre_completo: this.nuevoUsuario.nombre_completo
+              nombre_completo: this.nuevoUsuario.nombre_completo,
+              full_name: this.nuevoUsuario.nombre_completo // Respaldo para triggers estándar
             }
           }
         });
 
         if (error) throw error;
+        
+        // Forzar actualización directa en public.usuarios para asegurar que el nombre se guarde
+        if (data.user) {
+          const { error: updateError } = await this.supabase
+            .from('usuarios')
+            .update({
+              nombre_completo: this.nuevoUsuario.nombre_completo,
+              rol: this.nuevoUsuario.rol
+            })
+            .eq('id', data.user.id);
+            
+          if (updateError) {
+             console.warn('Aviso: No se pudo forzar el nombre en public.usuarios', updateError);
+          }
+        }
         alert('Usuario creado correctamente. El vendedor/despachador ya puede iniciar sesión.');
       }
 

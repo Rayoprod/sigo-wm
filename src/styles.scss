@@ -359,3 +359,39 @@ body.dark-mode {
   backdrop-filter: blur(10px);
 }
 
+/* ─── GPS Live Marker (Leaflet divIcon - global scope requerido) ─── */
+.gps-live-icon-host {
+  background: transparent !important;
+  border: none !important;
+}
+
+.gps-live-dot {
+  width: 20px;
+  height: 20px;
+  background-color: #3b82f6;
+  border-radius: 50%;
+  border: 3px solid #fff;
+  box-shadow: 0 0 0 2px #3b82f6, 0 2px 8px rgba(59, 130, 246, 0.6);
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.gps-live-pulse {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%) scale(0.6);
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background-color: rgba(59, 130, 246, 0.35);
+  animation: gps-pulse-ring 1.8s ease-out infinite;
+  pointer-events: none;
+}
+
+@keyframes gps-pulse-ring {
+  0%   { transform: translate(-50%, -50%) scale(0.5); opacity: 0.9; }
+  100% { transform: translate(-50%, -50%) scale(2.5); opacity: 0; }
+}

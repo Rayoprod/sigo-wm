@@ -95,11 +95,8 @@ export class ComercialListComponent implements OnInit {
   };
   metodosPago = [
     { label: 'Efectivo', value: 'EFECTIVO' },
-    { label: 'Transferencia BCP', value: 'TRANSFERENCIA_BCP' },
+    { label: 'Transferencia', value: 'TRANSFERENCIA' },
     { label: 'Yape / Plin', value: 'BILLETERA_DIGITAL' },
-    { label: 'Tarjeta (POS)', value: 'TARJETA' },
-    { label: 'Cheque', value: 'CHEQUE' },
-    { label: 'Otro', value: 'OTRO' }
   ];
   isSavingPago = false;
 

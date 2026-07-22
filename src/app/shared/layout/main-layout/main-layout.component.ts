@@ -52,7 +52,7 @@ export class MainLayoutComponent {
       items.push({ label: 'Clientes', icon: 'pi pi-users', routerLink: '/clientes' });
     }
 
-    if (rol === 'admin' || rol === 'despachador') {
+    if (rol === 'admin' || rol === 'despachador' || rol === 'vendedor') {
       items.push({ label: 'Logística y Despachos', icon: 'pi pi-truck', routerLink: '/logistica' });
     }
 

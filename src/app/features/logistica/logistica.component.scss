@@ -1,27 +1,38 @@
-.gps-live-marker {
-  width: 14px;
-  height: 14px;
-  background-color: #3b82f6; /* Azul primario */
+/* ─── Marcador GPS en vivo (círculo azul pulsante) ───────────────── */
+.gps-live-icon-host {
+  background: transparent !important;
+  border: none !important;
+}
+
+.gps-live-dot {
+  width: 20px;
+  height: 20px;
+  background-color: #3b82f6;
   border-radius: 50%;
+  border: 3px solid #fff;
+  box-shadow: 0 0 0 2px #3b82f6, 0 2px 8px rgba(59, 130, 246, 0.6);
   position: relative;
-  box-shadow: 0 0 0 2px white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
-.gps-live-marker::after {
-  content: '';
+.gps-live-pulse {
   position: absolute;
-  top: -5px;
-  left: -5px;
-  width: 24px;
-  height: 24px;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%) scale(1);
+  width: 36px;
+  height: 36px;
   border-radius: 50%;
-  background-color: rgba(59, 130, 246, 0.4);
-  animation: pulse-gps 1.5s infinite;
+  background-color: rgba(59, 130, 246, 0.35);
+  animation: gps-pulse-ring 1.8s ease-out infinite;
+  pointer-events: none;
 }
 
-@keyframes pulse-gps {
-  0% { transform: scale(0.8); opacity: 0.8; }
-  100% { transform: scale(2.5); opacity: 0; }
+@keyframes gps-pulse-ring {
+  0%   { transform: translate(-50%, -50%) scale(0.6); opacity: 0.9; }
+  100% { transform: translate(-50%, -50%) scale(2.4); opacity: 0; }
 }
 
 .map-panel-responsive {

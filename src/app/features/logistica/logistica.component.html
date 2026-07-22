@@ -295,9 +295,9 @@
                             <h4 class="m-0 text-800">Resumen del Viaje</h4>
                         </div>
                         <p-button 
-                            [icon]="selectedAuditoriaItem === viajeItem ? 'pi pi-map-marker' : 'pi pi-map'" 
-                            [label]="selectedAuditoriaItem === viajeItem ? 'Viendo' : 'Ver en mapa'" 
-                            [styleClass]="selectedAuditoriaItem === viajeItem ? 'p-button-sm p-button-rounded' : 'p-button-sm p-button-rounded p-button-outlined p-button-secondary'" 
+                            [icon]="isFocusRuta(viajeItem) ? 'pi pi-eye-slash' : 'pi pi-map'" 
+                            [label]="isFocusRuta(viajeItem) ? 'Ocultar ruta' : 'Ver ruta completa'" 
+                            [styleClass]="isFocusRuta(viajeItem) ? 'p-button-sm p-button-rounded p-button-success' : 'p-button-sm p-button-rounded p-button-outlined p-button-secondary'" 
                             (click)="enfocarEnViaje(viajeItem)">
                         </p-button>
                     </div>
@@ -309,7 +309,7 @@
                             <!-- Línea conectora central -->
                             <div class="absolute h-full surface-border border-left-2" style="left: 1rem; top: 1rem; z-index: 1;"></div>
                             
-                            <div *ngFor="let event of getTimelineEvents(viajeItem); let last = last" class="flex align-items-start relative z-2" [ngClass]="{'mb-4': !last}">
+                            <div *ngFor="let event of getTimelineEvents(viajeItem); let last = last; trackBy: trackByEventType" class="flex align-items-start relative z-2" [ngClass]="{'mb-4': !last}">
                                 <!-- Marcador (Icono) -->
                                 <div class="flex align-items-center justify-content-center text-white border-circle shadow-2 flex-shrink-0 mr-3" [style.backgroundColor]="event.color" style="width: 2.2rem; height: 2.2rem; margin-left: -0.1rem;">
                                     <i [class]="event.icon"></i>
@@ -340,10 +340,20 @@
                                         
                                         <ng-container *ngIf="event.data.fotos_urls?.length">
                                             <div class="text-xs text-500 mb-2 font-semibold uppercase tracking-wide"><i class="pi pi-camera mr-1"></i>Evidencia</div>
-                                            <div class="flex flex-wrap gap-2">
+                                            <div class="flex flex-wrap gap-2 mb-3">
                                                 <img *ngFor="let foto of event.data.fotos_urls" [src]="foto" width="60" class="border-round shadow-1 cursor-pointer hover:shadow-3 transition-all" (click)="abrirImagen(foto)">
                                             </div>
                                         </ng-container>
+
+                                        <!-- Botón para ver el punto exacto del despachador -->
+                                        <div *ngIf="event.data.latitud && event.data.longitud" class="mt-2">
+                                            <p-button 
+                                                [icon]="isFocusPunto(event.data.latitud, event.data.longitud) ? 'pi pi-eye-slash' : 'pi pi-map-marker'" 
+                                                [label]="isFocusPunto(event.data.latitud, event.data.longitud) ? 'Ocultar punto' : 'Ver punto de despacho'" 
+                                                [styleClass]="isFocusPunto(event.data.latitud, event.data.longitud) ? 'p-button-sm p-button-rounded p-button-success' : 'p-button-sm p-button-rounded p-button-outlined p-button-danger'" 
+                                                (click)="enfocarEnPunto(event.data.latitud, event.data.longitud, 'Despacho registrado aquí')">
+                                            </p-button>
+                                        </div>
                                     </div>
                                     <div *ngIf="event.type === 'carga' && !event.data" class="text-xs text-500 italic mt-2">Sin registro de despacho.</div>
 
