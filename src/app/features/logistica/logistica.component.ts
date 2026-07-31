@@ -19,6 +19,8 @@ import { InputTextModule } from 'primeng/inputtext';
 import { ImageModule } from 'primeng/image';
 import { TimelineModule } from 'primeng/timeline';
 import { DividerModule } from 'primeng/divider';
+import { QRCodeModule } from 'angularx-qrcode';
+import * as pako from 'pako';
 
 @Component({
   selector: 'app-logistica',
@@ -38,7 +40,8 @@ import { DividerModule } from 'primeng/divider';
     InputTextModule,
     ImageModule,
     TimelineModule,
-    DividerModule
+    DividerModule,
+    QRCodeModule
   ],
   templateUrl: './logistica.component.html',
   styleUrl: './logistica.component.scss'
@@ -71,8 +74,7 @@ export class LogisticaComponent implements OnInit, OnDestroy {
     lat: null as number | null,
     lng: null as number | null,
     fotosFiles: [] as File[],
-    items: [] as any[], // [{ id, descripcion, maxCantidad, cantidad_viaje }]
-    tipoRegistro: 'NORMAL' as 'NORMAL' | 'MANUAL_COMPLETO'
+    items: [] as any[] // [{ id, descripcion, maxCantidad, cantidad_viaje }]
   };
   isSavingViaje = false;
   gpsLoading = false;
@@ -81,6 +83,10 @@ export class LogisticaComponent implements OnInit, OnDestroy {
   displayAuditoriaModal = false;
   viajesAuditoria: any[] = []; // Unified map object
   loadingAuditoria = false;
+
+  // QR Transferencia
+  displayQrModal = false;
+  qrPayload = '';
 
   // Mapa y Rastreo
   displayRutaModal = false;
@@ -124,7 +130,8 @@ export class LogisticaComponent implements OnInit, OnDestroy {
 
   async ngOnInit() {
     const user = this.auth.currentUser();
-    this.currentUserRole = user?.rol;
+    const roles = user?.rol || [];
+    this.currentUserRole = Array.isArray(roles) ? roles[0] : roles;
     await this.cargarPedidos();
     await this.cargarVehiculos();
     this.suscribirCambiosViajes();
@@ -322,7 +329,6 @@ export class LogisticaComponent implements OnInit, OnDestroy {
       lat: null,
       lng: null,
       fotosFiles: [],
-      tipoRegistro: 'NORMAL',
       items: (this.itemsDelPedidoMap[pedido.id] || []).map((item: any) => {
         // La base de datos ya suma todo en cantidad_despachada mediante el trigger, 
         // no debemos volver a restar lo que está 'en tránsito'
@@ -332,7 +338,7 @@ export class LogisticaComponent implements OnInit, OnDestroy {
           descripcion: item.productos?.descripcion || item.descripcion_manual,
           unidad_medida: item.productos?.unidad_medida || item.unidad_medida_manual,
           maxCantidad: restante > 0 ? restante : 0,
-          cantidad_viaje: null
+          cantidad_viaje: 0
         };
       })
     };
@@ -431,24 +437,80 @@ export class LogisticaComponent implements OnInit, OnDestroy {
     });
   }
 
+  // --- GENERADOR DE QR COMPRIMIDO ---
+  generarPayloadQR(cabecera: any, detalles: any[]): string {
+    const minMap = {
+      t: 'h',
+      i: cabecera.id,
+      pi: cabecera.pedido_id,
+      pf: this.selectedPedido?.folio || this.selectedPedidoParaRuta?.folio || '',
+      pv: cabecera.placa_vehiculo || '',
+      fd: new Date().toISOString(),
+      ns: cabecera.numero_viaje_secuencial || 0,
+      ci: cabecera.chofer_id || '',
+      di: cabecera.despachador_id || '',
+      dt: detalles.map((d: any) => ({
+        id: d.id,
+        pi: d.pedido_item_id,
+        cv: d.cantidad_viaje,
+        desc: d.pedidos_items?.productos?.descripcion || d.pedidos_items?.descripcion_manual || d.descripcion || '',
+        um: d.pedidos_items?.productos?.unidad_medida || d.pedidos_items?.unidad_medida_manual || d.unidad_medida || ''
+      }))
+    };
+
+    const jsonStr = JSON.stringify(minMap);
+    // Comprimir con gzip (pako)
+    const compressed = pako.gzip(jsonStr);
+    
+    // Convertir Uint8Array a Base64 de forma segura
+    const binary = Array.from(compressed).map((byte: any) => String.fromCharCode(byte)).join('');
+    const base64Str = btoa(binary);
+
+    return `sigo_wm://${base64Str}`;
+  }
+
+  mostrarQR(viaje: any) {
+    if (!viaje || !viaje.despacho) return;
+    
+    // Preparar detalles (usar lo que viene de la auditoría)
+    const detalles = viaje.despacho.despachos_viajes_detalle || [];
+    this.qrPayload = this.generarPayloadQR(viaje.despacho, detalles);
+    this.displayQrModal = true;
+  }
+
   async guardarViaje() {
     const itemsAEnviar = this.viajeForm.items.filter(i => i.cantidad_viaje > 0);
     if (itemsAEnviar.length === 0) {
       alert("Debes indicar la cantidad a despachar de al menos un material.");
       return;
     }
-    
     this.isSavingViaje = true;
     
     try {
       const user = this.auth.currentUser();
       let fotosUrls: string[] = [];
 
-      // 1. Comprimir y Subir fotos
+      // 1. Obtener/calcular numero_viaje_secuencial (clonando lógica Flutter)
+      const { data: maxViajeData, error: maxViajeError } = await this.supabase
+        .from('despachos_viajes_cabecera')
+        .select('numero_viaje_secuencial')
+        .eq('pedido_id', this.selectedPedido!.id)
+        .order('numero_viaje_secuencial', { ascending: false })
+        .limit(1);
+        
+      let numSecuencial = 1;
+      if (maxViajeData && maxViajeData.length > 0 && maxViajeData[0].numero_viaje_secuencial) {
+        numSecuencial = Number(maxViajeData[0].numero_viaje_secuencial) + 1;
+      }
+
+      // 2. Comprimir y Subir fotos usando la misma ruta que Flutter
       for (const file of this.viajeForm.fotosFiles) {
         const compressedFile = await this.comprimirImagen(file);
-        const fileName = `viaje-${Date.now()}-${Math.random().toString(36).substring(7)}.jpg`;
-        const filePath = `evidencias_viajes/${fileName}`;
+        
+        // Generar nombre simulando el UUID v4 de Flutter y su timestamp
+        const randomString = Math.random().toString(36).substring(2, 10) + Math.random().toString(36).substring(2, 10);
+        const fileNameLocal = `${Date.now()}_${randomString}.jpg`;
+        const filePath = `evidencias/pedidos/${this.selectedPedido!.folio}/viaje_${numSecuencial}/despachador/${fileNameLocal}`;
 
         const { error: uploadError } = await this.supabase.storage
           .from('assets')
@@ -461,19 +523,6 @@ export class LogisticaComponent implements OnInit, OnDestroy {
           .getPublicUrl(filePath);
           
         fotosUrls.push(publicUrl);
-      }
-
-      // 1.5 Obtener/calcular numero_viaje_secuencial (clonando lógica Flutter)
-      const { data: maxViajeData, error: maxViajeError } = await this.supabase
-        .from('despachos_viajes_cabecera')
-        .select('numero_viaje_secuencial')
-        .eq('pedido_id', this.selectedPedido!.id)
-        .order('numero_viaje_secuencial', { ascending: false })
-        .limit(1);
-        
-      let numSecuencial = 1;
-      if (maxViajeData && maxViajeData.length > 0 && maxViajeData[0].numero_viaje_secuencial) {
-        numSecuencial = Number(maxViajeData[0].numero_viaje_secuencial) + 1;
       }
 
       // 1.6 Guardar placa en base de datos global (si es nueva)
@@ -489,9 +538,6 @@ export class LogisticaComponent implements OnInit, OnDestroy {
         }
       }
 
-      const esManualCompleto = this.viajeForm.tipoRegistro === 'MANUAL_COMPLETO';
-      const estadoViajeInicial = esManualCompleto ? 'ENTREGADO' : 'ASIGNADO';
-
       // 2. Insertar Cabecera
       const { data: cabeceraData, error: insertError } = await this.supabase
         .from('despachos_viajes_cabecera')
@@ -500,7 +546,7 @@ export class LogisticaComponent implements OnInit, OnDestroy {
           despachador_id: user?.id,
           placa_vehiculo: this.viajeForm.placa?.trim().toUpperCase(),
           numero_viaje_secuencial: numSecuencial,
-          estado_viaje: estadoViajeInicial,
+          estado_viaje: 'ASIGNADO',
           latitud: this.viajeForm.lat,
           longitud: this.viajeForm.lng,
           fotos_urls: fotosUrls
@@ -527,26 +573,21 @@ export class LogisticaComponent implements OnInit, OnDestroy {
         if (detalleError) throw detalleError;
       }
 
-      // 4. Si es Manual Completo (Cierre de emergencia), registrar entrega en viajes_entregas
-      if (esManualCompleto) {
-        const { error: entregaError } = await this.supabase
-          .from('viajes_entregas')
-          .insert({
-            pedido_id: this.selectedPedido!.id,
-            numero_viaje_secuencial: numSecuencial,
-            latitud: this.viajeForm.lat,
-            longitud: this.viajeForm.lng,
-            fecha_dispositivo: new Date().toISOString()
-          });
-
-        if (entregaError) console.warn("Aviso entrega manual:", entregaError.message);
-      }
-
-      if (esManualCompleto) {
-        alert("✅ Registro manual de viaje y entrega grabado con éxito. Las cantidades fueron sumadas y el viaje se cerró.");
-      } else {
-        alert("Viaje registrado con éxito. Fotos comprimidas y guardadas.");
-      }
+      // Mostramos el QR generado
+      // Reconstruimos los detalles guardados para enviarlos al generador QR
+      const detallesGenerados = detallesAInsertar.map((d, index) => {
+        const matchedItem = this.viajeForm.items.find(i => i.id === d.pedido_item_id);
+        return {
+          id: 'temp-' + index, // no estrictamente necesario para el movil si no lo lee
+          pedido_item_id: d.pedido_item_id,
+          cantidad_viaje: d.cantidad_viaje,
+          descripcion: matchedItem?.descripcion,
+          unidad_medida: matchedItem?.unidad_medida
+        };
+      });
+      
+      this.qrPayload = this.generarPayloadQR(cabeceraData, detallesGenerados);
+      this.displayQrModal = true; // Mostramos el QR!
 
       this.displayViajeModal = false;
       
@@ -560,50 +601,6 @@ export class LogisticaComponent implements OnInit, OnDestroy {
       alert("Error al registrar el viaje: " + error.message);
     } finally {
       this.isSavingViaje = false;
-    }
-  }
-
-  async marcarEntregaManualViaje(viaje: any) {
-    const confirmado = confirm(
-      `⚠️ ¿Estás seguro de marcar el Viaje #${viaje.numero_viaje_secuencial} como ENTREGADO manualmente?\n\n` +
-      `Esta opción es para emergencias cuando el chofer tuvo problemas en el móvil o entregó en físico. Actualizará las cantidades entregadas y el estado de la orden.`
-    );
-    if (!confirmado) return;
-
-    this.loading = true;
-    try {
-      const user = this.auth.currentUser();
-
-      // 1. Actualizar estado_viaje a ENTREGADO en cabecera
-      const { error: updateError } = await this.supabase
-        .from('despachos_viajes_cabecera')
-        .update({ estado_viaje: 'ENTREGADO' })
-        .eq('id', viaje.id);
-
-      if (updateError) throw updateError;
-
-      // 2. Insertar en viajes_entregas si no existe aún
-      const { error: entregaError } = await this.supabase
-        .from('viajes_entregas')
-        .insert({
-          pedido_id: viaje.pedido_id,
-          numero_viaje_secuencial: viaje.numero_viaje_secuencial,
-          fecha_dispositivo: new Date().toISOString()
-        });
-
-      if (entregaError) console.warn("Aviso al insertar viajes_entregas:", entregaError.message);
-
-      alert(`✅ Viaje #${viaje.numero_viaje_secuencial} marcado como ENTREGADO manualmente con éxito.`);
-      
-      delete this.viajesDelPedidoMap[viaje.pedido_id];
-      await this.cargarViajesPedido(viaje.pedido_id);
-      await this.cargarItemsPedido(viaje.pedido_id);
-      await this.cargarPedidos();
-
-    } catch (error: any) {
-      alert("Error al marcar entrega manual: " + error.message);
-    } finally {
-      this.loading = false;
     }
   }
 
@@ -710,6 +707,7 @@ export class LogisticaComponent implements OnInit, OnDestroy {
         .select(`
           *,
           usuarios:usuarios!despachos_viajes_cabecera_despachador_id_fkey (correo, nombre_completo),
+          chofer_cabecera:usuarios!despachos_viajes_cabecera_chofer_id_fkey (nombre_completo),
           despachos_viajes_detalle (
             cantidad_viaje,
             pedidos_items (
@@ -802,6 +800,22 @@ export class LogisticaComponent implements OnInit, OnDestroy {
             timestamp: new Date(aud.despacho.created_at),
             title: `Viaje #${seqNum} Despachado por ${aud.despacho.usuarios?.nombre_completo || 'Despachador'}`,
             icon: 'pi pi-truck',
+            color: 'text-purple-500',
+            bg: 'bg-purple-100',
+            tramoColor: colorTramo
+          });
+        }
+
+        // 5b. Añadir evento de Recepción (Si tiene coords independientes)
+        if (aud.despacho && aud.despacho.latitud_recepcion && aud.despacho.longitud_recepcion) {
+          puntosDelViaje.push([aud.despacho.latitud_recepcion, aud.despacho.longitud_recepcion]);
+          this.historialTracking.push({
+            type: 'RECEPCION',
+            lat: aud.despacho.latitud_recepcion,
+            lng: aud.despacho.longitud_recepcion,
+            timestamp: new Date(aud.despacho.fecha_recepcion_chofer || aud.despacho.created_at),
+            title: `Viaje #${seqNum} Recepcionado por ${aud.despacho.chofer_cabecera?.nombre_completo || 'Chofer'}`,
+            icon: 'pi pi-check-circle',
             color: 'text-orange-500',
             bg: 'bg-orange-100',
             tramoColor: colorTramo
@@ -1214,9 +1228,9 @@ export class LogisticaComponent implements OnInit, OnDestroy {
     return [
       {
         status: 'Carga y Salida en Planta',
-        date: viajeItem.despacho?.created_at, // This step is done on Web, so created_at is accurate
+        date: viajeItem.despacho?.created_at,
         icon: 'pi pi-truck',
-        color: '#3B82F6',
+        color: '#7c3aed', // Morado
         data: viajeItem.despacho,
         type: 'carga'
       },
@@ -1228,6 +1242,14 @@ export class LogisticaComponent implements OnInit, OnDestroy {
         data: viajeItem.despacho,
         type: 'confirmacion'
       },
+      ...(viajeItem.gpsPuntos && viajeItem.gpsPuntos.length > 0 ? [{
+        status: 'En ruta al destino',
+        date: viajeItem.gpsPuntos[0].timestamp,
+        icon: 'pi pi-map',
+        color: '#3B82F6', // Azul
+        data: { puntos: viajeItem.gpsPuntos },
+        type: 'gps_ruta'
+      }] : []),
       {
         status: 'Entrega en Obra',
         date: viajeItem.chofer?.fecha_dispositivo,

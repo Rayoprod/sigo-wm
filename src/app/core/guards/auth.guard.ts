@@ -15,7 +15,15 @@ export const authGuard: CanActivateFn = async (route, state) => {
 
   if (currentUser) {
     // Ya autenticado: redirigir al panel según su rol
-    if (currentUser.rol === 'despachador') {
+    let userRoles: string[] = [];
+    if (Array.isArray(currentUser.rol)) {
+      userRoles = currentUser.rol;
+    } else if (typeof currentUser.rol === 'string') {
+      userRoles = [currentUser.rol];
+    }
+    
+    // Si solo es despachador (y no admin/vendedor), mandarlo a logistica
+    if (userRoles.includes('despachador') && !userRoles.includes('admin') && !userRoles.includes('vendedor')) {
       return router.createUrlTree(['/logistica']);
     }
     return router.createUrlTree(['/']);

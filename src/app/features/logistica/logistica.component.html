@@ -111,7 +111,10 @@
                     <tr>
                         <td colspan="7">
                             <div class="p-3 surface-ground border-round">
-                                <h4 class="mt-0 mb-3 text-primary"><i class="pi pi-box mr-2"></i>Materiales a Despachar</h4>
+                                <div class="flex justify-content-between align-items-center mb-3">
+                                    <h4 class="m-0 text-primary"><i class="pi pi-box mr-2"></i>Materiales a Despachar</h4>
+                                    <button *ngIf="pedido.estado === 'APROBADA'" pButton pRipple icon="pi pi-truck" label="Registrar Despacho" class="p-button-primary p-button-sm font-bold shadow-1 border-round-lg" (click)="openViajeModal(pedido)"></button>
+                                </div>
                                 
                                 <div *ngIf="loadingItemsMap[pedido.id]" class="text-center p-3"><i class="pi pi-spin pi-spinner text-primary"></i></div>
                                 
@@ -207,7 +210,8 @@
                     </div>
 
                     <div class="flex gap-2 w-full mt-2">
-                        <button pButton label="Auditar y Rutas GPS" icon="pi pi-map" class="p-button-info flex-1 p-button-sm border-round-lg font-bold" (click)="abrirRutaChofer(pedido)"></button>
+                        <button pButton label="Auditar Rutas" icon="pi pi-map" class="p-button-info flex-1 p-button-sm border-round-lg font-bold" (click)="abrirRutaChofer(pedido)"></button>
+                        <button *ngIf="pedido.estado === 'APROBADA'" pButton icon="pi pi-truck" class="p-button-primary p-button-sm border-round-lg shadow-1" (click)="openViajeModal(pedido)"></button>
                     </div>
                 </div>
             </div>
@@ -217,6 +221,105 @@
 
 
 
+
+<!-- Modal para Registrar Nuevo Despacho (Web / Tablet / Mobile) -->
+<p-dialog 
+    [(visible)]="displayViajeModal" 
+    [modal]="true" 
+    [header]="'Registrar Despacho - Folio ' + selectedPedido?.folio"
+    [style]="{width: '100vw', height: '100vh', maxHeight: '100vh', margin: 0}"
+    [breakpoints]="{'960px': '100vw'}"
+    [contentStyle]="{padding: '1rem', backgroundColor: '#f8f9fa'}"
+    [draggable]="false" 
+    [resizable]="false"
+    [closeOnEscape]="true">
+    
+    <div class="flex flex-column h-full">
+        <div class="flex-grow-1 overflow-y-auto pb-4">
+            
+            <!-- Datos del Vehículo y GPS -->
+            <div class="surface-card p-3 border-round-xl shadow-1 mb-3">
+                <div class="grid formgrid p-fluid">
+                    <div class="col-12 md:col-6 mb-3 md:mb-0">
+                        <span class="text-color-secondary text-sm font-bold block mb-2"><i class="pi pi-car mr-2"></i>Placa del Vehículo</span>
+                        <input pInputText type="text" [(ngModel)]="viajeForm.placa" placeholder="Ej: ABC-123" class="w-full text-lg uppercase p-inputtext-lg" />
+                    </div>
+                    <div class="col-12 md:col-6">
+                        <span class="text-color-secondary text-sm font-bold block mb-2"><i class="pi pi-map-marker mr-2"></i>Ubicación de Salida (Auditoría)</span>
+                        <div class="flex align-items-center gap-2">
+                            <div class="flex-1 p-2 surface-100 border-round flex align-items-center justify-content-between">
+                                <span class="text-sm text-500 font-mono" *ngIf="viajeForm.lat">{{ viajeForm.lat | number:'1.4-4' }}, {{ viajeForm.lng | number:'1.4-4' }}</span>
+                                <span class="text-sm text-red-500 font-bold" *ngIf="!viajeForm.lat && !gpsLoading">GPS No Capturado</span>
+                                <span class="text-sm text-primary font-bold" *ngIf="gpsLoading"><i class="pi pi-spin pi-spinner mr-1"></i>Buscando...</span>
+                                <i class="pi pi-check-circle text-green-500" *ngIf="viajeForm.lat"></i>
+                            </div>
+                            <button pButton icon="pi pi-refresh" class="p-button-rounded p-button-secondary p-button-text" (click)="capturarGPS()" pTooltip="Reintentar GPS"></button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tarjetas de Materiales (Táctiles) -->
+            <span class="text-color-secondary text-sm font-bold block mb-2 ml-1"><i class="pi pi-box mr-2"></i>Cantidades a Cargar</span>
+            <div class="flex flex-column gap-3 mb-4">
+                <div *ngFor="let item of viajeForm.items; let i = index" class="surface-card p-3 border-round-xl shadow-1 border-left-3" [ngClass]="item.cantidad_viaje > 0 ? 'border-primary bg-primary-reverse' : 'surface-border'">
+                    <div class="flex flex-column sm:flex-row justify-content-between align-items-start sm:align-items-center gap-3">
+                        <div class="flex-1">
+                            <div class="font-bold text-lg text-color">{{ item.descripcion }}</div>
+                            <div class="text-sm text-500 mt-1">Pendiente de envío: <b class="text-color">{{ item.maxCantidad }}</b> {{ item.unidad_medida }}</div>
+                        </div>
+                        
+                        <!-- Controles Numéricos Táctiles -->
+                        <div class="flex align-items-center gap-3 surface-50 p-2 border-round-3xl border-1 surface-border">
+                            <button pButton icon="pi pi-minus" class="p-button-rounded p-button-secondary p-button-text w-3rem h-3rem" 
+                                    (click)="item.cantidad_viaje = item.cantidad_viaje > 0 ? item.cantidad_viaje - 1 : 0" 
+                                    [disabled]="item.cantidad_viaje <= 0"></button>
+                            
+                            <div class="w-4rem text-center text-xl font-bold text-color">
+                                {{ item.cantidad_viaje || 0 }}
+                            </div>
+                            
+                            <button pButton icon="pi pi-plus" class="p-button-rounded p-button-primary p-button-text w-3rem h-3rem" 
+                                    (click)="item.cantidad_viaje = item.cantidad_viaje < item.maxCantidad ? item.cantidad_viaje + 1 : item.maxCantidad"
+                                    [disabled]="item.cantidad_viaje >= item.maxCantidad"></button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Evidencia Fotográfica -->
+            <div class="surface-card p-3 border-round-xl shadow-1 mb-3">
+                <span class="text-color-secondary text-sm font-bold block mb-3"><i class="pi pi-camera mr-2"></i>Evidencia de Carga / Guía Remisión</span>
+                
+                <div class="flex flex-wrap gap-3">
+                    <div *ngFor="let f of viajeForm.fotosFiles; let i = index" class="relative">
+                        <div class="w-6rem h-6rem border-round shadow-1 bg-gray-200 flex align-items-center justify-content-center overflow-hidden">
+                            <i class="pi pi-image text-4xl text-gray-400"></i>
+                        </div>
+                        <button pButton icon="pi pi-times" class="p-button-rounded p-button-danger p-button-sm absolute shadow-2" style="top: -10px; right: -10px; width: 2rem; height: 2rem;" (click)="eliminarFoto(i)"></button>
+                    </div>
+                    
+                    <div class="w-6rem h-6rem border-round border-2 border-dashed surface-border hover:surface-hover transition-colors flex flex-column align-items-center justify-content-center cursor-pointer relative text-500" *ngIf="viajeForm.fotosFiles.length < 5">
+                        <i class="pi pi-plus text-2xl mb-1"></i>
+                        <span class="text-xs font-bold">Añadir</span>
+                        <input type="file" accept="image/*" capture="environment" class="absolute top-0 left-0 w-full h-full opacity-0 cursor-pointer" (change)="onFotoSeleccionada($event)">
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- Botonera Fija Inferior -->
+        <div class="surface-card p-3 shadow-top-2 flex gap-3 mt-auto">
+            <button pButton label="Cancelar" icon="pi pi-times" class="p-button-text p-button-secondary flex-1 p-button-lg" (click)="displayViajeModal = false" [disabled]="isSavingViaje"></button>
+            <button pButton label="Confirmar Salida"
+                    [icon]="isSavingViaje ? 'pi pi-spin pi-spinner' : 'pi pi-check'" 
+                    class="p-button-primary flex-2 p-button-lg shadow-2 font-bold"
+                    (click)="guardarViaje()" 
+                    [disabled]="isSavingViaje"></button>
+        </div>
+    </div>
+</p-dialog>
 
 <!-- Modal de Ruta del Chofer (Mapa y Auditoría estilo Driv.in) -->
 <p-dialog 
@@ -294,12 +397,21 @@
                             <span class="bg-primary text-white border-circle w-2rem h-2rem flex align-items-center justify-content-center font-bold text-sm shadow-1">{{ viajeItem.numero_viaje_secuencial }}</span>
                             <h4 class="m-0 text-800">Resumen del Viaje</h4>
                         </div>
-                        <p-button 
-                            [icon]="isFocusRuta(viajeItem) ? 'pi pi-eye-slash' : 'pi pi-map'" 
-                            [label]="isFocusRuta(viajeItem) ? 'Ocultar ruta' : 'Ver ruta completa'" 
-                            [styleClass]="isFocusRuta(viajeItem) ? 'p-button-sm p-button-rounded p-button-success' : 'p-button-sm p-button-rounded p-button-outlined p-button-secondary'" 
-                            (click)="enfocarEnViaje(viajeItem)">
-                        </p-button>
+                        <div class="flex gap-2">
+                            <p-button 
+                                *ngIf="viajeItem.despacho?.estado_viaje === 'ASIGNADO'"
+                                icon="pi pi-qrcode" 
+                                pTooltip="Ver QR para transferencia"
+                                styleClass="p-button-sm p-button-info p-button-outlined"
+                                (click)="mostrarQR(viajeItem)">
+                            </p-button>
+                            <p-button 
+                                [icon]="isFocusRuta(viajeItem) ? 'pi pi-eye-slash' : 'pi pi-map'" 
+                                [label]="isFocusRuta(viajeItem) ? 'Ocultar ruta' : 'Ver ruta completa'" 
+                                [styleClass]="isFocusRuta(viajeItem) ? 'p-button-sm p-button-rounded p-button-success' : 'p-button-sm p-button-rounded p-button-outlined p-button-secondary'" 
+                                (click)="enfocarEnViaje(viajeItem)">
+                            </p-button>
+                        </div>
                     </div>
                     
                     <!-- Contenido Colapsable -->
@@ -359,20 +471,73 @@
 
                                     <!-- Contenido: CONFIRMACIÓN -->
                                     <div *ngIf="event.type === 'confirmacion' && event.data?.fecha_recepcion_chofer" class="text-sm mt-3">
-                                        <div class="flex align-items-center bg-orange-soft p-3 border-round mb-3">
-                                            <i class="pi pi-check-circle text-orange-500 text-xl mr-2"></i>
-                                            <span class="text-color font-medium">Carga aceptada en dispositivo móvil</span>
+                                        <div class="flex flex-column bg-orange-soft p-3 border-round mb-3">
+                                            <div class="flex align-items-center mb-2">
+                                                <i class="pi pi-check-circle text-orange-500 text-xl mr-2"></i>
+                                                <span class="text-color font-medium">Carga recibida por {{ event.data.chofer_cabecera?.nombre_completo || 'Chofer' }}</span>
+                                            </div>
                                         </div>
 
                                         <ng-container *ngIf="event.data.fotos_urls_recepcion_chofer?.length">
                                             <div class="text-xs text-500 mb-2 font-semibold uppercase tracking-wide"><i class="pi pi-camera mr-1"></i>Evidencia de Recepción</div>
-                                            <div class="flex flex-wrap gap-2">
+                                            <div class="flex flex-wrap gap-2 mb-3">
                                                 <img *ngFor="let foto of event.data.fotos_urls_recepcion_chofer" [src]="foto" width="60" class="border-round shadow-1 cursor-pointer hover:shadow-3 transition-all" (click)="abrirImagen(foto)">
                                             </div>
                                         </ng-container>
+
+                                        <!-- Botón para ver el punto exacto de la recepción -->
+                                        <div *ngIf="event.data.latitud_recepcion && event.data.longitud_recepcion" class="mt-2">
+                                            <p-button 
+                                                [icon]="isFocusPunto(event.data.latitud_recepcion, event.data.longitud_recepcion) ? 'pi pi-eye-slash' : 'pi pi-map-marker'" 
+                                                [label]="isFocusPunto(event.data.latitud_recepcion, event.data.longitud_recepcion) ? 'Ocultar punto' : 'Ver punto de recepción'" 
+                                                [styleClass]="isFocusPunto(event.data.latitud_recepcion, event.data.longitud_recepcion) ? 'p-button-sm p-button-rounded p-button-success' : 'p-button-sm p-button-rounded p-button-outlined p-button-warning'" 
+                                                (click)="enfocarEnPunto(event.data.latitud_recepcion, event.data.longitud_recepcion, 'Recepción registrada aquí')">
+                                            </p-button>
+                                        </div>
                                     </div>
                                     <div *ngIf="event.type === 'confirmacion' && !event.data?.fecha_recepcion_chofer" class="text-xs text-400 mt-2 flex align-items-center">
                                         <i class="pi pi-spin pi-spinner mr-2"></i> Esperando confirmación...
+                                    </div>
+
+                                    <!-- Contenido: GPS RUTA -->
+                                    <div *ngIf="event.type === 'gps_ruta' && event.data?.puntos" class="text-sm mt-3">
+                                        <div class="flex flex-column bg-blue-50 p-3 border-round mb-2 border-1 border-blue-100">
+                                            <div class="flex align-items-center">
+                                                <i class="pi pi-compass text-blue-500 text-xl mr-3"></i>
+                                                <div>
+                                                    <div class="text-color font-medium">Tracking activo durante el trayecto</div>
+                                                    <div class="text-xs text-500 mt-1">{{ event.data.puntos.length }} puntos GPS registrados en la ruta</div>
+                                                </div>
+                                            </div>
+                                            
+                                            <div class="mt-3 border-top-1 border-blue-200 pt-2">
+                                                <div class="text-xs text-500 mb-2 font-bold cursor-pointer flex align-items-center hover:text-primary transition-colors" (click)="mostrarGpsMap[viajeItem.numero_viaje_secuencial] = !mostrarGpsMap[viajeItem.numero_viaje_secuencial]; $event.stopPropagation()">
+                                                    <i class="pi" [ngClass]="mostrarGpsMap[viajeItem.numero_viaje_secuencial] ? 'pi-chevron-down' : 'pi-chevron-right'"></i>
+                                                    <span class="ml-1">Ver coordenadas detalladas</span>
+                                                </div>
+                                                <div *ngIf="mostrarGpsMap[viajeItem.numero_viaje_secuencial]" class="mt-2 overflow-hidden border-round shadow-1 bg-white">
+                                                    <p-table [value]="event.data.puntos" [paginator]="true" [rows]="5" styleClass="p-datatable-sm">
+                                                        <ng-template pTemplate="header">
+                                                            <tr>
+                                                                <th class="text-xs" style="width: 30%">Hora</th>
+                                                                <th class="text-xs" style="width: 35%">Latitud</th>
+                                                                <th class="text-xs" style="width: 35%">Longitud</th>
+                                                            </tr>
+                                                        </ng-template>
+                                                        <ng-template pTemplate="body" let-pt>
+                                                            <tr class="text-xs">
+                                                                <td class="font-bold">
+                                                                    <span *ngIf="pt.timestamp">{{ pt.timestamp | date:'dd/MM HH:mm:ss' }}</span>
+                                                                    <span *ngIf="!pt.timestamp" class="text-500 italic">Sin hora móvil</span>
+                                                                </td>
+                                                                <td class="text-500">{{ pt.latitud | number:'1.4-4' }}</td>
+                                                                <td class="text-500">{{ pt.longitud | number:'1.4-4' }}</td>
+                                                            </tr>
+                                                        </ng-template>
+                                                    </p-table>
+                                                </div>
+                                            </div>
+                                        </div>
                                     </div>
 
                                     <!-- Contenido: ENTREGA -->
@@ -401,34 +566,7 @@
                             </div>
                         </div>
 
-                        <!-- Datos GPS Nativos PrimeNG -->
-                        <div class="mt-4" *ngIf="viajeItem.gpsPuntos && viajeItem.gpsPuntos.length > 0">
-                            <div class="text-xs text-500 mb-3 font-bold cursor-pointer flex align-items-center hover:text-primary transition-colors" (click)="mostrarGpsMap[viajeItem.numero_viaje_secuencial] = !mostrarGpsMap[viajeItem.numero_viaje_secuencial]; $event.stopPropagation()">
-                                <i class="pi" [ngClass]="mostrarGpsMap[viajeItem.numero_viaje_secuencial] ? 'pi-chevron-down' : 'pi-chevron-right'"></i>
-                                <span class="ml-1"><i class="pi pi-compass mr-1 text-blue-400"></i>Datos GPS ({{ viajeItem.gpsPuntos.length }})</span>
-                            </div>
-                            <div *ngIf="mostrarGpsMap[viajeItem.numero_viaje_secuencial]" class="mt-2 overflow-hidden border-round shadow-1">
-                                <p-table [value]="viajeItem.gpsPuntos" [paginator]="true" [rows]="5" styleClass="p-datatable-sm">
-                                    <ng-template pTemplate="header">
-                                        <tr>
-                                            <th class="text-xs" style="width: 30%">Hora</th>
-                                            <th class="text-xs" style="width: 35%">Latitud</th>
-                                            <th class="text-xs" style="width: 35%">Longitud</th>
-                                        </tr>
-                                    </ng-template>
-                                    <ng-template pTemplate="body" let-pt>
-                                        <tr class="text-xs">
-                                            <td class="font-bold">
-                                                <span *ngIf="pt.timestamp">{{ pt.timestamp | date:'dd/MM HH:mm:ss' }}</span>
-                                                <span *ngIf="!pt.timestamp" class="text-500 italic">Sin hora móvil</span>
-                                            </td>
-                                            <td class="text-500">{{ pt.latitud | number:'1.4-4' }}</td>
-                                            <td class="text-500">{{ pt.longitud | number:'1.4-4' }}</td>
-                                        </tr>
-                                    </ng-template>
-                                </p-table>
-                            </div>
-                        </div>
+
                     </div>
                 </div> <!-- End of ngFor viajeItem -->
             </div> <!-- End of ngIf viajesAuditoria.length > 0 -->
@@ -474,5 +612,31 @@
     
     <div class="flex justify-content-center align-items-center p-3">
         <img *ngIf="selectedImageUrl" [src]="selectedImageUrl" style="max-width: 100%; max-height: 80vh; object-fit: contain;" class="shadow-4 border-round">
+    </div>
+</p-dialog>
+
+<!-- Modal de Código QR -->
+<p-dialog 
+    [(visible)]="displayQrModal" 
+    [modal]="true" 
+    [dismissableMask]="true"
+    [showHeader]="true"
+    header="Transferir Carga (QR)"
+    [style]="{width: '90vw', maxWidth: '400px'}"
+    [closeOnEscape]="true"
+    appendTo="body">
+    
+    <div class="flex flex-column align-items-center p-3 text-center">
+        <i class="pi pi-mobile text-primary mb-3" style="font-size: 3rem"></i>
+        <h3 class="mt-0 mb-2">Despacho Registrado</h3>
+        <p class="text-500 text-sm mb-4">
+            Muestre este código al chofer para que lo escanee desde la <b>App Móvil</b> y asuma la carga.
+        </p>
+
+        <div class="bg-white p-3 border-round shadow-2 mb-4" *ngIf="qrPayload">
+            <qrcode [qrdata]="qrPayload" [width]="250" [errorCorrectionLevel]="'M'"></qrcode>
+        </div>
+
+        <button pButton label="Aceptar" icon="pi pi-check" class="p-button-primary w-full p-button-lg" (click)="displayQrModal = false"></button>
     </div>
 </p-dialog>

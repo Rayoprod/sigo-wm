@@ -16,12 +16,27 @@ export const roleGuard: CanActivateFn = async (route, state) => {
   // Los roles permitidos se definen en el data de cada ruta
   const allowedRoles = route.data['roles'] as Array<'admin' | 'vendedor' | 'despachador' | 'chofer'>;
 
-  if (allowedRoles && !allowedRoles.includes(currentUser.rol)) {
+  // Extraemos los roles del usuario de manera segura
+  let userRoles: string[] = [];
+  if (Array.isArray(currentUser.rol)) {
+    userRoles = currentUser.rol;
+  } else if (typeof currentUser.rol === 'string') {
+    userRoles = [currentUser.rol];
+  }
+
+  // El Administrador tiene acceso irrestricto en la app web
+  if (userRoles.includes('admin')) {
+    return true;
+  }
+
+  // Verifica si hay intersección (el usuario tiene al menos uno de los roles permitidos)
+  if (allowedRoles && !allowedRoles.some(r => userRoles.includes(r))) {
     return router.createUrlTree(['/login']);
   }
 
-  // Los despachadores van directo a logística si intentan entrar al dashboard
-  if ((state.url === '/' || state.url === '/dashboard') && currentUser.rol === 'despachador') {
+  // Si intenta ir al dashboard y SOLO es despachador, mandarlo a logistica
+  // (Si es admin y despachador a la vez, sí puede ver el dashboard)
+  if ((state.url === '/' || state.url === '/dashboard') && userRoles.includes('despachador') && !userRoles.includes('admin') && !userRoles.includes('vendedor')) {
     return router.createUrlTree(['/logistica']);
   }
 

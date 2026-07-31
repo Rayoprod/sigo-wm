@@ -27,7 +27,12 @@
                                             </div>
                                             <span class="font-bold text-lg text-color">{{ user.nombre_completo || 'Sin nombre' }}</span>
                                         </div>
-                                        <p-tag [value]="user.rol | uppercase" [severity]="user.rol === 'admin' ? 'danger' : (user.rol === 'vendedor' ? 'info' : 'warning')"></p-tag>
+                                        <div class="flex gap-1 flex-wrap">
+                                            <p-tag *ngFor="let r of (user.rol | asArray)"
+                                                   [value]="r | uppercase"
+                                                   [severity]="r === 'admin' ? 'danger' : (r === 'vendedor' ? 'info' : 'warning')">
+                                            </p-tag>
+                                        </div>
                                     </div>
                                     <div class="mobile-card-row mb-1">
                                         <div class="mobile-card-label"><i class="pi pi-envelope mr-2"></i>Correo</div>
@@ -67,8 +72,12 @@
                                     <td class="font-bold text-900">{{ user.nombre_completo || '-' }}</td>
                                     <td class="font-medium text-600">{{ user.correo }}</td>
                                     <td class="text-center">
-                                        <p-tag [value]="user.rol | uppercase" 
-                                               [severity]="user.rol === 'admin' ? 'danger' : (user.rol === 'vendedor' ? 'info' : 'warning')"></p-tag>
+                                        <div class="flex gap-1 justify-content-center flex-wrap">
+                                            <p-tag *ngFor="let r of (user.rol | asArray)"
+                                                   [value]="r | uppercase"
+                                                   [severity]="r === 'admin' ? 'danger' : (r === 'vendedor' ? 'info' : 'warning')">
+                                            </p-tag>
+                                        </div>
                                     </td>
                                     <td class="text-center">
                                         <p-tag [value]="user.activo ? 'ACTIVO' : 'INACTIVO'" 
@@ -228,8 +237,18 @@
         </div>
 
         <div class="field col-12">
-            <label class="font-medium text-900">Rol del Empleado</label>
-            <p-dropdown [options]="roles" [(ngModel)]="nuevoUsuario.rol" appendTo="body" styleClass="w-full"></p-dropdown>
+            <label class="font-medium text-900">Roles del Empleado</label>
+            <p-multiSelect 
+                [options]="roles" 
+                [(ngModel)]="nuevoUsuario.roles" 
+                optionLabel="label"
+                optionValue="value"
+                placeholder="Selecciona uno o más roles"
+                appendTo="body"
+                styleClass="w-full"
+                display="chip">
+            </p-multiSelect>
+            <small class="text-500">Un usuario puede tener más de un rol (ej: Despachador + Chofer).</small>
         </div>
     </div>
     

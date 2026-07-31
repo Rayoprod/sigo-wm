@@ -32,7 +32,8 @@ export class DashboardComponent implements OnInit {
   despachosChartOptions: any;
 
   async ngOnInit() {
-    this.isAdmin = this.auth.currentUser()?.rol === 'admin';
+    const roles = this.auth.currentUser()?.rol || [];
+    this.isAdmin = Array.isArray(roles) ? roles.includes('admin') : roles === 'admin';
     if (!this.isAdmin) return;
 
     await Promise.all([

@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { SupabaseService } from '../../core/services/supabase.service';
 import { createClient } from '@supabase/supabase-js';
 import { environment } from '../../../environments/environment';
+import { AsArrayPipe } from '../../shared/pipes/as-array.pipe';
 
 import { TableModule } from 'primeng/table';
 import { ButtonModule } from 'primeng/button';
@@ -11,6 +12,7 @@ import { DialogModule } from 'primeng/dialog';
 import { InputTextModule } from 'primeng/inputtext';
 import { InputTextareaModule } from 'primeng/inputtextarea';
 import { DropdownModule } from 'primeng/dropdown';
+import { MultiSelectModule } from 'primeng/multiselect';
 import { TabViewModule } from 'primeng/tabview';
 import { TagModule } from 'primeng/tag';
 import { FileUploadModule } from 'primeng/fileupload';
@@ -28,10 +30,12 @@ import { TooltipModule } from 'primeng/tooltip';
     InputTextModule,
     InputTextareaModule,
     DropdownModule,
+    MultiSelectModule,
     TabViewModule,
     TagModule,
     FileUploadModule,
-    TooltipModule
+    TooltipModule,
+    AsArrayPipe
   ],
   templateUrl: './configuracion.component.html',
   styleUrl: './configuracion.component.scss'
@@ -55,18 +59,19 @@ export class ConfiguracionComponent implements OnInit {
   displayUserModal = false;
   isSavingUser = false;
   
+  // Opciones de roles para el MultiSelect
   roles = [
-    { label: 'Vendedor', value: 'vendedor' },
-    { label: 'Despachador', value: 'despachador' },
-    { label: 'Chofer', value: 'chofer' },
-    { label: 'Administrador', value: 'admin' }
+    { label: '👑 Administrador', value: 'admin' },
+    { label: '🛒 Vendedor', value: 'vendedor' },
+    { label: '🚛 Despachador', value: 'despachador' },
+    { label: '🏗️ Chofer', value: 'chofer' },
   ];
 
   nuevoUsuario = {
     email: '',
     password: '',
     nombre_completo: '',
-    rol: 'vendedor'
+    roles: ['vendedor'] as string[]
   };
   isEditingUser = false;
   usuarioEditId: string | null = null;
@@ -130,7 +135,7 @@ export class ConfiguracionComponent implements OnInit {
       email: '',
       password: '',
       nombre_completo: '',
-      rol: 'vendedor'
+      roles: ['vendedor']
     };
     this.displayUserModal = true;
   }
@@ -138,11 +143,20 @@ export class ConfiguracionComponent implements OnInit {
   editarUsuario(usuario: any) {
     this.isEditingUser = true;
     this.usuarioEditId = usuario.id;
+    // 'rol' en Supabase ahora es text[] — puede venir como array o string legacy
+    let rolesArray: string[];
+    if (Array.isArray(usuario.rol)) {
+      rolesArray = usuario.rol;
+    } else if (typeof usuario.rol === 'string') {
+      rolesArray = [usuario.rol];
+    } else {
+      rolesArray = ['vendedor'];
+    }
     this.nuevoUsuario = {
       email: usuario.correo,
-      password: '', // Password cannot be edited from here easily
+      password: '',
       nombre_completo: usuario.nombre_completo || '',
-      rol: usuario.rol
+      roles: rolesArray
     };
     this.displayUserModal = true;
   }
@@ -154,55 +168,60 @@ export class ConfiguracionComponent implements OnInit {
     }
 
     if (!this.nuevoUsuario.nombre_completo) {
-        alert('El Nombre Completo es obligatorio.');
-        return;
+      alert('El Nombre Completo es obligatorio.');
+      return;
+    }
+
+    if (!this.nuevoUsuario.roles || this.nuevoUsuario.roles.length === 0) {
+      alert('Debes asignar al menos un rol al usuario.');
+      return;
     }
 
     this.isSavingUser = true;
     try {
       if (this.isEditingUser && this.usuarioEditId) {
-        // Actualizar solo nombre y rol en la tabla public.usuarios
+        // Actualizar nombre y roles (array) en la tabla public.usuarios
         const { error } = await this.supabase
           .from('usuarios')
           .update({
             nombre_completo: this.nuevoUsuario.nombre_completo,
-            rol: this.nuevoUsuario.rol
+            rol: this.nuevoUsuario.roles
           })
           .eq('id', this.usuarioEditId);
 
         if (error) throw error;
         alert('Usuario actualizado correctamente.');
       } else {
-        // Create user via Supabase Auth without interrupting current session
+        // Crear usuario vía Supabase Auth
         const { data, error } = await this.adminSupabase.auth.signUp({
           email: this.nuevoUsuario.email,
           password: this.nuevoUsuario.password,
           options: {
             data: {
-              rol: this.nuevoUsuario.rol,
+              rol: this.nuevoUsuario.roles,
               nombre_completo: this.nuevoUsuario.nombre_completo,
-              full_name: this.nuevoUsuario.nombre_completo // Respaldo para triggers estándar
+              full_name: this.nuevoUsuario.nombre_completo
             }
           }
         });
 
         if (error) throw error;
-        
-        // Forzar actualización directa en public.usuarios para asegurar que el nombre se guarde
+
+        // Forzar actualización directa en public.usuarios
         if (data.user) {
           const { error: updateError } = await this.supabase
             .from('usuarios')
             .update({
               nombre_completo: this.nuevoUsuario.nombre_completo,
-              rol: this.nuevoUsuario.rol
+              rol: this.nuevoUsuario.roles
             })
             .eq('id', data.user.id);
-            
+
           if (updateError) {
-             console.warn('Aviso: No se pudo forzar el nombre en public.usuarios', updateError);
+            console.warn('Aviso: No se pudo forzar el nombre en public.usuarios', updateError);
           }
         }
-        alert('Usuario creado correctamente. El vendedor/despachador ya puede iniciar sesión.');
+        alert('Usuario creado correctamente.');
       }
 
       this.displayUserModal = false;

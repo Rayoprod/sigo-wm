@@ -100,9 +100,33 @@ export class ComercialListComponent implements OnInit {
   ];
   isSavingPago = false;
 
+  async deleteStorageFolderRecursively(path: string) {
+    const { data: items, error } = await this.supabase.storage.from('assets').list(path);
+    if (error || !items || items.length === 0) return;
+    
+    let toDelete: string[] = [];
+    for (const item of items) {
+      const itemPath = `${path}/${item.name}`;
+      if (item.id !== null || item.name === '.emptyFolderPlaceholder') {
+        toDelete.push(itemPath);
+      } else {
+        // Es subcarpeta, entrar recursivamente
+        await this.deleteStorageFolderRecursively(itemPath);
+        toDelete.push(itemPath); // Borrar la carpeta en sí
+      }
+    }
+    
+    // Borrar en lotes de 50
+    const chunk = 50;
+    for (let i = 0; i < toDelete.length; i += chunk) {
+      const slice = toDelete.slice(i, i + chunk);
+      await this.supabase.storage.from('assets').remove(slice);
+    }
+  }
+
   async eliminarPedidoPruebas(pedido: any) {
     this.confirmationService.confirm({
-      message: `¡ATENCIÓN! Esta acción borrará el pedido ${pedido.folio}, TODOS sus viajes, historial GPS, pagos, y borrará las fotos de la nube. Es un borrado físico irreversible (solo usar para limpieza de pruebas).<br><br>¿Estás completamente seguro de borrarlo?`,
+      message: `¡ATENCIÓN! Esta acción borrará el pedido ${pedido.folio}, TODOS sus viajes, historial GPS, pagos, y borrará las fotos de la nube de forma recursiva. Es un borrado irreversible.<br><br>¿Estás completamente seguro de borrarlo?`,
       header: 'Eliminar Pedido (Modo Pruebas)',
       icon: 'pi pi-exclamation-triangle text-red-500',
       acceptButtonStyleClass: 'p-button-danger',
@@ -111,19 +135,15 @@ export class ComercialListComponent implements OnInit {
       rejectLabel: 'Cancelar',
       accept: async () => {
         try {
-          // 1. Borrar fotos del bucket
+          // 1. Borrar fotos del bucket (recursivamente)
           const folderPath = `evidencias/pedidos/${pedido.folio}`;
-          const { data: files, error: listError } = await this.supabase.storage.from('assets').list(folderPath, { limit: 100 });
-          if (!listError && files && files.length > 0) {
-            const filePaths = files.map(x => `${folderPath}/${x.name}`);
-            await this.supabase.storage.from('assets').remove(filePaths);
-          }
+          await this.deleteStorageFolderRecursively(folderPath);
           
           // 2. Ejecutar RPC de borrado en cascada
           const { error: rpcError } = await this.supabase.rpc('delete_pedido_cascade', { p_pedido_id: pedido.id });
           if (rpcError) throw rpcError;
           
-          this.messageService.add({ severity: 'success', summary: 'Borrado Exitoso', detail: `El pedido ${pedido.folio} y todas sus dependencias fueron eliminados permanentemente.` });
+          this.messageService.add({ severity: 'success', summary: 'Borrado Exitoso', detail: `El pedido ${pedido.folio} y todas sus dependencias y fotos fueron eliminados.` });
           this.loadPedidos();
         } catch (error: any) {
           console.error(error);

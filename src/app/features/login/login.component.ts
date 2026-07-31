@@ -46,13 +46,22 @@ export class LoginComponent {
       await this.authService.signIn(this.email, this.password);
       const user = await this.authService.waitForAuth();
       
-      if (user?.rol === 'chofer') {
+      let userRoles: string[] = [];
+      if (user?.rol) {
+        if (Array.isArray(user.rol)) {
+          userRoles = user.rol;
+        } else if (typeof user.rol === 'string') {
+          userRoles = [(user.rol as unknown) as string];
+        }
+      }
+      
+      if (userRoles.includes('chofer') && userRoles.length === 1) {
         await this.authService.signOut();
         this.errorMsg = 'Acceso denegado. Los choferes deben usar la aplicación móvil, no la plataforma web.';
         return;
       }
       
-      if (user?.rol === 'despachador') {
+      if (userRoles.includes('despachador') && !userRoles.includes('admin') && !userRoles.includes('vendedor')) {
         // replaceUrl: true elimina /login del historial del navegador.
         // Sin esto, el botón "Atrás" desde el panel regresa a /login.
         this.router.navigate(['/logistica'], { replaceUrl: true });

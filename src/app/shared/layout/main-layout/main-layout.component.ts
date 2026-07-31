@@ -11,6 +11,7 @@ import { MenuModule } from 'primeng/menu';
 import { MenuItem } from 'primeng/api';
 import { TooltipModule } from 'primeng/tooltip';
 import { ChatBotComponent } from '../chat-bot/chat-bot.component';
+import { AsArrayPipe } from '../../pipes/as-array.pipe';
 
 @Component({
   selector: 'app-main-layout',
@@ -26,7 +27,8 @@ import { ChatBotComponent } from '../chat-bot/chat-bot.component';
     AvatarModule,
     MenuModule,
     TooltipModule,
-    ChatBotComponent
+    ChatBotComponent,
+    AsArrayPipe
   ],
   templateUrl: './main-layout.component.html',
   styleUrl: './main-layout.component.scss'
@@ -40,7 +42,8 @@ export class MainLayoutComponent {
 
   // Level A Security - UI Visibility based on roles
   menuItems = computed<MenuItem[]>(() => {
-    const rol = this.user()?.rol;
+    const roles = this.user()?.rol || [];
+    const rol = Array.isArray(roles) ? roles[0] : roles;
     const items: MenuItem[] = [
       { label: 'Dashboard', icon: 'pi pi-home', routerLink: '/dashboard', visible: rol === 'admin' || rol === 'vendedor' }
     ];
@@ -66,6 +69,16 @@ export class MainLayoutComponent {
 
     return items;
   });
+
+  get primaryRole(): string {
+    const roles = this.user()?.rol || [];
+    const rolesArr = Array.isArray(roles) ? roles : [roles];
+    if (rolesArr.includes('admin')) return 'admin';
+    if (rolesArr.includes('vendedor')) return 'vendedor';
+    if (rolesArr.includes('despachador')) return 'despachador';
+    if (rolesArr.includes('chofer')) return 'chofer';
+    return rolesArr[0] || 'usuario';
+  }
 
   async logout() {
     await this.authService.signOut();

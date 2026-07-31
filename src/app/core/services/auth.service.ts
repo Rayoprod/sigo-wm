@@ -7,7 +7,7 @@ export interface AppUser {
   id: string;
   correo: string;
   nombre_completo?: string;
-  rol: 'admin' | 'vendedor' | 'despachador' | 'chofer';
+  rol: string[];
   activo: boolean;
 }
 
@@ -102,14 +102,14 @@ export class AuthService {
     await this.supabase.auth.signOut();
   }
 
-  async createStaffUser(email: string, password: string, role: 'admin' | 'vendedor' | 'despachador' | 'chofer', nombreCompleto?: string) {
+  async createStaffUser(email: string, password: string, roles: string[], nombreCompleto?: string) {
     // Only admins should call this
     const { data, error } = await this.supabase.auth.signUp({
       email,
       password,
       options: {
         data: {
-          rol: role,
+          rol: roles,
           nombre_completo: nombreCompleto
         }
       }
