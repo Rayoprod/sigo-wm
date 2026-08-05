@@ -32,7 +32,31 @@ export class AuthService {
       this.sessionResolve = resolve;
     });
     this.initSession();
+    this.startKeepAlive();
   }
+
+  /**
+   * Keep-alive proactivo: refresca la sesión cada 45 minutos.
+   * Esto evita que el JWT expire si el navegador congela la pestaña
+   * (Tab Throttling en Chrome cuando la ventana está en segundo plano).
+   * Supabase tiene autoRefreshToken pero depende de timers JS que pueden
+   * ser suspendidos por el navegador. Este método es el respaldo explícito.
+   */
+  private startKeepAlive() {
+    const INTERVALO_MS = 45 * 60 * 1000; // 45 minutos
+    setInterval(async () => {
+      const { data: { session } } = await this.supabase.auth.getSession();
+      if (session) {
+        const { error } = await this.supabase.auth.refreshSession();
+        if (error) {
+          console.warn('[AuthService] Keep-alive refresh failed:', error.message);
+        } else {
+          console.log('[AuthService] Keep-alive: sesión renovada correctamente.');
+        }
+      }
+    }, INTERVALO_MS);
+  }
+
 
   async waitForAuth() {
     if (!this.sessionInitialized) {
@@ -52,6 +76,23 @@ export class AuthService {
     this.sessionResolve();
 
     this.supabase.auth.onAuthStateChange(async (event, session) => {
+      // Si el evento es SIGNED_OUT, verificamos si la sesión realmente terminó.
+      // Esto previene que un cliente Supabase secundario (adminSupabase en configuracion)
+      // dispare un cierre de sesión falso en el cliente principal.
+      if (event === 'SIGNED_OUT') {
+        const { data: { session: realSession } } = await this.supabase.auth.getSession();
+        if (realSession) {
+          // La sesión sigue activa — el evento SIGNED_OUT fue espurio (cliente secundario).
+          // No hacer nada.
+          console.warn('[AuthService] SIGNED_OUT event ignored — real session still active.');
+          return;
+        }
+        this.session.set(null);
+        this.currentUser.set(null);
+        this.router.navigate(['/login'], { replaceUrl: true });
+        return;
+      }
+
       this.session.set(session);
       if (session?.user) {
         await this.loadAppUser(session.user.id);

@@ -1,16 +1,14 @@
-<div class="p-4">
-  <div class="flex flex-column md:flex-row justify-content-between align-items-start md:align-items-center mb-4">
-    <div>
-      <h1 class="text-3xl font-bold m-0 text-900">Reportes Analíticos</h1>
-      <p class="text-600 mt-1 mb-0">Visualiza y exporta la información operativa y financiera de tu negocio.</p>
-    </div>
-  </div>
-
-  <div class="card p-0 overflow-hidden border-round-xl shadow-2">
-    <p-tabView styleClass="w-full">
+<p-tabView>
       
       <!-- REPORTE A: Historial de Ventas -->
       <p-tabPanel header="Historial de Ventas" leftIcon="pi pi-chart-line">
+        
+        <div class="flex justify-content-between align-items-center mb-4 pt-2">
+            <div>
+                <h2 class="m-0 text-900 font-bold">Historial de Ventas</h2>
+                <p class="text-500 mt-1 mb-0">Visualiza y exporta la información operativa de tu negocio.</p>
+            </div>
+        </div>
         <div class="flex flex-column md:flex-row gap-3 mb-4 surface-50 p-3 border-round">
           <div class="field mb-0 w-full md:w-auto">
             <label class="block text-sm font-medium mb-1">Fecha Desde</label>
@@ -36,22 +34,34 @@
             <tr>
               <th pSortableColumn="created_at">Fecha <p-sortIcon field="created_at"></p-sortIcon></th>
               <th pSortableColumn="folio">Folio <p-sortIcon field="folio"></p-sortIcon></th>
+              <th>Tipo</th>
               <th pSortableColumn="cliente_nombre">Cliente <p-sortIcon field="cliente_nombre"></p-sortIcon></th>
-              <th pSortableColumn="total" class="text-right">Total Venta <p-sortIcon field="total"></p-sortIcon></th>
-              <th pSortableColumn="saldo_pendiente" class="text-right">Saldo Pendiente <p-sortIcon field="saldo_pendiente"></p-sortIcon></th>
+              <th>Entrega</th>
+              <th pSortableColumn="subtotal" class="text-right">Subtotal <p-sortIcon field="subtotal"></p-sortIcon></th>
+              <th pSortableColumn="igv" class="text-right">IGV <p-sortIcon field="igv"></p-sortIcon></th>
+              <th pSortableColumn="total" class="text-right">Total <p-sortIcon field="total"></p-sortIcon></th>
+              <th pSortableColumn="total_pagado" class="text-right">Pagado <p-sortIcon field="total_pagado"></p-sortIcon></th>
+              <th pSortableColumn="saldo_pendiente" class="text-right">Saldo <p-sortIcon field="saldo_pendiente"></p-sortIcon></th>
+              <th>Pago</th>
               <th pSortableColumn="estado">Estado <p-sortIcon field="estado"></p-sortIcon></th>
             </tr>
           </ng-template>
           <ng-template pTemplate="body" let-v>
             <tr>
-              <td>{{ v.created_at | date:'dd/MM/yyyy HH:mm' }}</td>
+              <td class="text-sm">{{ v.created_at | date:'dd/MM/yy HH:mm' }}</td>
               <td class="font-bold text-primary">{{ v.folio }}</td>
+              <td><p-tag [value]="v.tipo_documento === 'COTIZACION' ? 'COT' : 'OV'" [severity]="v.tipo_documento === 'COTIZACION' ? 'warning' : 'info'"></p-tag></td>
               <td>
                 <span class="font-medium block">{{ v.cliente_nombre }}</span>
                 <span class="text-color-secondary text-xs">{{ v.cliente_doc }}</span>
               </td>
+              <td class="text-sm">{{ v.tipo_entrega_label }}</td>
+              <td class="text-right text-sm">S/ {{ v.subtotal | number:'1.2-2' }}</td>
+              <td class="text-right text-sm" [ngClass]="{'text-primary': v.igv > 0}">S/ {{ v.igv | number:'1.2-2' }}</td>
               <td class="font-bold text-green-600 text-right">S/ {{ v.total | number:'1.2-2' }}</td>
-              <td class="text-right" [ngClass]="{'text-red-500 font-bold': v.saldo_pendiente > 0}">S/ {{ v.saldo_pendiente | number:'1.2-2' }}</td>
+              <td class="text-right text-sm">S/ {{ v.total_pagado | number:'1.2-2' }}</td>
+              <td class="text-right" [ngClass]="{'text-red-500 font-bold': v.saldo_pendiente > 0, 'text-color-secondary': v.saldo_pendiente === 0}">S/ {{ v.saldo_pendiente | number:'1.2-2' }}</td>
+              <td class="text-xs">{{ v.metodo_pago }}</td>
               <td><p-tag [value]="v.estado" [severity]="getSeverity(v.estado)"></p-tag></td>
             </tr>
           </ng-template>
@@ -93,6 +103,12 @@
 
       <!-- REPORTE B: Cuentas por Cobrar -->
       <p-tabPanel header="Cuentas por Cobrar" leftIcon="pi pi-wallet">
+        <div class="flex justify-content-between align-items-center mb-4 pt-2">
+            <div>
+                <h2 class="m-0 text-900 font-bold">Cuentas por Cobrar</h2>
+                <p class="text-500 mt-1 mb-0">Listado de saldos pendientes de tus clientes.</p>
+            </div>
+        </div>
         <div class="flex flex-column md:flex-row gap-3 justify-content-between md:align-items-center mb-4 surface-50 p-3 border-round">
           <h3 class="m-0 text-700 text-sm md:text-base"><i class="pi pi-info-circle mr-2"></i> Solo se muestran ventas con deuda pendiente.</h3>
           <button pButton label="Exportar Excel/CSV" icon="pi pi-file-excel" class="p-button-success w-full md:w-auto" (click)="exportExcel(dtDeudas)"></button>
@@ -157,8 +173,14 @@
         </div>
       </p-tabPanel>
 
-      <!-- REPORTE C: Valorización de Inventario -->
+      <!-- REPORTE C: Inventario Valorizado -->
       <p-tabPanel header="Valorización de Inventario" leftIcon="pi pi-box">
+        <div class="flex justify-content-between align-items-center mb-4 pt-2">
+            <div>
+                <h2 class="m-0 text-900 font-bold">Valorización de Inventario</h2>
+                <p class="text-500 mt-1 mb-0">Reporte del capital inmovilizado en tus productos.</p>
+            </div>
+        </div>
         <div class="flex flex-column md:flex-row gap-3 justify-content-between md:align-items-center mb-4 surface-50 p-3 border-round">
           <h3 class="m-0 text-700 text-sm md:text-base"><i class="pi pi-info-circle mr-2"></i> Valorización = Stock Físico × Precio de Venta Base.</h3>
           <button pButton label="Exportar Excel/CSV" icon="pi pi-file-excel" class="p-button-success w-full md:w-auto" (click)="exportExcel(dtInventario)"></button>
@@ -224,8 +246,4 @@
         </div>
       </p-tabPanel>
 
-
-
     </p-tabView>
-  </div>
-</div>

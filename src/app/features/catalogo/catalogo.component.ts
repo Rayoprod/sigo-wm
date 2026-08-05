@@ -139,7 +139,8 @@ export class CatalogoComponent implements OnInit {
     this.isSavingProducto = true;
     try {
       if (this.productoForm.id) {
-        const { id, created_at, ...updateData } = this.productoForm;
+        // Excluimos stock_actual para evitar una condición de carrera si alguien vende mientras se edita
+        const { id, created_at, stock_actual, ...updateData } = this.productoForm;
         const { error } = await this.supabase.from('productos').update(updateData).eq('id', id);
         if (error) throw error;
       } else {

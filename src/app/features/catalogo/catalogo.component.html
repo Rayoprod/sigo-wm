@@ -199,7 +199,7 @@
 
 <!-- Nuevo / Editar Producto -->
 <p-dialog [header]="productoForm.id ? 'Editar Producto' : 'Nuevo Producto'"
-          [(visible)]="displayModalProducto" [modal]="true" [style]="{width:'500px'}" styleClass="p-fluid">
+          [(visible)]="displayModalProducto" [modal]="true" [style]="{width: '90vw', maxWidth: '500px'}" styleClass="p-fluid">
     <div class="grid formgrid pt-3">
         <div class="field col-12 md:col-4">
             <label class="font-medium">Código SKU</label>
@@ -238,7 +238,7 @@
 
 <!-- Ajuste de Stock -->
 <p-dialog [header]="'Ajustar Stock: ' + (productoSeleccionado?.descripcion || '')"
-          [(visible)]="displayModalAjuste" [modal]="true" [style]="{width:'420px'}" styleClass="p-fluid">
+          [(visible)]="displayModalAjuste" [modal]="true" [style]="{width: '90vw', maxWidth: '420px'}" styleClass="p-fluid">
     <div class="field mt-3">
         <label>Tipo de Movimiento</label>
         <p-dropdown [options]="tiposMovimiento" [(ngModel)]="ajuste.tipo" appendTo="body"></p-dropdown>
@@ -259,7 +259,7 @@
 
 <!-- Editar Stock Mínimo -->
 <p-dialog [header]="'Stock Mínimo: ' + (productoSeleccionado?.descripcion || '')"
-          [(visible)]="displayModalMinimo" [modal]="true" [style]="{width:'380px'}" styleClass="p-fluid">
+          [(visible)]="displayModalMinimo" [modal]="true" [style]="{width: '90vw', maxWidth: '380px'}" styleClass="p-fluid">
     <div class="field mt-3">
         <label>Stock Mínimo (Alerta de escasez)</label>
         <p-inputNumber [(ngModel)]="minimoForm.stock_minimo" [minFractionDigits]="2" [min]="0"></p-inputNumber>
@@ -273,8 +273,8 @@
 
 <!-- Historial de Movimientos -->
 <p-dialog [header]="productoSeleccionado ? 'Historial: ' + productoSeleccionado.descripcion : 'Historial General de Inventario'"
-          [(visible)]="displayModalHistorial" [modal]="true" [style]="{width:'800px'}" styleClass="p-fluid">
-    <p-table [value]="historial" [loading]="loadingHistorial" [paginator]="true" [rows]="10" styleClass="p-datatable-sm p-datatable-striped">
+          [(visible)]="displayModalHistorial" [modal]="true" [style]="{width: '95vw', maxWidth: '800px'}" styleClass="p-fluid">
+    <p-table [value]="historial" [loading]="loadingHistorial" [paginator]="true" [rows]="10" styleClass="p-datatable-sm p-datatable-striped" responsiveLayout="scroll">
         <ng-template pTemplate="header">
             <tr>
                 <th pSortableColumn="fecha_movimiento">Fecha <p-sortIcon field="fecha_movimiento"></p-sortIcon></th>

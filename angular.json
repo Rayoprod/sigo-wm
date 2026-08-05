@@ -28,17 +28,7 @@
             "assets": [
               "src/favicon.ico",
               "src/assets",
-              "src/manifest.webmanifest",
-              {
-                "glob": "**/*",
-                "input": "node_modules/primeng/resources/themes/lara-light-teal",
-                "output": "/assets/themes/lara-light-teal"
-              },
-              {
-                "glob": "**/*",
-                "input": "node_modules/primeng/resources/themes/lara-dark-teal",
-                "output": "/assets/themes/lara-dark-teal"
-              }
+              "src/manifest.webmanifest"
             ],
             "styles": [
               "src/styles.scss"
@@ -107,17 +97,7 @@
             "assets": [
               "src/favicon.ico",
               "src/assets",
-              "src/manifest.webmanifest",
-              {
-                "glob": "**/*",
-                "input": "node_modules/primeng/resources/themes/lara-light-teal",
-                "output": "/assets/themes/lara-light-teal"
-              },
-              {
-                "glob": "**/*",
-                "input": "node_modules/primeng/resources/themes/lara-dark-teal",
-                "output": "/assets/themes/lara-dark-teal"
-              }
+              "src/manifest.webmanifest"
             ],
             "styles": [
               "src/styles.scss"

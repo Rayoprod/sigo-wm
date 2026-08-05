@@ -1,0 +1,78 @@
+/* ----------------------------------------------------
+   PREMIUM SIDEBAR STYLES
+   ---------------------------------------------------- */
+.premium-sidebar {
+  transition: background-color 0.3s ease, border-color 0.3s ease;
+  position: relative;
+  overflow: hidden;
+
+  /* Subtle gradient overlay to make it look less flat */
+  &::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: linear-gradient(180deg, rgba(255,255,255,0.03) 0%, rgba(255,255,255,0) 100%);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  /* Make sure content is above the overlay */
+  > * {
+    position: relative;
+    z-index: 1;
+  }
+}
+
+/* Base link styling */
+.menu-item-link {
+  color: var(--text-color-secondary);
+  border: 1px solid transparent;
+  
+  .menu-icon {
+    transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1), color 0.2s ease;
+  }
+
+  &:hover {
+    background-color: var(--surface-hover);
+    color: var(--text-color);
+    
+    .menu-icon {
+      transform: scale(1.15) rotate(5deg);
+      color: var(--primary-color);
+    }
+  }
+}
+
+/* Active Route Styling - The "WOW" factor */
+.active-menu-item {
+  /* Elegant gradient matching the primary teal */
+  background: linear-gradient(135deg, rgba(20, 184, 166, 0.15) 0%, rgba(20, 184, 166, 0.05) 100%);
+  border: 1px solid rgba(20, 184, 166, 0.3);
+  box-shadow: 0 4px 15px -3px rgba(20, 184, 166, 0.15);
+  color: var(--primary-color) !important;
+  font-weight: 700 !important;
+
+  .menu-icon {
+    color: var(--primary-color) !important;
+    transform: scale(1.1);
+  }
+
+  &:hover {
+    background: linear-gradient(135deg, rgba(20, 184, 166, 0.2) 0%, rgba(20, 184, 166, 0.1) 100%);
+    border-color: rgba(20, 184, 166, 0.4);
+  }
+}
+
+/* Adjustments for dark mode compatibility */
+:host-context(.dark-mode) {
+  .active-menu-item {
+    background: linear-gradient(135deg, rgba(20, 184, 166, 0.25) 0%, rgba(20, 184, 166, 0.1) 100%);
+    border: 1px solid rgba(20, 184, 166, 0.4);
+    box-shadow: 0 4px 15px -3px rgba(20, 184, 166, 0.25);
+    color: #4ade80 !important; /* Brighter teal/green for dark mode contrast */
+
+    .menu-icon {
+      color: #4ade80 !important;
+    }
+  }
+}

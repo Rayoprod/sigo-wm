@@ -1,20 +1,14 @@
-<div class="grid">
-    <div class="col-12">
-        <h2 class="m-0 text-900 font-bold mb-4">Configuración del Sistema</h2>
-
-        <div class="surface-card p-0 shadow-2 border-round-xl overflow-hidden">
-            <p-tabView styleClass="custom-tabview">
+<p-tabView>
                 
-                <!-- TAB 1: GESTION DE USUARIOS -->
-                <p-tabPanel header="Gestión de Usuarios" leftIcon="pi pi-users">
-                    <div class="p-4">
-                        <div class="flex justify-content-between align-items-center mb-4">
-                            <div>
-                                <h3 class="m-0 text-800 font-semibold">Cuentas del Equipo</h3>
-                                <p class="text-500 m-0 mt-1">Administra los accesos de tus vendedores y despachadores.</p>
-                            </div>
-                            <p-button label="Nuevo Usuario" icon="pi pi-user-plus" styleClass="p-button-primary shadow-2" (click)="abrirNuevoUsuario()"></p-button>
-                        </div>
+    <!-- TAB 1: GESTION DE USUARIOS -->
+    <p-tabPanel header="Gestión de Usuarios" leftIcon="pi pi-users">
+        <div class="flex flex-column md:flex-row justify-content-between align-items-start md:align-items-center mb-4 pt-2">
+            <div class="mb-3 md:mb-0">
+                <h2 class="m-0 text-900 font-bold">Gestión de Usuarios</h2>
+                <p class="text-500 m-0 mt-1">Administra los accesos de tus vendedores y despachadores.</p>
+            </div>
+            <p-button label="Nuevo Usuario" icon="pi pi-user-plus" styleClass="p-button-primary shadow-2" (click)="abrirNuevoUsuario()"></p-button>
+        </div>
 
                         <!-- VISTA MÓVIL (Tarjetas) -->
                         <div class="block md:hidden">
@@ -45,8 +39,8 @@
                                         </div>
                                     </div>
                                     <div class="flex gap-2 w-full">
-                                        <button pButton label="Editar" icon="pi pi-pencil" class="p-button-info p-button-outlined flex-1 p-button-sm border-round-lg font-bold" (click)="editarUsuario(user)"></button>
-                                        <button pButton [label]="user.activo ? 'Desactivar' : 'Activar'" [icon]="user.activo ? 'pi pi-ban' : 'pi pi-check-circle'" [class]="user.activo ? 'p-button-danger p-button-outlined flex-1 p-button-sm border-round-lg font-bold' : 'p-button-success p-button-outlined flex-1 p-button-sm border-round-lg font-bold'" (click)="toggleUserStatus(user)"></button>
+                                        <button pButton label="Editar" icon="pi pi-pencil" class="p-button-info p-button-outlined flex-1 p-button-sm border-round-lg font-bold" [disabled]="user.correo === 'ryan@admin.com' && myEmail !== 'ryan@admin.com'" (click)="editarUsuario(user)"></button>
+                                        <button pButton [label]="user.activo ? 'Desactivar' : 'Activar'" [icon]="user.activo ? 'pi pi-ban' : 'pi pi-check-circle'" [class]="user.activo ? 'p-button-danger p-button-outlined flex-1 p-button-sm border-round-lg font-bold' : 'p-button-success p-button-outlined flex-1 p-button-sm border-round-lg font-bold'" [disabled]="user.correo === 'ryan@admin.com' && myEmail !== 'ryan@admin.com'" (click)="toggleUserStatus(user)"></button>
                                     </div>
                                 </div>
                                 <div *ngIf="!loadingUsuarios && usuarios.length === 0" class="text-center p-4 text-color-secondary">
@@ -88,10 +82,12 @@
                                             <p-button icon="pi pi-pencil" 
                                                       pTooltip="Editar Nombre/Rol"
                                                       styleClass="p-button-text p-button-info"
+                                                      [disabled]="user.correo === 'ryan@admin.com' && myEmail !== 'ryan@admin.com'"
                                                       (click)="editarUsuario(user)"></p-button>
                                             <p-button [icon]="user.activo ? 'pi pi-ban' : 'pi pi-check-circle'" 
                                                       [pTooltip]="user.activo ? 'Desactivar' : 'Activar'"
                                                       [styleClass]="user.activo ? 'p-button-text p-button-danger' : 'p-button-text p-button-success'"
+                                                      [disabled]="user.correo === 'ryan@admin.com' && myEmail !== 'ryan@admin.com'"
                                                       (click)="toggleUserStatus(user)"></p-button>
                                         </div>
                                     </td>
@@ -104,12 +100,17 @@
                             </ng-template>
                             </p-table>
                         </div>
-                    </div>
-                </p-tabPanel>
+        </p-tabPanel>
 
-                <!-- TAB 2: DATOS DE LA EMPRESA -->
-                <p-tabPanel header="Datos de la Empresa" leftIcon="pi pi-building">
-                    <div class="p-4 grid">
+    <!-- TAB 2: DATOS DE LA EMPRESA -->
+    <p-tabPanel header="Datos de la Empresa" leftIcon="pi pi-building">
+        <div class="flex flex-column md:flex-row justify-content-between align-items-start md:align-items-center mb-4 pt-2">
+            <div>
+                <h2 class="m-0 text-900 font-bold">Configuración del Sistema</h2>
+                <p class="text-500 m-0 mt-1">Datos fiscales y cuentas bancarias de la empresa.</p>
+            </div>
+        </div>
+        <div class="grid">
                         <div class="col-12 md:col-7">
                             <h3 class="m-0 text-800 font-semibold mb-4">Información Fiscal</h3>
                             
@@ -193,16 +194,13 @@
                             <p-fileUpload #fileUpload mode="basic" chooseLabel="Subir Nuevo Logo" accept="image/*" maxFileSize="2000000" [customUpload]="true" (uploadHandler)="uploadLogo($event, fileUpload)" [auto]="true" styleClass="p-button-outlined"></p-fileUpload>
                             <small class="text-500 text-center mt-2">Formato recomendado: PNG transparente o JPG.<br>Se guarda automáticamente en la nube.</small>
                         </div>
-                    </div>
-                </p-tabPanel>
-
-            </p-tabView>
         </div>
-    </div>
-</div>
+    </p-tabPanel>
+
+</p-tabView>
 
 <!-- Modal: Nuevo/Editar Usuario -->
-<p-dialog [header]="isEditingUser ? 'Editar Usuario' : 'Crear Nuevo Usuario'" [(visible)]="displayUserModal" [modal]="true" [style]="{width: '450px'}" styleClass="p-fluid">
+<p-dialog [header]="isEditingUser ? 'Editar Usuario' : 'Crear Nuevo Usuario'" [(visible)]="displayUserModal" [modal]="true" [style]="{width: '90vw', maxWidth: '450px'}" styleClass="p-fluid">
     <div class="grid pt-3">
         <div class="col-12 text-center mb-4">
             <div class="bg-blue-50 inline-flex align-items-center justify-content-center border-circle mb-3" style="width: 4rem; height: 4rem;">
@@ -228,12 +226,13 @@
             <small *ngIf="isEditingUser" class="text-500">El correo no se puede cambiar por seguridad.</small>
         </div>
         
-        <div class="field col-12" *ngIf="!isEditingUser">
-            <label class="font-medium text-900">Contraseña Temporal (*)</label>
+        <div class="field col-12">
+            <label class="font-medium text-900">{{ isEditingUser ? 'Nueva Contraseña (Opcional)' : 'Contraseña Temporal (*)' }}</label>
             <div class="p-inputgroup">
                 <span class="p-inputgroup-addon"><i class="pi pi-lock"></i></span>
                 <input pInputText type="text" [(ngModel)]="nuevoUsuario.password" placeholder="Mínimo 6 caracteres" />
             </div>
+            <small *ngIf="isEditingUser" class="text-500">Déjalo en blanco si no deseas cambiar la contraseña actual.</small>
         </div>
 
         <div class="field col-12">

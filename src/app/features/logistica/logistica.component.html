@@ -126,7 +126,21 @@
                                                 <span>Despachado: <b>{{ item.cantidad_despachada || 0 }}</b> {{ item.productos?.unidad_medida || item.unidad_medida_manual }}</span>
                                                 <span>Total: <b>{{ item.cantidad }}</b></span>
                                             </div>
-                                            <p-progressBar [value]="((item.cantidad_despachada || 0) / item.cantidad) * 100" [showValue]="false" styleClass="mb-1 h-1rem"></p-progressBar>
+                                            <div class="custom-progress-track border-round overflow-hidden w-full flex mt-2 relative" style="height: 10px; background: var(--surface-border);">
+                                                <ng-container *ngIf="item.segmentosViajes?.length; else simpleBar">
+                                                    <div *ngFor="let seg of item.segmentosViajes; let i = index" 
+                                                         class="custom-progress-segment h-full transition-all duration-300"
+                                                         [style.background]="i % 2 === 0 ? 'var(--primary-color)' : 'var(--primary-600)'"
+                                                         [style.width]="seg.porcentaje + '%'"
+                                                         [pTooltip]="'Viaje #' + seg.viajeSec + ': ' + seg.cantidad + ' ' + (item.productos?.unidad_medida || item.unidad_medida_manual)"
+                                                         tooltipPosition="top"
+                                                         style="border-right: 1px solid rgba(255,255,255,0.4)">
+                                                    </div>
+                                                </ng-container>
+                                                <ng-template #simpleBar>
+                                                    <div class="h-full transition-all duration-300" style="background: var(--primary-color);" [style.width]="((item.cantidad_despachada || 0) / item.cantidad * 100) + '%'"></div>
+                                                </ng-template>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
@@ -339,10 +353,10 @@
         <div class="w-full lg:w-8 map-panel-responsive relative surface-ground order-1 z-1">
             
             <!-- Botón de Cerrar (Flotante) -->
-            <button pButton icon="pi pi-arrow-left" label="Volver a Despachos" class="p-button-rounded p-button-secondary surface-card text-color border-none shadow-3 absolute" style="top: 1rem; right: 1rem; z-index: 1000;" (click)="displayRutaModal = false"></button>
+            <button pButton icon="pi pi-arrow-left" label="Volver a Despachos" class="p-button-rounded map-back-button shadow-3 absolute" style="top: 1rem; right: 1rem; z-index: 1000;" (click)="displayRutaModal = false"></button>
 
-            <!-- Floating Info Card -->
-            <div class="map-floating-card shadow-4 border-round-xl p-3 flex flex-column gap-2">
+            <!-- Floating Info Card (Desktop Only) -->
+            <div class="map-floating-card shadow-4 border-round-xl p-3 flex-column gap-2 hidden md:flex">
                 <div class="flex justify-content-between align-items-center border-bottom-1 surface-border pb-2">
                     <span class="font-bold text-color text-xl"><i class="pi pi-file mr-2 text-primary"></i>{{ selectedPedidoParaRuta?.folio }}</span>
                     <p-tag [value]="selectedPedidoParaRuta?.estado === 'COMPLETADA' ? 'ENTREGADO' : 'EN RUTA'" [severity]="selectedPedidoParaRuta?.estado === 'COMPLETADA' ? 'success' : 'info'" styleClass="font-bold"></p-tag>
@@ -353,13 +367,87 @@
                 <div class="text-xs text-500 mt-1" *ngIf="selectedPedidoParaRuta?.lugar_entrega === 'OBRA'">
                     <i class="pi pi-map-marker mr-2 text-red-500"></i>{{ selectedPedidoParaRuta?.direccion_entrega_detalle || 'Dirección no especificada' }}
                 </div>
-            </div>
-            <div *ngIf="selectedPedidoParaRuta?.tipo_entrega === 'CANTERA' || selectedPedidoParaRuta?.lugar_entrega === 'CANTERA'" class="p-3 bg-yellow-100 border-round m-3 flex align-items-center" style="position: absolute; top: 10px; left: 10px; right: 10px; z-index: 1000; border: 1px solid #f59e0b;">
-                <i class="pi pi-info-circle mr-2 text-xl text-yellow-700"></i>
-                <div class="text-xs md:text-sm text-yellow-900">
-                    <b>Entrega en Cantera:</b> El cliente recoge el material directamente en planta. No requiere ruta GPS de traslado.
+                
+                <!-- Warning Cantera Inside Card -->
+                <div *ngIf="selectedPedidoParaRuta?.tipo_entrega === 'CANTERA' || selectedPedidoParaRuta?.lugar_entrega === 'CANTERA'" class="p-2 bg-yellow-100 border-round mt-1 flex align-items-start border-1 border-yellow-400">
+                    <i class="pi pi-info-circle mr-2 mt-1 text-yellow-700"></i>
+                    <div class="text-xs text-yellow-900 line-height-2">
+                        <b>Entrega en Cantera:</b> El cliente recoge el material. No requiere ruta GPS.
+                    </div>
+                </div>
+
+                <!-- ETA de entrega -->
+                <div *ngIf="etaInfo" class="border-round-lg overflow-hidden border-1 mt-1"
+                     [ngClass]="etaInfo.esEstimado ? 'border-orange-300' : 'border-blue-200'">
+                    <div class="px-3 py-2 flex align-items-center justify-content-between"
+                         [ngClass]="etaInfo.esEstimado ? 'bg-orange-50' : 'bg-blue-50'">
+                        <span class="font-bold text-sm" [ngClass]="etaInfo.esEstimado ? 'text-orange-700' : 'text-blue-700'">
+                            <i class="pi pi-clock mr-1"></i>ETA estimado
+                        </span>
+                        <span class="font-bold text-lg" [ngClass]="etaInfo.detenido ? 'text-red-600' : (etaInfo.esEstimado ? 'text-orange-600' : 'text-blue-700')">
+                            {{ etaInfo.eta }}
+                        </span>
+                    </div>
+                    <div class="px-3 py-1 surface-0">
+                        <div class="text-xs text-500 flex justify-content-between">
+                            <span><i class="pi pi-map mr-1"></i>{{ etaInfo.distanciaKm }} km restantes</span>
+                            <span *ngIf="!etaInfo.detenido"><i class="pi pi-send mr-1"></i>{{ etaInfo.velocidadKmh }} km/h</span>
+                        </div>
+                        <div *ngIf="etaInfo.esEstimado" class="text-xs text-orange-500 mt-1">
+                            <i class="pi pi-wifi mr-1"></i>Última pos. hace {{ etaInfo.edadMin }} min (sin señal)
+                        </div>
+                    </div>
                 </div>
             </div>
+
+            <!-- Mobile Info Button -->
+            <button pButton icon="pi pi-info" class="p-button-rounded p-button-info shadow-4 absolute flex md:hidden" style="bottom: 2rem; left: 1rem; z-index: 1000; width: 3rem; height: 3rem;" (click)="displayMapInfoMobile = true"></button>
+
+            <!-- Mobile Info Dialog -->
+            <p-dialog [(visible)]="displayMapInfoMobile" [modal]="true" header="Detalles del Pedido" [style]="{width: '90vw'}" [draggable]="false" [resizable]="false" appendTo="body">
+                <div class="flex flex-column gap-3">
+                    <div class="flex justify-content-between align-items-center border-bottom-1 surface-border pb-2">
+                        <span class="font-bold text-color text-xl"><i class="pi pi-file mr-2 text-primary"></i>{{ selectedPedidoParaRuta?.folio }}</span>
+                        <p-tag [value]="selectedPedidoParaRuta?.estado === 'COMPLETADA' ? 'ENTREGADO' : 'EN RUTA'" [severity]="selectedPedidoParaRuta?.estado === 'COMPLETADA' ? 'success' : 'info'" styleClass="font-bold"></p-tag>
+                    </div>
+                    <div class="text-sm text-color-secondary font-medium">
+                        <i class="pi pi-building mr-2 text-500"></i>{{ selectedPedidoParaRuta?.clientes?.nombre_razon_social }}
+                    </div>
+                    <div class="text-sm text-500 mt-1" *ngIf="selectedPedidoParaRuta?.lugar_entrega === 'OBRA'">
+                        <i class="pi pi-map-marker mr-2 text-red-500"></i>{{ selectedPedidoParaRuta?.direccion_entrega_detalle || 'Dirección no especificada' }}
+                    </div>
+                    <!-- Warning Cantera Inside Dialog -->
+                    <div *ngIf="selectedPedidoParaRuta?.tipo_entrega === 'CANTERA' || selectedPedidoParaRuta?.lugar_entrega === 'CANTERA'" class="p-2 bg-yellow-100 border-round flex align-items-start border-1 border-yellow-400">
+                        <i class="pi pi-info-circle mr-2 mt-1 text-yellow-700"></i>
+                        <div class="text-sm text-yellow-900 line-height-2">
+                            <b>Entrega en Cantera:</b> El cliente recoge el material directamente en planta. No requiere ruta GPS de traslado.
+                        </div>
+                    </div>
+
+                    <!-- ETA móvil -->
+                    <div *ngIf="etaInfo" class="border-round-lg overflow-hidden border-1"
+                         [ngClass]="etaInfo.esEstimado ? 'border-orange-300' : 'border-blue-200'">
+                        <div class="px-3 py-2 flex align-items-center justify-content-between"
+                             [ngClass]="etaInfo.esEstimado ? 'bg-orange-50' : 'bg-blue-50'">
+                            <span class="font-bold text-sm" [ngClass]="etaInfo.esEstimado ? 'text-orange-700' : 'text-blue-700'">
+                                <i class="pi pi-clock mr-1"></i>ETA estimado
+                            </span>
+                            <span class="font-bold text-lg" [ngClass]="etaInfo.detenido ? 'text-red-600' : (etaInfo.esEstimado ? 'text-orange-600' : 'text-blue-700')">
+                                {{ etaInfo.eta }}
+                            </span>
+                        </div>
+                        <div class="px-3 py-1 surface-0">
+                            <div class="text-xs text-500 flex justify-content-between">
+                                <span><i class="pi pi-map mr-1"></i>{{ etaInfo.distanciaKm }} km restantes</span>
+                                <span *ngIf="!etaInfo.detenido"><i class="pi pi-send mr-1"></i>{{ etaInfo.velocidadKmh }} km/h</span>
+                            </div>
+                            <div *ngIf="etaInfo.esEstimado" class="text-xs text-orange-500 mt-1">
+                                <i class="pi pi-wifi mr-1"></i>Última pos. hace {{ etaInfo.edadMin }} min (sin señal)
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </p-dialog>
 
             <div *ngIf="!loadingRuta && puntosRuta.length === 0 && entregasRuta.length === 0 && viajesAuditoria.length === 0" class="absolute top-0 left-0 w-full h-full flex flex-column align-items-center justify-content-center text-500 surface-card" style="z-index: 2;">
                 <i class="pi pi-map mb-3" style="font-size: 4rem"></i>
@@ -381,195 +469,238 @@
                 <p>No hay despachos registrados para este pedido.</p>
             </div>
 
-            <div *ngIf="!loadingRuta && viajesAuditoria.length > 0" class="p-3">
-                <div class="flex align-items-center justify-content-between mb-4 border-bottom-1 surface-border pb-3">
-                    <h3 class="m-0 text-900 font-bold">
-                        <i class="pi pi-list mr-2 text-primary"></i>Historial de Viajes
-                    </h3>
-                </div>
-                
-                <div *ngFor="let viajeItem of viajesAuditoria; let i = index" class="mb-4">
-                    
-                    <!-- Cabecera del Viaje -->
-                    <div class="pb-3 border-bottom-1 surface-border flex justify-content-between align-items-center cursor-pointer hover:surface-hover transition-colors px-2 border-round">
-                        <div class="flex align-items-center gap-3" (click)="expandedViajeMap[viajeItem.numero_viaje_secuencial] = !expandedViajeMap[viajeItem.numero_viaje_secuencial]">
-                            <i class="pi text-primary" [ngClass]="expandedViajeMap[viajeItem.numero_viaje_secuencial] ? 'pi-chevron-down' : 'pi-chevron-right'"></i>
-                            <span class="bg-primary text-white border-circle w-2rem h-2rem flex align-items-center justify-content-center font-bold text-sm shadow-1">{{ viajeItem.numero_viaje_secuencial }}</span>
-                            <h4 class="m-0 text-800">Resumen del Viaje</h4>
-                        </div>
-                        <div class="flex gap-2">
-                            <p-button 
-                                *ngIf="viajeItem.despacho?.estado_viaje === 'ASIGNADO'"
-                                icon="pi pi-qrcode" 
-                                pTooltip="Ver QR para transferencia"
-                                styleClass="p-button-sm p-button-info p-button-outlined"
-                                (click)="mostrarQR(viajeItem)">
-                            </p-button>
-                            <p-button 
-                                [icon]="isFocusRuta(viajeItem) ? 'pi pi-eye-slash' : 'pi pi-map'" 
-                                [label]="isFocusRuta(viajeItem) ? 'Ocultar ruta' : 'Ver ruta completa'" 
-                                [styleClass]="isFocusRuta(viajeItem) ? 'p-button-sm p-button-rounded p-button-success' : 'p-button-sm p-button-rounded p-button-outlined p-button-secondary'" 
-                                (click)="enfocarEnViaje(viajeItem)">
-                            </p-button>
-                        </div>
+            <div *ngIf="!loadingRuta && viajesAuditoria.length > 0" class="audit-history-wrapper">
+
+                <!-- HEADER -->
+                <div class="audit-header">
+                    <div class="audit-header-title">
+                        <div class="audit-header-icon"><i class="pi pi-history"></i></div>
+                        <h3>Historial de Viajes</h3>
                     </div>
-                    
-                    <!-- Contenido Colapsable -->
-                    <div class="pt-4 px-2" *ngIf="expandedViajeMap[viajeItem.numero_viaje_secuencial]">
-                        <!-- Timeline Personalizado y Ultra Responsive (Reemplazo de p-timeline) -->
-                        <div class="flex flex-column relative mt-2">
-                            <!-- Línea conectora central -->
-                            <div class="absolute h-full surface-border border-left-2" style="left: 1rem; top: 1rem; z-index: 1;"></div>
-                            
-                            <div *ngFor="let event of getTimelineEvents(viajeItem); let last = last; trackBy: trackByEventType" class="flex align-items-start relative z-2" [ngClass]="{'mb-4': !last}">
-                                <!-- Marcador (Icono) -->
-                                <div class="flex align-items-center justify-content-center text-white border-circle shadow-2 flex-shrink-0 mr-3" [style.backgroundColor]="event.color" style="width: 2.2rem; height: 2.2rem; margin-left: -0.1rem;">
-                                    <i [class]="event.icon"></i>
-                                </div>
-                                
-                                <!-- Contenido de la Tarjeta -->
-                                <div class="surface-card border-round shadow-2 p-3 w-full">
-                                    <!-- Cabecera de la Tarjeta -->
-                                    <div class="flex flex-column sm:flex-row justify-content-between align-items-start sm:align-items-center border-bottom-1 surface-border pb-2 gap-2 sm:gap-0">
-                                        <span class="text-sm font-bold text-800">{{ event.status }}</span>
-                                        <span class="text-xs text-500 font-medium bg-surface-100 px-2 py-1 border-round" *ngIf="event.date">
-                                            <i class="pi pi-clock mr-1 text-primary"></i>{{ event.date | date:'dd/MM/yyyy HH:mm' }}
-                                        </span>
-                                    </div>
-                                    
-                                    <!-- Contenido: CARGA -->
-                                    <div *ngIf="event.type === 'carga' && event.data" class="text-sm mt-3">
-                                        <div class="grid grid-nogutter gap-2 mb-3">
-                                            <div class="col-12 flex align-items-center bg-surface-soft p-2 border-round">
-                                                <span class="font-bold text-600 w-5rem"><i class="pi pi-user mr-2"></i>Usuario:</span>
-                                                <span class="text-color flex-1">{{ event.data.usuarios?.nombre_completo || 'Despachador' }}</span>
-                                            </div>
-                                            <div class="col-12 flex align-items-center bg-surface-soft p-2 border-round">
-                                                <span class="font-bold text-600 w-5rem"><i class="pi pi-car mr-2"></i>Placa:</span>
-                                                <span class="text-color flex-1 font-semibold">{{ event.data.placa_vehiculo || 'No registrada' }}</span>
-                                            </div>
-                                        </div>
-                                        
-                                        <ng-container *ngIf="event.data.fotos_urls?.length">
-                                            <div class="text-xs text-500 mb-2 font-semibold uppercase tracking-wide"><i class="pi pi-camera mr-1"></i>Evidencia</div>
-                                            <div class="flex flex-wrap gap-2 mb-3">
-                                                <img *ngFor="let foto of event.data.fotos_urls" [src]="foto" width="60" class="border-round shadow-1 cursor-pointer hover:shadow-3 transition-all" (click)="abrirImagen(foto)">
-                                            </div>
-                                        </ng-container>
+                    <span class="audit-header-badge">{{ viajesAuditoria.length }} {{ viajesAuditoria.length === 1 ? 'viaje' : 'viajes' }}</span>
+                </div>
 
-                                        <!-- Botón para ver el punto exacto del despachador -->
-                                        <div *ngIf="event.data.latitud && event.data.longitud" class="mt-2">
-                                            <p-button 
-                                                [icon]="isFocusPunto(event.data.latitud, event.data.longitud) ? 'pi pi-eye-slash' : 'pi pi-map-marker'" 
-                                                [label]="isFocusPunto(event.data.latitud, event.data.longitud) ? 'Ocultar punto' : 'Ver punto de despacho'" 
-                                                [styleClass]="isFocusPunto(event.data.latitud, event.data.longitud) ? 'p-button-sm p-button-rounded p-button-success' : 'p-button-sm p-button-rounded p-button-outlined p-button-danger'" 
-                                                (click)="enfocarEnPunto(event.data.latitud, event.data.longitud, 'Despacho registrado aquí')">
-                                            </p-button>
-                                        </div>
-                                    </div>
-                                    <div *ngIf="event.type === 'carga' && !event.data" class="text-xs text-500 italic mt-2">Sin registro de despacho.</div>
+                <!-- VIAJE CARDS -->
+                <div *ngFor="let viajeItem of viajesAuditoria; let i = index; trackBy: trackByViajeItem" class="trip-card">
 
-                                    <!-- Contenido: CONFIRMACIÓN -->
-                                    <div *ngIf="event.type === 'confirmacion' && event.data?.fecha_recepcion_chofer" class="text-sm mt-3">
-                                        <div class="flex flex-column bg-orange-soft p-3 border-round mb-3">
-                                            <div class="flex align-items-center mb-2">
-                                                <i class="pi pi-check-circle text-orange-500 text-xl mr-2"></i>
-                                                <span class="text-color font-medium">Carga recibida por {{ event.data.chofer_cabecera?.nombre_completo || 'Chofer' }}</span>
-                                            </div>
-                                        </div>
-
-                                        <ng-container *ngIf="event.data.fotos_urls_recepcion_chofer?.length">
-                                            <div class="text-xs text-500 mb-2 font-semibold uppercase tracking-wide"><i class="pi pi-camera mr-1"></i>Evidencia de Recepción</div>
-                                            <div class="flex flex-wrap gap-2 mb-3">
-                                                <img *ngFor="let foto of event.data.fotos_urls_recepcion_chofer" [src]="foto" width="60" class="border-round shadow-1 cursor-pointer hover:shadow-3 transition-all" (click)="abrirImagen(foto)">
-                                            </div>
-                                        </ng-container>
-
-                                        <!-- Botón para ver el punto exacto de la recepción -->
-                                        <div *ngIf="event.data.latitud_recepcion && event.data.longitud_recepcion" class="mt-2">
-                                            <p-button 
-                                                [icon]="isFocusPunto(event.data.latitud_recepcion, event.data.longitud_recepcion) ? 'pi pi-eye-slash' : 'pi pi-map-marker'" 
-                                                [label]="isFocusPunto(event.data.latitud_recepcion, event.data.longitud_recepcion) ? 'Ocultar punto' : 'Ver punto de recepción'" 
-                                                [styleClass]="isFocusPunto(event.data.latitud_recepcion, event.data.longitud_recepcion) ? 'p-button-sm p-button-rounded p-button-success' : 'p-button-sm p-button-rounded p-button-outlined p-button-warning'" 
-                                                (click)="enfocarEnPunto(event.data.latitud_recepcion, event.data.longitud_recepcion, 'Recepción registrada aquí')">
-                                            </p-button>
-                                        </div>
-                                    </div>
-                                    <div *ngIf="event.type === 'confirmacion' && !event.data?.fecha_recepcion_chofer" class="text-xs text-400 mt-2 flex align-items-center">
-                                        <i class="pi pi-spin pi-spinner mr-2"></i> Esperando confirmación...
-                                    </div>
-
-                                    <!-- Contenido: GPS RUTA -->
-                                    <div *ngIf="event.type === 'gps_ruta' && event.data?.puntos" class="text-sm mt-3">
-                                        <div class="flex flex-column bg-blue-50 p-3 border-round mb-2 border-1 border-blue-100">
-                                            <div class="flex align-items-center">
-                                                <i class="pi pi-compass text-blue-500 text-xl mr-3"></i>
-                                                <div>
-                                                    <div class="text-color font-medium">Tracking activo durante el trayecto</div>
-                                                    <div class="text-xs text-500 mt-1">{{ event.data.puntos.length }} puntos GPS registrados en la ruta</div>
-                                                </div>
-                                            </div>
-                                            
-                                            <div class="mt-3 border-top-1 border-blue-200 pt-2">
-                                                <div class="text-xs text-500 mb-2 font-bold cursor-pointer flex align-items-center hover:text-primary transition-colors" (click)="mostrarGpsMap[viajeItem.numero_viaje_secuencial] = !mostrarGpsMap[viajeItem.numero_viaje_secuencial]; $event.stopPropagation()">
-                                                    <i class="pi" [ngClass]="mostrarGpsMap[viajeItem.numero_viaje_secuencial] ? 'pi-chevron-down' : 'pi-chevron-right'"></i>
-                                                    <span class="ml-1">Ver coordenadas detalladas</span>
-                                                </div>
-                                                <div *ngIf="mostrarGpsMap[viajeItem.numero_viaje_secuencial]" class="mt-2 overflow-hidden border-round shadow-1 bg-white">
-                                                    <p-table [value]="event.data.puntos" [paginator]="true" [rows]="5" styleClass="p-datatable-sm">
-                                                        <ng-template pTemplate="header">
-                                                            <tr>
-                                                                <th class="text-xs" style="width: 30%">Hora</th>
-                                                                <th class="text-xs" style="width: 35%">Latitud</th>
-                                                                <th class="text-xs" style="width: 35%">Longitud</th>
-                                                            </tr>
-                                                        </ng-template>
-                                                        <ng-template pTemplate="body" let-pt>
-                                                            <tr class="text-xs">
-                                                                <td class="font-bold">
-                                                                    <span *ngIf="pt.timestamp">{{ pt.timestamp | date:'dd/MM HH:mm:ss' }}</span>
-                                                                    <span *ngIf="!pt.timestamp" class="text-500 italic">Sin hora móvil</span>
-                                                                </td>
-                                                                <td class="text-500">{{ pt.latitud | number:'1.4-4' }}</td>
-                                                                <td class="text-500">{{ pt.longitud | number:'1.4-4' }}</td>
-                                                            </tr>
-                                                        </ng-template>
-                                                    </p-table>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <!-- Contenido: ENTREGA -->
-                                    <div *ngIf="event.type === 'entrega' && event.data" class="text-sm mt-3">
-                                        <div class="flex align-items-center bg-surface-soft p-2 border-round mb-3">
-                                            <span class="font-bold text-600 w-5rem"><i class="pi pi-id-card mr-2"></i>Chofer:</span>
-                                            <span class="text-color flex-1">{{ event.data.chofer?.nombre_completo || 'Chofer' }}</span>
-                                        </div>
-                                        
-                                        <div class="flex align-items-center bg-green-soft p-3 border-round mb-3">
-                                            <i class="pi pi-check-circle text-green-500 text-xl mr-2"></i>
-                                            <span class="text-color font-medium">Entregado exitosamente</span>
-                                        </div>
-
-                                        <ng-container *ngIf="event.data.fotos_urls_entrega?.length">
-                                            <div class="text-xs text-500 mb-2 font-semibold uppercase tracking-wide"><i class="pi pi-camera mr-1"></i>Evidencia de Entrega</div>
-                                            <div class="flex flex-wrap gap-2">
-                                                <img *ngFor="let foto of event.data.fotos_urls_entrega" [src]="foto" width="60" class="border-round shadow-1 cursor-pointer hover:shadow-3 transition-all" (click)="abrirImagen(foto)">
-                                            </div>
-                                        </ng-container>
-                                    </div>
-                                    <div *ngIf="event.type === 'entrega' && !event.data" class="text-xs text-400 mt-2 flex align-items-center">
-                                        <i class="pi pi-spin pi-spinner mr-2"></i> Viaje en progreso...
-                                    </div>
-                                </div>
+                    <!-- Trip Header (collapsible) -->
+                    <div class="trip-card-header" (click)="expandedViajeMap[viajeItem.numero_viaje_secuencial] = !expandedViajeMap[viajeItem.numero_viaje_secuencial]">
+                        <div class="trip-card-header-left">
+                            <span class="trip-number-badge">{{ viajeItem.numero_viaje_secuencial }}</span>
+                            <div class="trip-card-header-info">
+                                <span class="trip-card-title">Viaje #{{ viajeItem.numero_viaje_secuencial }}</span>
+                                <span class="trip-card-date" *ngIf="viajeItem.despacho?.created_at">
+                                    {{ viajeItem.despacho.created_at | date:'dd MMM yyyy, HH:mm' }}
+                                </span>
                             </div>
                         </div>
-
-
+                        <div class="trip-card-header-right">
+                            <a *ngIf="viajeItem.despacho?.estado_viaje === 'ASIGNADO'"
+                               class="subtle-link" style="margin-right:0.5rem;"
+                               (click)="mostrarQR(viajeItem); $event.stopPropagation(); $event.preventDefault()" href="#"
+                               pTooltip="Ver QR para transferencia">
+                                <i class="pi pi-qrcode"></i> QR
+                            </a>
+                            <a class="subtle-link" 
+                               [ngClass]="{'active': isFocusRuta(viajeItem)}"
+                               (click)="enfocarEnViaje(viajeItem); $event.stopPropagation(); $event.preventDefault()" href="#">
+                                <i [class]="isFocusRuta(viajeItem) ? 'pi pi-eye-slash' : 'pi pi-map'"></i>
+                                {{ isFocusRuta(viajeItem) ? 'Ocultar' : 'Ver ruta' }}
+                            </a>
+                            <i class="pi chevron-icon" [ngClass]="expandedViajeMap[viajeItem.numero_viaje_secuencial] ? 'pi-chevron-up' : 'pi-chevron-down'"></i>
+                        </div>
                     </div>
-                </div> <!-- End of ngFor viajeItem -->
-            </div> <!-- End of ngIf viajesAuditoria.length > 0 -->
+
+                    <!-- Trip Body -->
+                    <div class="trip-card-body-wrapper" *ngIf="expandedViajeMap[viajeItem.numero_viaje_secuencial]">
+                        <div class="trip-card-body-inner animate-fade-slide-down">
+                            <div class="audit-timeline">
+
+                                <div class="timeline-rail"></div>
+
+                            <div *ngFor="let event of getTimelineEvents(viajeItem); let last = last; trackBy: trackByEventType"
+                                 class="timeline-event" [ngClass]="{'timeline-event--last': last}">
+
+                                <div class="event-dot" [style.border-color]="event.color" [style.color]="event.color">
+                                    <i [class]="event.icon"></i>
+                                </div>
+
+                                <div class="event-card" [style.--accent]="event.color">
+
+                                    <div class="event-card-header">
+                                        <span class="event-card-title">{{ event.status }}</span>
+                                        <span class="event-card-time" *ngIf="event.date">
+                                            <i class="pi pi-clock"></i>
+                                            {{ event.date | date:'dd/MM/yyyy HH:mm' }}
+                                        </span>
+                                    </div>
+
+                                    <!-- CARGA Y SALIDA -->
+                                    <ng-container *ngIf="event.type === 'carga'">
+                                        <ng-container *ngIf="event.data; else noCarga">
+                                            <div class="event-meta-grid">
+                                                <div class="event-meta-item">
+                                                    <i class="pi pi-user event-meta-icon"></i>
+                                                    <span class="event-meta-label">Despachador</span>
+                                                    <span class="event-meta-value">{{ event.data.usuarios?.nombre_completo || 'Sin registro' }}</span>
+                                                </div>
+                                                <div class="event-meta-item">
+                                                    <i class="pi pi-car event-meta-icon"></i>
+                                                    <span class="event-meta-label">Vehículo</span>
+                                                    <span class="event-meta-value placa-chip">{{ event.data.placa_vehiculo || 'No registrada' }}</span>
+                                                </div>
+                                            </div>
+
+                                            <!-- Productos despachados -->
+                                            <div class="products-section" *ngIf="event.data.despachos_viajes_detalle?.length">
+                                                <div class="section-label">
+                                                    <i class="pi pi-box"></i>
+                                                    Productos Despachados
+                                                </div>
+                                                <div class="data-pills-container">
+                                                    <div class="data-pill" *ngFor="let d of event.data.despachos_viajes_detalle">
+                                                        <span class="pill-name">{{ d.pedidos_items?.productos?.descripcion || d.pedidos_items?.descripcion_manual || 'Producto' }}</span>
+                                                        <span class="pill-qty">
+                                                            {{ d.cantidad_viaje | number:'1.0-2' }}
+                                                            {{ d.pedidos_items?.productos?.unidad_medida || d.pedidos_items?.unidad_medida_manual || '' }}
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <!-- Fotos despacho -->
+                                            <ng-container *ngIf="event.data.fotos_urls?.length">
+                                                <div class="section-label">
+                                                    <i class="pi pi-camera"></i>
+                                                    Evidencia de Despacho
+                                                </div>
+                                                <div class="glass-photo-stack">
+                                                    <div class="glass-thumb" *ngFor="let foto of event.data.fotos_urls" (click)="abrirImagen(foto)">
+                                                        <img [src]="foto" alt="Evidencia despacho">
+                                                        <div class="glass-overlay"><i class="pi pi-expand"></i></div>
+                                                    </div>
+                                                </div>
+                                            </ng-container>
+
+                                            <div *ngIf="event.data.latitud && event.data.longitud" class="event-action-row">
+                                                <a class="subtle-link" (click)="enfocarEnPunto(event.data.latitud, event.data.longitud, 'Despacho registrado aquí'); $event.preventDefault()" href="#">
+                                                    <i [class]="isFocusPunto(event.data.latitud, event.data.longitud) ? 'pi pi-eye-slash' : 'pi pi-map-marker'"></i>
+                                                    {{ isFocusPunto(event.data.latitud, event.data.longitud) ? 'Ocultar punto' : 'Ver punto de despacho' }}
+                                                </a>
+                                            </div>
+                                        </ng-container>
+                                        <ng-template #noCarga>
+                                            <div class="event-empty">Sin registro de despacho.</div>
+                                        </ng-template>
+                                    </ng-container>
+
+                                    <!-- CONFIRMACIÓN CHOFER -->
+                                    <ng-container *ngIf="event.type === 'confirmacion'">
+                                        <ng-container *ngIf="event.data?.fecha_recepcion_chofer; else esperandoConfirmacion">
+                                            <div class="confirmation-banner">
+                                                <i class="pi pi-check-circle"></i>
+                                                <span>Carga recibida por <strong>{{ event.data.chofer_cabecera?.nombre_completo || 'Chofer' }}</strong></span>
+                                            </div>
+                                            <ng-container *ngIf="event.data.fotos_urls_recepcion_chofer?.length">
+                                                <div class="section-label"><i class="pi pi-camera"></i> Evidencia de Recepción</div>
+                                                <div class="glass-photo-stack">
+                                                    <div class="glass-thumb" *ngFor="let foto of event.data.fotos_urls_recepcion_chofer" (click)="abrirImagen(foto)">
+                                                        <img [src]="foto" alt="Evidencia recepción">
+                                                        <div class="glass-overlay"><i class="pi pi-expand"></i></div>
+                                                    </div>
+                                                </div>
+                                            </ng-container>
+                                            <div *ngIf="event.data.latitud_recepcion && event.data.longitud_recepcion" class="event-action-row">
+                                                <a class="subtle-link" (click)="enfocarEnPunto(event.data.latitud_recepcion, event.data.longitud_recepcion, 'Recepción registrada aquí'); $event.preventDefault()" href="#">
+                                                    <i [class]="isFocusPunto(event.data.latitud_recepcion, event.data.longitud_recepcion) ? 'pi pi-eye-slash' : 'pi pi-map-marker'"></i>
+                                                    {{ isFocusPunto(event.data.latitud_recepcion, event.data.longitud_recepcion) ? 'Ocultar punto' : 'Ver punto de recepción' }}
+                                                </a>
+                                            </div>
+                                        </ng-container>
+                                        <ng-template #esperandoConfirmacion>
+                                            <div class="event-pending">
+                                                <i class="pi pi-spin pi-spinner"></i>
+                                                Esperando confirmación del chofer...
+                                            </div>
+                                        </ng-template>
+                                    </ng-container>
+
+                                    <!-- GPS RUTA -->
+                                    <ng-container *ngIf="event.type === 'gps_ruta' && event.data?.puntos">
+                                        <div class="gps-info-banner">
+                                            <i class="pi pi-compass"></i>
+                                            <div>
+                                                <div class="font-semibold text-sm">Tracking activo durante el trayecto</div>
+                                                <div class="text-xs text-500 mt-1">{{ event.data.puntos.length }} puntos GPS registrados</div>
+                                            </div>
+                                        </div>
+                                        <div class="section-label cursor-pointer" (click)="mostrarGpsMap[viajeItem.numero_viaje_secuencial] = !mostrarGpsMap[viajeItem.numero_viaje_secuencial]; $event.stopPropagation()">
+                                            <i class="pi" [ngClass]="mostrarGpsMap[viajeItem.numero_viaje_secuencial] ? 'pi-chevron-up' : 'pi-chevron-down'"></i>
+                                            Ver coordenadas detalladas
+                                        </div>
+                                        <div *ngIf="mostrarGpsMap[viajeItem.numero_viaje_secuencial]">
+                                            <p-table [value]="event.data.puntos" [paginator]="true" [rows]="5" styleClass="p-datatable-sm">
+                                                <ng-template pTemplate="header">
+                                                    <tr>
+                                                        <th style="width:34%">Hora</th>
+                                                        <th style="width:33%">Latitud</th>
+                                                        <th style="width:33%">Longitud</th>
+                                                    </tr>
+                                                </ng-template>
+                                                <ng-template pTemplate="body" let-pt>
+                                                    <tr class="text-xs">
+                                                        <td class="font-semibold">
+                                                            <span *ngIf="pt.timestamp">{{ pt.timestamp | date:'dd/MM HH:mm:ss' }}</span>
+                                                            <span *ngIf="!pt.timestamp" class="text-500 italic">Sin hora</span>
+                                                        </td>
+                                                        <td class="text-500">{{ pt.latitud | number:'1.4-4' }}</td>
+                                                        <td class="text-500">{{ pt.longitud | number:'1.4-4' }}</td>
+                                                    </tr>
+                                                </ng-template>
+                                            </p-table>
+                                        </div>
+                                    </ng-container>
+
+                                    <!-- ENTREGA EN OBRA -->
+                                    <ng-container *ngIf="event.type === 'entrega'">
+                                        <ng-container *ngIf="event.data; else enProgreso">
+                                            <div class="event-meta-grid">
+                                                <div class="event-meta-item">
+                                                    <i class="pi pi-id-card event-meta-icon"></i>
+                                                    <span class="event-meta-label">Chofer</span>
+                                                    <span class="event-meta-value">{{ event.data.chofer?.nombre_completo || 'Sin registro' }}</span>
+                                                </div>
+                                            </div>
+                                            <div class="delivery-success-banner">
+                                                <i class="pi pi-check-circle"></i>
+                                                <span>Entregado exitosamente en destino</span>
+                                            </div>
+                                            <ng-container *ngIf="event.data.fotos_urls_entrega?.length">
+                                                <div class="section-label"><i class="pi pi-camera"></i> Evidencia de Entrega</div>
+                                                <div class="glass-photo-stack">
+                                                    <div class="glass-thumb" *ngFor="let foto of event.data.fotos_urls_entrega" (click)="abrirImagen(foto)">
+                                                        <img [src]="foto" alt="Evidencia entrega">
+                                                        <div class="glass-overlay"><i class="pi pi-expand"></i></div>
+                                                    </div>
+                                                </div>
+                                            </ng-container>
+                                        </ng-container>
+                                        <ng-template #enProgreso>
+                                            <div class="event-pending">
+                                                <i class="pi pi-spin pi-spinner"></i>
+                                                Viaje en progreso...
+                                            </div>
+                                        </ng-template>
+                                    </ng-container>
+
+                                </div><!-- /event-card -->
+                            </div><!-- /timeline-event -->
+                        </div><!-- /audit-timeline -->
+                        </div><!-- /trip-card-body-inner -->
+                    </div><!-- /trip-card-body-wrapper -->
+                </div><!-- /trip-card ngFor -->
+
+            </div><!-- /audit-history-wrapper -->
 
             <!-- Panel de sesiones GPS huérfanas -->
             <div class="m-3" *ngIf="sesionesHuerfanas.length > 0">

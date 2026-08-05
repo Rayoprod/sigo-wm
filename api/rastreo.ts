@@ -50,19 +50,6 @@ export default async function handler(req: any, res: any) {
       return res.status(404).json({ error: data.error });
     }
 
-    // Como el RPC original no traía lugar_entrega, hacemos una query rápida para obtenerlo
-    if (data && !data.lugar_entrega) {
-      const { data: pedidoData, error: pedidoError } = await supabase
-        .from('pedidos')
-        .select('lugar_entrega')
-        .eq('tracking_token', token)
-        .single();
-        
-      if (!pedidoError && pedidoData) {
-        data.lugar_entrega = pedidoData.lugar_entrega;
-      }
-    }
-
     return res.status(200).json(data);
   } catch (err: any) {
     console.error("Error general:", err);

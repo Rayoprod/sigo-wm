@@ -7,6 +7,7 @@ import { AuthService } from '../../../core/services/auth.service';
 import { ApiPeruService } from '../../../core/services/api-peru.service';
 import { TablaCarritoComponent, CarritoItem } from './tabla-carrito/tabla-carrito.component';
 import { InventarioService } from '../../../core/services/inventario.service';
+import * as L from 'leaflet';
 
 // PrimeNG
 import { CardModule } from 'primeng/card';
@@ -89,6 +90,7 @@ export class ComercialFormComponent implements OnInit {
   igv = 0;
   total = 0;
   afectaIgv = false;
+  preciosConIgv = false;
 
   // Step 3: Condiciones
   lugaresEntrega = [
@@ -102,6 +104,11 @@ export class ComercialFormComponent implements OnInit {
   dias_validez_oferta = 7;
   incluir_cuentas = true;
   observaciones = '';
+
+  lat_destino: number | null = null;
+  lng_destino: number | null = null;
+  map: L.Map | null = null;
+  markerDestino: L.Marker | null = null;
 
   // Venta Exclusives
   metodosPago = [
@@ -125,7 +132,87 @@ export class ComercialFormComponent implements OnInit {
   // PDF Options
   opcionesPdf: string[] = ['validez', 'cuentas'];
 
+  setEstadoPago(val: string) {
+    this.estado_pago = val as any;
+  }
+  setMetodoPago(val: string) {
+    this.metodo_pago = val;
+  }
+
   isSaving = false;
+
+  onPreciosConIgvChange() {}
+  
+  initMap() {
+    const container = document.getElementById('mapa-destino-form');
+    if (!container) return;
+
+    if (this.map) {
+      this.map.invalidateSize();
+      return;
+    }
+
+    this.map = L.map(container).setView([-12.046374, -77.042793], 12);
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
+      maxZoom: 19,
+      attribution: '&copy; OpenStreetMap'
+    }).addTo(this.map);
+
+    this.map.on('click', (e: L.LeafletMouseEvent) => {
+      this.lat_destino = e.latlng.lat;
+      this.lng_destino = e.latlng.lng;
+      this.updateMapMarker();
+    });
+
+    if (this.lat_destino && this.lng_destino) {
+      this.updateMapMarker();
+      this.map.setView([this.lat_destino, this.lng_destino], 15);
+    }
+    
+    // Arreglar íconos de Leaflet por defecto en Angular
+    delete (L.Icon.Default.prototype as any)._getIconUrl;
+    L.Icon.Default.mergeOptions({
+      iconRetinaUrl: 'assets/marker-icon-2x.png',
+      iconUrl: 'assets/marker-icon.png',
+      shadowUrl: 'assets/marker-shadow.png',
+    });
+  }
+
+  updateMapMarker() {
+    if (!this.map || !this.lat_destino || !this.lng_destino) return;
+    
+    if (this.markerDestino) {
+      this.markerDestino.setLatLng([this.lat_destino, this.lng_destino]);
+    } else {
+      this.markerDestino = L.marker([this.lat_destino, this.lng_destino]).addTo(this.map);
+    }
+  }
+
+  limpiarPuntoDestinoForm() {
+    this.lat_destino = null;
+    this.lng_destino = null;
+    if (this.markerDestino && this.map) {
+      this.map.removeLayer(this.markerDestino);
+      this.markerDestino = null;
+    }
+  }
+  
+  centrarEnMiUbicacion() {
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          if (this.map) {
+            this.map.setView([position.coords.latitude, position.coords.longitude], 15);
+          }
+        },
+        (error) => {
+          alert('No se pudo obtener tu ubicación: ' + error.message);
+        }
+      );
+    } else {
+      alert('Tu navegador no soporta geolocalización');
+    }
+  }
 
   get isClienteValido(): boolean {
     return !!(this.clienteActual.nombre_razon_social && this.clienteActual.documento_identidad);
@@ -153,6 +240,10 @@ export class ComercialFormComponent implements OnInit {
     if (id) {
       this.pedidoIdAEditar = id;
       await this.cargarPedido(id);
+    } else {
+      if (this.tipo_entrega === 'DOMICILIO') {
+        setTimeout(() => this.initMap(), 300);
+      }
     }
   }
 
@@ -162,6 +253,7 @@ export class ComercialFormComponent implements OnInit {
       this.direccion_entrega_detalle = '';
     } else {
       this.lugar_entrega = 'OBRA';
+      setTimeout(() => this.initMap(), 300);
     }
   }
 
@@ -187,6 +279,8 @@ export class ComercialFormComponent implements OnInit {
     
     this.lugar_entrega = pedido.lugar_entrega || 'CANTERA';
     this.direccion_entrega_detalle = pedido.direccion_entrega_detalle || '';
+    this.lat_destino = pedido.lat_destino || null;
+    this.lng_destino = pedido.lng_destino || null;
     this.dias_validez_oferta = pedido.dias_validez_oferta || 7;
     this.dias_credito = pedido.dias_credito || 0;
     this.observaciones = pedido.observaciones || '';
@@ -205,6 +299,10 @@ export class ComercialFormComponent implements OnInit {
         is_custom: !i.producto_id
       }));
       this.recalcularTotales();
+    }
+    
+    if (this.tipo_entrega === 'DOMICILIO') {
+      setTimeout(() => this.initMap(), 300);
     }
   }
 
@@ -401,6 +499,8 @@ export class ComercialFormComponent implements OnInit {
           cliente_id: clienteId,
           lugar_entrega: this.lugar_entrega,
           direccion_entrega_detalle: this.lugar_entrega === 'OBRA' ? this.direccion_entrega_detalle : null,
+          lat_destino: this.lugar_entrega === 'OBRA' ? this.lat_destino : null,
+          lng_destino: this.lugar_entrega === 'OBRA' ? this.lng_destino : null,
           dias_validez_oferta: this.tipo_documento === 'COTIZACION' ? this.dias_validez_oferta : null,
           subtotal: this.subtotal,
           descuento_global: this.descuento_global || 0,

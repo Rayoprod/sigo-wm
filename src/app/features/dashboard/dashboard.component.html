@@ -4,8 +4,8 @@
         <p class="text-500 mt-2 mb-0">Resumen de operaciones y estado del negocio.</p>
     </div>
 
-    <!-- Vista Admin -->
-    <ng-container *ngIf="isAdmin">
+    <!-- Vista Principal -->
+    <ng-container *ngIf="canViewDashboard">
 
         <!-- KPI Cards -->
         <div class="col-12 md:col-6 lg:col-3">
@@ -71,11 +71,30 @@
             </div>
         </div>
 
+        <!-- Analista Predictivo (IA) -->
+        <div class="col-12 mt-4" *ngIf="predictiveInsights.length > 0">
+            <div class="surface-card shadow-2 p-4 border-round-xl border-1 border-purple-200" style="background: linear-gradient(135deg, var(--surface-card) 0%, rgba(139,92,246,0.05) 100%); position: relative; overflow: hidden;">
+                <div class="absolute top-0 left-0 w-full h-full pointer-events-none" style="background: radial-gradient(circle at 100% 0%, rgba(139,92,246,0.15) 0%, transparent 40%);"></div>
+                <h5 class="mt-0 mb-3 text-900 font-bold flex align-items-center">
+                    <i class="pi pi-sparkles text-purple-500 mr-2 text-xl"></i>
+                    Analista Predictivo (IA)
+                    <span class="ml-3 text-xs bg-purple-100 text-purple-700 px-2 py-1 border-round font-medium">BETA</span>
+                </h5>
+                <div class="flex flex-column gap-3">
+                    <div *ngFor="let insight of predictiveInsights" class="flex align-items-start p-3 border-round surface-ground border-1 surface-border">
+                        <i class="pi pi-bolt text-purple-500 mr-3 mt-1 text-lg"></i>
+                        <p class="m-0 text-700 line-height-3" [innerHTML]="insight"></p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <!-- Gráficos -->
         <div class="col-12 lg:col-8 mt-4">
             <div class="surface-card shadow-2 p-4 border-round-xl h-full">
-                <h5 class="mt-0 mb-3 text-900 font-bold">
-                    <i class="pi pi-chart-line mr-2 text-blue-500"></i>Curva de Ventas (Últimos 7 días)
+                <h5 class="mt-0 mb-3 text-900 font-bold flex justify-content-between align-items-center">
+                    <span><i class="pi pi-chart-line mr-2 text-blue-500"></i>Proyección de Ventas (ML)</span>
+                    <span class="text-sm font-normal text-500">Regresión Lineal a 3 días</span>
                 </h5>
                 <div *ngIf="ventasChartData">
                     <p-chart type="line" [data]="ventasChartData" [options]="ventasChartOptions" height="300px"></p-chart>
@@ -89,12 +108,13 @@
         <div class="col-12 lg:col-4 mt-4">
             <div class="surface-card shadow-2 p-4 border-round-xl h-full">
                 <h5 class="mt-0 mb-3 text-900 font-bold">
-                    <i class="pi pi-chart-pie mr-2 text-orange-500"></i>Estado de Despachos
+                    <i class="pi pi-stopwatch mr-2 text-orange-500"></i>Tiempos de Ciclo Logístico
                 </h5>
-                <div *ngIf="despachosChartData" class="flex justify-content-center">
-                    <p-chart type="doughnut" [data]="despachosChartData" [options]="despachosChartOptions" height="300px"></p-chart>
+                <p class="text-sm text-500 mb-3">Tiempo promedio en horas por chofer.</p>
+                <div *ngIf="logisticaChartData" class="flex justify-content-center">
+                    <p-chart type="bar" [data]="logisticaChartData" [options]="logisticaChartOptions" height="300px" class="w-full"></p-chart>
                 </div>
-                <div *ngIf="!despachosChartData" class="flex align-items-center justify-content-center h-15rem">
+                <div *ngIf="!logisticaChartData" class="flex align-items-center justify-content-center h-15rem">
                     <i class="pi pi-spin pi-spinner text-3xl text-orange-500"></i>
                 </div>
             </div>
@@ -183,8 +203,8 @@
 
     </ng-container>
 
-    <!-- Vista Vendedor (no admin) -->
-    <ng-container *ngIf="!isAdmin">
+    <!-- Vista Alternativa -->
+    <ng-container *ngIf="!canViewDashboard">
         <div class="col-12">
             <div class="surface-card shadow-2 p-5 border-round-xl text-center">
                 <i class="pi pi-verified text-6xl text-blue-500 mb-4 block"></i>

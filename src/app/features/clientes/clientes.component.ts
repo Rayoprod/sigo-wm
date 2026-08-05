@@ -105,6 +105,18 @@ export class ClientesComponent implements OnInit {
 
     this.isSearchingDoc = true;
     try {
+      // 1. Verificar si ya existe localmente
+      const { data: localData } = await this.supabase
+        .from('clientes')
+        .select('*')
+        .eq('documento_identidad', doc)
+        .maybeSingle();
+
+      if (localData && localData.id !== this.nuevoCliente.id) {
+        alert('Este documento ya se encuentra registrado en tu base de datos como: ' + localData.nombre_razon_social);
+        this.isSearchingDoc = false;
+        return;
+      }
       const res = await this.apiPeruService.buscarDocumento(doc);
       if (res && res.success !== false) { // Handle both wrapper logic
         const data = res.data ? res.data : res;
@@ -134,6 +146,25 @@ export class ClientesComponent implements OnInit {
 
     this.isSaving = true;
     try {
+      // Verificar si el documento ya está registrado por otro cliente
+      if (this.nuevoCliente.documento_identidad) {
+        let query = this.supabase
+          .from('clientes')
+          .select('id, nombre_razon_social')
+          .eq('documento_identidad', this.nuevoCliente.documento_identidad.trim());
+          
+        if (this.nuevoCliente.id) {
+          query = query.neq('id', this.nuevoCliente.id);
+        }
+
+        const { data: existing } = await query.maybeSingle();
+
+        if (existing) {
+          alert('No se puede guardar: El documento ingresado ya pertenece a ' + existing.nombre_razon_social);
+          this.isSaving = false;
+          return;
+        }
+      }
       if (this.nuevoCliente.id) {
         // EDIT
         const { id, created_at, ...updateData } = this.nuevoCliente;

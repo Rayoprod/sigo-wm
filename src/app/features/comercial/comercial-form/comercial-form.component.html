@@ -1,8 +1,22 @@
 <div class="flex flex-column md:flex-row justify-content-between md:align-items-center mb-4 gap-3">
     <div class="flex flex-column md:flex-row md:align-items-center gap-3 w-full md:w-auto">
-        <h2 class="m-0 text-primary font-bold">Nuevo Documento</h2>
-        <!-- Tipo de Documento -->
-        <p-dropdown [options]="tipoDocumentos" [(ngModel)]="tipo_documento" optionLabel="label" optionValue="value" styleClass="w-full md:w-15rem"></p-dropdown>
+        <h2 class="m-0 text-primary font-bold">{{ pedidoIdAEditar ? 'Editar Documento' : 'Nuevo Documento' }}</h2>
+        <!-- Tipo de Documento: editable solo en modo nuevo -->
+        <p-dropdown
+            *ngIf="!pedidoIdAEditar"
+            [options]="tipoDocumentos"
+            [(ngModel)]="tipo_documento"
+            optionLabel="label"
+            optionValue="value"
+            styleClass="w-full md:w-15rem">
+        </p-dropdown>
+        <!-- En modo edición: solo lectura para proteger la integridad del folio -->
+        <span *ngIf="pedidoIdAEditar"
+              class="px-3 py-2 border-round-lg border-1 surface-border text-600 text-sm flex align-items-center gap-2"
+              pTooltip="El tipo de documento no puede cambiarse al editar. Usa el dropdown de estado para convertir una cotización." tooltipPosition="bottom">
+            <i class="pi pi-lock text-400"></i>
+            {{ tipo_documento === 'COTIZACION' ? 'Cotización' : 'Orden de Venta' }}
+        </span>
     </div>
     <p-button label="Cancelar" icon="pi pi-times" styleClass="p-button-text p-button-secondary w-full md:w-auto" routerLink="/comercial"></p-button>
 </div>
@@ -112,12 +126,22 @@
             </div>
             
             <div class="flex flex-column gap-4">
-                <div class="flex justify-content-between align-items-center">
+                <!-- Switch 1: Los precios ya incluyen IGV -->
+                <div class="flex justify-content-between align-items-center p-3 border-round border-1" [ngClass]="preciosConIgv ? 'border-primary surface-100' : 'surface-border'">
                     <div>
-                        <span class="font-bold text-900 block mb-1">Incluir IGV (18%)</span>
-                        <span class="text-500 text-sm">Precios incluyen impuesto</span>
+                        <span class="font-bold text-900 block mb-1">Los precios ya incluyen IGV</span>
+                        <span class="text-500 text-sm">Activa esto si los precios ingresados ya traen el 18% incluido</span>
                     </div>
-                    <p-inputSwitch [(ngModel)]="afectaIgv" (ngModelChange)="recalcularTotales()"></p-inputSwitch>
+                    <p-inputSwitch [(ngModel)]="preciosConIgv" (ngModelChange)="onPreciosConIgvChange()"></p-inputSwitch>
+                </div>
+
+                <!-- Switch 2: Incluir IGV (se deshabilita si preciosConIgv está activo) -->
+                <div class="flex justify-content-between align-items-center" [class.opacity-50]="preciosConIgv" [class.pointer-events-none]="preciosConIgv">
+                    <div>
+                        <span class="font-bold text-900 block mb-1">Agregar IGV (18%)</span>
+                        <span class="text-500 text-sm">{{ preciosConIgv ? 'No disponible — precios ya incluyen IGV' : 'Suma el 18% al subtotal' }}</span>
+                    </div>
+                    <p-inputSwitch [(ngModel)]="afectaIgv" (ngModelChange)="recalcularTotales()" [disabled]="preciosConIgv"></p-inputSwitch>
                 </div>
 
                 <div class="field mb-0">
@@ -129,6 +153,39 @@
                     <div class="field mb-0">
                         <label class="font-medium text-sm">Dirección de Obra / Referencias</label>
                         <input pInputText type="text" [(ngModel)]="direccion_entrega_detalle" placeholder="Ej: Km 4.5 Panamericana Sur..." class="w-full" />
+                    </div>
+
+                    <!-- Mini mapa para marcar el punto exacto de entrega -->
+                    <div class="border-round-xl border-1 border-blue-200 overflow-hidden">
+                        <div class="bg-blue-50 px-3 py-2 flex align-items-center justify-content-between">
+                            <span class="text-blue-700 font-bold text-sm">
+                                <i class="pi pi-map-marker mr-2"></i>Punto de Entrega en Mapa (Opcional)
+                            </span>
+                            <button *ngIf="lat_destino" pButton
+                                    icon="pi pi-times" label="Limpiar"
+                                    class="p-button-text p-button-sm text-xs p-0"
+                                    style="height:auto"
+                                    (click)="limpiarPuntoDestinoForm()">
+                            </button>
+                        </div>
+                        <div class="p-2 surface-0">
+                            <div class="flex justify-content-end mb-2 px-1">
+                                <button pButton icon="pi pi-map-marker" label="Centrar en mi ubicación" (click)="centrarEnMiUbicacion()" class="p-button-sm p-button-outlined p-button-info text-xs py-1"></button>
+                            </div>
+                            
+                            <div id="mapa-destino-form"
+                                 style="height: 220px; border-radius: 10px; border: 1.5px solid #bfdbfe; cursor: crosshair;">
+                            </div>
+                            <div class="mt-2">
+                                <span *ngIf="!lat_destino" class="text-400 text-xs">
+                                    <i class="pi pi-info-circle mr-1"></i>Haz clic en el mapa para marcar el punto de entrega
+                                </span>
+                                <span *ngIf="lat_destino" class="text-xs text-green-600 font-semibold flex align-items-center gap-1">
+                                    <i class="pi pi-check-circle"></i>
+                                    Punto marcado: {{ lat_destino | number:'1.4-4' }}, {{ lng_destino | number:'1.4-4' }}
+                                </span>
+                            </div>
+                        </div>
                     </div>
                 </ng-container>
 
@@ -158,36 +215,60 @@
 
                 <ng-container *ngIf="tipo_documento === 'ORDEN_VENTA'">
                     <div class="field mb-0">
-                        <label class="font-bold text-900 mb-2 block">Estado Financiero</label>
-                        <p-dropdown [options]="estadosFinancieros" [(ngModel)]="estado_pago" optionLabel="label" optionValue="value" styleClass="w-full"></p-dropdown>
+                        <label class="font-bold text-900 mb-3 block">Estado Financiero</label>
+                        <div class="flex flex-wrap gap-2 w-full">
+                            <button pButton type="button"
+                                *ngFor="let opt of estadosFinancieros"
+                                [label]="opt.label" 
+                                [ngClass]="estado_pago === opt.value ? 'p-button-primary' : 'p-button-outlined surface-border text-600'"
+                                (click)="setEstadoPago(opt.value)"
+                                class="flex-1 border-round-lg font-bold justify-content-center"
+                                style="min-width: 120px;">
+                            </button>
+                        </div>
                     </div>
                     
                     <!-- CRÉDITO LOGIC -->
                     <ng-container *ngIf="estado_pago === 'PARCIAL'">
-                        <div class="field mb-0 mt-3">
-                            <label class="font-medium text-sm">Días de Crédito Otorgado</label>
-                            <p-dropdown [options]="[{label: '15 días', value: 15}, {label: '30 días', value: 30}, {label: '45 días', value: 45}, {label: '60 días', value: 60}, {label: 'Personalizado', value: 0}]" [(ngModel)]="dias_credito" optionLabel="label" optionValue="value" styleClass="w-full"></p-dropdown>
-                        </div>
-                        <div class="field mb-0 mt-2" *ngIf="dias_credito === 0">
-                            <input pInputText type="number" [(ngModel)]="dias_credito" class="w-full" placeholder="Ingresar días manualmente" />
-                        </div>
-                        <div class="field mb-0 mt-3">
-                            <label class="font-medium text-sm">Monto de Adelanto (Si deja algo hoy)</label>
-                            <p-inputNumber [(ngModel)]="monto_adelanto" mode="decimal" prefix="S/ " [minFractionDigits]="2" [maxFractionDigits]="2" styleClass="w-full" inputStyleClass="w-full"></p-inputNumber>
-                            <small *ngIf="!hasAdelantoValido" class="text-red-500">El adelanto debe ser menor al total.</small>
+                        <div class="grid mt-2">
+                            <div class="col-12 md:col-6">
+                                <label class="font-medium text-sm block mb-2">Monto de Adelanto</label>
+                                <p-inputNumber [(ngModel)]="monto_adelanto" mode="decimal" prefix="S/ " [minFractionDigits]="2" [maxFractionDigits]="2" styleClass="w-full" inputStyleClass="w-full"></p-inputNumber>
+                                <small *ngIf="!hasAdelantoValido" class="text-red-500 block mt-1">El adelanto debe ser menor al total.</small>
+                            </div>
+                            <div class="col-12 md:col-6">
+                                <label class="font-medium text-sm block mb-2">Días de Crédito Otorgado</label>
+                                <p-dropdown [options]="[{label: '15 días', value: 15}, {label: '30 días', value: 30}, {label: '45 días', value: 45}, {label: '60 días', value: 60}, {label: 'Personalizado', value: 0}]" [(ngModel)]="dias_credito" optionLabel="label" optionValue="value" styleClass="w-full"></p-dropdown>
+                                <div class="mt-2" *ngIf="dias_credito === 0">
+                                    <input pInputText type="number" [(ngModel)]="dias_credito" class="w-full" placeholder="Días exactos" />
+                                </div>
+                            </div>
                         </div>
                     </ng-container>
 
                     <!-- PAGO INICIAL / TOTAL -->
-                    <div class="surface-100 p-3 border-round mt-3" *ngIf="estado_pago === 'PAGADO' || (estado_pago === 'PARCIAL' && monto_adelanto !== null && monto_adelanto > 0)">
-                        <div class="font-medium text-900 mb-2">Detalles del Pago ({{estado_pago}})</div>
-                        <div class="field mb-3">
-                            <label class="font-medium text-sm">Método de Pago</label>
-                            <p-dropdown [options]="metodosPago" [(ngModel)]="metodo_pago" optionLabel="label" optionValue="value" styleClass="w-full"></p-dropdown>
+                    <div class="surface-100 p-4 border-round-xl mt-4 border-1 surface-border" *ngIf="estado_pago === 'PAGADO' || (estado_pago === 'PARCIAL' && monto_adelanto !== null && monto_adelanto > 0)">
+                        <div class="font-bold text-900 mb-3 text-lg flex align-items-center">
+                            <i class="pi pi-wallet mr-2 text-primary"></i>
+                            Detalles del Pago {{estado_pago === 'PAGADO' ? 'Completo' : '(Adelanto)'}}
                         </div>
-                        <div class="field mb-0 mt-3">
-                            <label class="font-medium text-sm">Número de Operación (Opcional)</label>
-                            <input pInputText type="text" [(ngModel)]="numero_operacion" class="w-full" />
+                        <div class="field mb-4">
+                            <label class="font-medium text-sm block mb-2 text-700">Medio de Pago</label>
+                            <div class="flex flex-wrap gap-2 w-full">
+                                <button pButton type="button"
+                                    *ngFor="let opt of metodosPago"
+                                    [label]="opt.label" 
+                                    [ngClass]="metodo_pago === opt.value ? 'p-button-primary' : 'p-button-outlined surface-border text-600'"
+                                    (click)="setMetodoPago(opt.value)"
+                                    class="flex-1 border-round-lg font-bold justify-content-center"
+                                    style="min-width: 120px;">
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <div class="field mb-0" *ngIf="metodo_pago !== 'EFECTIVO'">
+                            <label class="font-medium text-sm block mb-2 text-700">Número de Operación / Observación</label>
+                            <input pInputText type="text" [(ngModel)]="numero_operacion" class="w-full p-inputtext-lg" placeholder="Ej: OP-123456 o Transferencia BCP..." />
                         </div>
                     </div>
                 </ng-container>
@@ -201,7 +282,7 @@
             </div>
             
             <div class="flex justify-content-between mb-2">
-                <span class="text-600">Subtotal</span>
+                <span class="text-600">{{ preciosConIgv ? 'Subtotal (c/IGV)' : 'Subtotal' }}</span>
                 <span class="font-bold text-900">{{ subtotal | currency:'PEN':'symbol':'1.2-2' }}</span>
             </div>
             
@@ -210,16 +291,25 @@
                 <p-inputNumber [(ngModel)]="descuento_global" (ngModelChange)="recalcularTotales()" mode="decimal" prefix="S/ " [minFractionDigits]="2" [maxFractionDigits]="2" inputStyleClass="w-6rem text-right p-inputtext-sm p-1 text-red-500 font-bold"></p-inputNumber>
             </div>
 
-            <div class="flex justify-content-between mb-4" *ngIf="afectaIgv">
+            <!-- Modo normal: IGV que se AÑADE al subtotal -->
+            <div class="flex justify-content-between mb-4" *ngIf="afectaIgv && !preciosConIgv">
                 <span class="text-600">18% IGV</span>
                 <span class="font-bold text-red-500">+ {{ igv | currency:'PEN':'symbol':'1.2-2' }}</span>
             </div>
 
             <p-divider></p-divider>
             
-            <div class="flex justify-content-between align-items-center mb-4">
+            <div class="flex justify-content-between align-items-center" [class.mb-1]="preciosConIgv" [class.mb-4]="!preciosConIgv">
                 <span class="text-xl font-bold text-900">TOTAL</span>
                 <span class="text-3xl font-bold text-primary">{{ total | currency:'PEN':'symbol':'1.2-2' }}</span>
+            </div>
+
+            <!-- Opción C: IGV extraído de forma informativa (no se suma, ya está dentro) -->
+            <div class="flex justify-content-end mb-4" *ngIf="preciosConIgv">
+                <span class="text-xs surface-100 px-2 py-1 border-round text-500">
+                    <i class="pi pi-info-circle mr-1 text-primary"></i>
+                    IGV incluido (18%): <strong>{{ igv | currency:'PEN':'symbol':'1.2-2' }}</strong>
+                </span>
             </div>
 
             <div class="text-sm text-500 mb-4 text-center">

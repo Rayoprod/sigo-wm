@@ -57,13 +57,24 @@ export class ReportesComponent implements OnInit {
 
   // Columnas para Exportación
   colsVentas = [
-    { field: 'fecha_formateada', header: 'Fecha' },
-    { field: 'folio', header: 'Folio' },
-    { field: 'cliente_nombre', header: 'Cliente' },
-    { field: 'cliente_doc', header: 'Documento' },
-    { field: 'total', header: 'Total Venta' },
-    { field: 'saldo_pendiente', header: 'Saldo Pendiente' },
-    { field: 'estado', header: 'Estado' }
+    { field: 'fecha_formateada',      header: 'Fecha' },
+    { field: 'folio',                 header: 'Folio' },
+    { field: 'tipo_documento',        header: 'Tipo Doc.' },
+    { field: 'cliente_nombre',        header: 'Cliente' },
+    { field: 'cliente_doc',           header: 'Doc. Cliente' },
+    { field: 'cliente_telefono',      header: 'Teléfono Cliente' },
+    { field: 'tipo_entrega_label',    header: 'Tipo Entrega' },
+    { field: 'direccion_entrega',     header: 'Dirección Entrega' },
+    { field: 'subtotal',              header: 'Subtotal (S/)' },
+    { field: 'descuento_global',      header: 'Descuento (S/)' },
+    { field: 'igv',                   header: 'IGV (S/)' },
+    { field: 'total',                 header: 'Total (S/)' },
+    { field: 'total_pagado',          header: 'Total Pagado (S/)' },
+    { field: 'saldo_pendiente',       header: 'Saldo Pendiente (S/)' },
+    { field: 'metodo_pago',           header: 'Método Pago' },
+    { field: 'folio_cotizacion_origen', header: 'Folio Cot. Origen' },
+    { field: 'estado_pago',           header: 'Estado Pago' },
+    { field: 'estado',                header: 'Estado Doc.' },
   ];
 
   colsDeudas = [
@@ -101,9 +112,17 @@ export class ReportesComponent implements OnInit {
           created_at,
           estado,
           tipo_documento,
+          subtotal,
+          descuento_global,
+          igv,
           total,
-          clientes ( nombre_razon_social, documento_identidad ),
-          pagos ( monto_pagado )
+          tipo_entrega,
+          lugar_entrega,
+          direccion_entrega_detalle,
+          estado_pago,
+          folio_cotizacion_origen,
+          clientes ( nombre_razon_social, documento_identidad, telefono ),
+          pagos ( monto_pagado, metodo_pago )
         `)
         .order('created_at', { ascending: false });
 
@@ -129,15 +148,32 @@ export class ReportesComponent implements OnInit {
       if (error) throw error;
       
       this.ventas = data.map(v => {
-        const pagado = v.pagos?.reduce((sum: number, p: any) => sum + Number(p.monto_pagado), 0) || 0;
-        const saldo = Number(v.total) - pagado;
-        const dDate = new Date(v.created_at);
+        const pagos = (v.pagos as any[]) || [];
+        const pagado = pagos.reduce((sum: number, p: any) => sum + Number(p.monto_pagado), 0);
+        const saldo  = Number(v.total) - pagado;
+        const metodos = [...new Set(pagos.map((p: any) => p.metodo_pago).filter(Boolean))].join(', ');
+        const dDate  = new Date(v.created_at);
+        const tipoEntregaMap: Record<string, string> = {
+          DOMICILIO: 'Entrega en Obra',
+          CANTERA:   'Recojo en Cantera'
+        };
+        const direccionEntrega = (v as any).lugar_entrega === 'OBRA'
+          ? ((v as any).direccion_entrega_detalle || 'Sin detalle')
+          : 'Recojo en Cantera';
         return {
           ...v,
-          saldo_pendiente: saldo,
-          fecha_formateada: dDate.toLocaleDateString() + ' ' + dDate.toLocaleTimeString(),
-          cliente_nombre: (v.clientes as any)?.nombre_razon_social || 'Consumidor Final',
-          cliente_doc: (v.clientes as any)?.documento_identidad || ''
+          saldo_pendiente:   saldo,
+          total_pagado:      pagado,
+          fecha_formateada:  dDate.toLocaleDateString('es-PE') + ' ' + dDate.toLocaleTimeString('es-PE', { hour: '2-digit', minute: '2-digit' }),
+          cliente_nombre:    (v.clientes as any)?.nombre_razon_social  || 'Consumidor Final',
+          cliente_doc:       (v.clientes as any)?.documento_identidad   || '',
+          cliente_telefono:  (v.clientes as any)?.telefono              || '',
+          tipo_entrega_label: tipoEntregaMap[(v as any).tipo_entrega]   || (v as any).tipo_entrega || '',
+          direccion_entrega: direccionEntrega,
+          metodo_pago:       metodos || 'Sin registro',
+          subtotal:          Number((v as any).subtotal)         || 0,
+          descuento_global:  Number((v as any).descuento_global) || 0,
+          igv:               Number((v as any).igv)              || 0,
         };
       });
     } catch (e) {

@@ -337,7 +337,9 @@ export class PdfService {
       const docDefinition: any = {
         pageSize: 'A4',
         pageMargins: [40, 125, 40, 40],
-        watermark: { text: isCotizacion ? 'COTIZACIÓN' : 'ORDEN DE VENTA', color: colorEmpresa, opacity: 0.04, bold: true, italics: false },
+        watermark: pedido.estado === 'ANULADA' 
+          ? { text: 'ANULADO', color: '#ef4444', opacity: 0.3, bold: true, italics: false }
+          : { text: isCotizacion ? 'COTIZACIÓN' : 'ORDEN DE VENTA', color: colorEmpresa, opacity: 0.04, bold: true, italics: false },
         header: headerFn,
         footer: footerFn,
         content: [

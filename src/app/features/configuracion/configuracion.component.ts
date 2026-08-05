@@ -2,6 +2,7 @@ import { Component, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { SupabaseService } from '../../core/services/supabase.service';
+import { AuthService } from '../../core/services/auth.service';
 import { createClient } from '@supabase/supabase-js';
 import { environment } from '../../../environments/environment';
 import { AsArrayPipe } from '../../shared/pipes/as-array.pipe';
@@ -42,14 +43,20 @@ import { TooltipModule } from 'primeng/tooltip';
 })
 export class ConfiguracionComponent implements OnInit {
   supabaseService = inject(SupabaseService);
+  authService = inject(AuthService);
   supabase = this.supabaseService.client;
+  
+  get myEmail(): string {
+    return this.authService.currentUser()?.correo || '';
+  }
 
   // Secundary Client for User Creation (prevents logout of Admin)
   adminSupabase = createClient(environment.supabaseUrl, environment.supabaseKey, {
     auth: {
       persistSession: false,
       autoRefreshToken: false,
-      detectSessionInUrl: false
+      detectSessionInUrl: false,
+      storageKey: 'sigo-wm-admin-auth'
     }
   });
 
@@ -141,6 +148,11 @@ export class ConfiguracionComponent implements OnInit {
   }
 
   editarUsuario(usuario: any) {
+    if (usuario.correo === 'ryan@admin.com' && this.myEmail !== 'ryan@admin.com') {
+      alert('🔒 Acceso denegado: No tienes permisos para editar la cuenta del Administrador Principal.');
+      return;
+    }
+
     this.isEditingUser = true;
     this.usuarioEditId = usuario.id;
     // 'rol' en Supabase ahora es text[] — puede venir como array o string legacy
@@ -180,6 +192,23 @@ export class ConfiguracionComponent implements OnInit {
     this.isSavingUser = true;
     try {
       if (this.isEditingUser && this.usuarioEditId) {
+        // Si ingresó contraseña, actualizarla usando el nuevo endpoint seguro
+        if (this.nuevoUsuario.password) {
+          const resetRes = await fetch('/api/reset-password', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              userId: this.usuarioEditId,
+              newPassword: this.nuevoUsuario.password
+            })
+          });
+
+          if (!resetRes.ok) {
+            const errorData = await resetRes.json();
+            throw new Error(errorData.error || 'Error al restablecer la contraseña');
+          }
+        }
+
         // Actualizar nombre y roles (array) en la tabla public.usuarios
         const { error } = await this.supabase
           .from('usuarios')
@@ -190,7 +219,7 @@ export class ConfiguracionComponent implements OnInit {
           .eq('id', this.usuarioEditId);
 
         if (error) throw error;
-        alert('Usuario actualizado correctamente.');
+        alert(this.nuevoUsuario.password ? 'Usuario y contraseña actualizados correctamente.' : 'Usuario actualizado correctamente.');
       } else {
         // Crear usuario vía Supabase Auth
         const { data, error } = await this.adminSupabase.auth.signUp({
@@ -198,7 +227,6 @@ export class ConfiguracionComponent implements OnInit {
           password: this.nuevoUsuario.password,
           options: {
             data: {
-              rol: this.nuevoUsuario.roles,
               nombre_completo: this.nuevoUsuario.nombre_completo,
               full_name: this.nuevoUsuario.nombre_completo
             }
@@ -234,6 +262,11 @@ export class ConfiguracionComponent implements OnInit {
   }
 
   async toggleUserStatus(usuario: any) {
+    if (usuario.correo === 'ryan@admin.com' && this.myEmail !== 'ryan@admin.com') {
+      alert('🔒 Acceso denegado: No tienes permisos para desactivar la cuenta del Administrador Principal.');
+      return;
+    }
+
     const newStatus = !usuario.activo;
     const { error } = await this.supabase
       .from('usuarios')
@@ -293,6 +326,20 @@ export class ConfiguracionComponent implements OnInit {
       const fileExt = file.name.split('.').pop();
       const fileName = `logo_${new Date().getTime()}.${fileExt}`;
       const filePath = `logos/${fileName}`;
+
+      // Extract and delete old logo if it exists to prevent storage bloat
+      if (this.empresa.logo_url) {
+        try {
+          const oldUrl = new URL(this.empresa.logo_url);
+          const parts = oldUrl.pathname.split('/assets/');
+          if (parts.length > 1) {
+            const oldPath = parts[1];
+            await this.supabase.storage.from('assets').remove([oldPath]);
+          }
+        } catch (e) {
+          console.warn('Could not parse or delete old logo', e);
+        }
+      }
 
       // Upload to Supabase Storage Bucket "assets"
       const { error: uploadError } = await this.supabase.storage

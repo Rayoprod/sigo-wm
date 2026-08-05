@@ -12,6 +12,7 @@ import { DropdownModule } from 'primeng/dropdown';
 import { ConfirmDialogModule } from 'primeng/confirmdialog';
 import { ConfirmationService, MessageService } from 'primeng/api';
 import { DialogModule } from 'primeng/dialog';
+import { TooltipModule } from 'primeng/tooltip';
 import { InputNumberModule } from 'primeng/inputnumber';
 import { FormsModule } from '@angular/forms';
 import { CardModule } from 'primeng/card';
@@ -34,7 +35,8 @@ import { InventarioService } from '../../../core/services/inventario.service';
     FormsModule,
     DialogModule,
     InputNumberModule,
-    CardModule
+    CardModule,
+    TooltipModule
   ],
   providers: [ConfirmationService, MessageService],
   templateUrl: './comercial-list.component.html',
@@ -64,7 +66,21 @@ export class ComercialListComponent implements OnInit {
     { label: 'Anulada', value: 'ANULADA' }
   ];
 
-  // Variables para Dialog de Conversión
+  // Variables para Dialog 
+  onConversionDialogShow() {}
+  onConversionDialogHide() {}
+  closeConversionDialog() {
+    this.displayConversionDialog = false;
+    this.pedidoAConvertir = null;
+    this.nuevoEstadoConversion = '';
+    this.tipoNuevoConversion = '';
+  }
+
+  centrarEnMiUbicacion() {}
+  limpiarPuntoDestino() {
+    this.conversionConfig.lat_destino = null;
+    this.conversionConfig.lng_destino = null;
+  }
   displayConversionDialog = false;
   pedidoAConvertir: any = null;
   nuevoEstadoConversion = '';
@@ -74,7 +90,12 @@ export class ComercialListComponent implements OnInit {
 
   conversionConfig = {
     estadoPago: 'PENDIENTE',
-    diasCredito: 0
+    diasCredito: 0,
+    montoAdelanto: 0,
+    metodoPago: 'EFECTIVO',
+    referencia: '',
+    lat_destino: null as number | null,
+    lng_destino: null as number | null
   };
 
   opcionesPago = [
@@ -243,7 +264,12 @@ export class ComercialListComponent implements OnInit {
       
       this.conversionConfig = {
         estadoPago: 'PENDIENTE',
-        diasCredito: 0
+        diasCredito: 0,
+        montoAdelanto: 0,
+        metodoPago: 'EFECTIVO',
+        referencia: '',
+        lat_destino: null,
+        lng_destino: null
       };
       
       this.displayConversionDialog = true;

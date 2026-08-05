@@ -43,26 +43,31 @@ export class MainLayoutComponent {
   // Level A Security - UI Visibility based on roles
   menuItems = computed<MenuItem[]>(() => {
     const roles = this.user()?.rol || [];
-    const rol = Array.isArray(roles) ? roles[0] : roles;
+    const rolesArr = Array.isArray(roles) ? roles : [roles];
+    
+    const isAdmin = rolesArr.includes('admin');
+    const isVendedor = rolesArr.includes('vendedor');
+    const isDespachador = rolesArr.includes('despachador');
+
     const items: MenuItem[] = [
-      { label: 'Dashboard', icon: 'pi pi-home', routerLink: '/dashboard', visible: rol === 'admin' || rol === 'vendedor' }
+      { label: 'Dashboard', icon: 'pi pi-home', routerLink: '/dashboard', visible: isAdmin || isVendedor }
     ];
 
-    if (rol === 'admin' || rol === 'vendedor') {
+    if (isAdmin || isVendedor) {
       items.push({ label: 'Ventas y Cotizaciones', icon: 'pi pi-shopping-cart', routerLink: '/comercial' });
       items.push({ label: 'Productos e Inventario', icon: 'pi pi-box', routerLink: '/catalogo' });
       items.push({ label: 'Clientes', icon: 'pi pi-users', routerLink: '/clientes' });
     }
 
-    if (rol === 'admin' || rol === 'despachador' || rol === 'vendedor') {
+    if (isAdmin || isDespachador || isVendedor) {
       items.push({ label: 'Logística y Despachos', icon: 'pi pi-truck', routerLink: '/logistica' });
     }
 
-    if (rol === 'despachador') {
+    if (isDespachador && !isAdmin && !isVendedor) {
       items.push({ label: 'Productos e Inventario', icon: 'pi pi-box', routerLink: '/catalogo' });
     }
 
-    if (rol === 'admin') {
+    if (isAdmin) {
       items.push({ label: 'Reportes Analíticos', icon: 'pi pi-chart-bar', routerLink: '/reportes' });
       items.push({ label: 'Configuración', icon: 'pi pi-cog', routerLink: '/configuracion' });
     }

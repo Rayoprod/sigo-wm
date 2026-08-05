@@ -68,9 +68,9 @@
 
                     <div class="flex gap-2 w-full mt-3">
                         <button pButton icon="pi pi-file-pdf" [loading]="generatingPdfId === pedido.id" class="p-button-danger p-button-outlined flex-1 p-button-sm border-round-lg font-bold" (click)="generarPDF(pedido)"></button>
-                        <button pButton *ngIf="pedido.tipo_documento === 'COTIZACION'" icon="pi pi-pencil" class="p-button-info p-button-outlined flex-1 p-button-sm border-round-lg font-bold" [routerLink]="['/comercial/editar', pedido.id]"></button>
-                        <button pButton *ngIf="pedido.tipo_documento !== 'COTIZACION'" icon="pi pi-whatsapp" class="p-button-success p-button-outlined flex-1 p-button-sm border-round-lg font-bold" (click)="compartirWhatsApp(pedido)"></button>
-                        <button pButton *ngIf="pedido.tipo_documento !== 'COTIZACION'" icon="pi pi-wallet" class="p-button-primary p-button-outlined flex-1 p-button-sm border-round-lg font-bold" (click)="openCobro(pedido)"></button>
+                        <button pButton *ngIf="pedido.tipo_documento === 'COTIZACION'" icon="pi pi-pencil" class="p-button-info p-button-outlined flex-1 p-button-sm border-round-lg font-bold" [routerLink]="['/comercial/editar', pedido.id]" [disabled]="pedido.estado === 'ANULADA'"></button>
+                        <button pButton *ngIf="pedido.tipo_documento !== 'COTIZACION'" icon="pi pi-whatsapp" class="p-button-success p-button-outlined flex-1 p-button-sm border-round-lg font-bold" (click)="compartirWhatsApp(pedido)" [disabled]="pedido.estado === 'ANULADA'"></button>
+                        <button pButton *ngIf="pedido.tipo_documento !== 'COTIZACION'" icon="pi pi-wallet" class="p-button-primary p-button-outlined flex-1 p-button-sm border-round-lg font-bold" (click)="openCobro(pedido)" [disabled]="pedido.estado === 'ANULADA'"></button>
                     </div>
                 </div>
             </div>
@@ -89,7 +89,7 @@
                 [paginator]="true" 
                 [rows]="10" 
                 [loading]="loading" 
-                [globalFilterFields]="['folio', 'clientes.nombre_razon_social', 'tipo_documento']"
+                [globalFilterFields]="['folio', 'folio_cotizacion_origen', 'clientes.nombre_razon_social', 'tipo_documento']"
                 responsiveLayout="scroll"
                 styleClass="p-datatable-striped p-datatable-gridlines">
                 
@@ -117,7 +117,14 @@
 
                 <ng-template pTemplate="body" let-pedido>
                     <tr>
-                        <td class="font-bold">{{ pedido.folio }}</td>
+                        <td class="font-bold">
+                            {{ pedido.folio }}
+                            <span *ngIf="pedido.folio_cotizacion_origen"
+                                  class="block text-xs font-normal text-500 mt-1"
+                                  pTooltip="Esta orden proviene de la cotización {{ pedido.folio_cotizacion_origen }}" tooltipPosition="right">
+                                <i class="pi pi-arrow-up-right mr-1" style="font-size:0.65rem"></i>ex {{ pedido.folio_cotizacion_origen }}
+                            </span>
+                        </td>
                         <td>{{ pedido.tipo_documento === 'COTIZACION' ? 'Cotización' : 'Venta' }}</td>
                         <td>{{ pedido.clientes?.nombre_razon_social }}</td>
                         <td>{{ pedido.created_at | date:'dd/MM/yyyy HH:mm' }}</td>
@@ -154,9 +161,9 @@
                         <td class="text-center">
                             <div class="flex justify-content-center gap-2">
                                 <p-button icon="pi pi-file-pdf" [loading]="generatingPdfId === pedido.id" styleClass="p-button-rounded p-button-danger p-button-text" (click)="generarPDF(pedido)" pTooltip="Ver PDF"></p-button>
-                                <p-button *ngIf="pedido.tipo_documento === 'COTIZACION'" icon="pi pi-pencil" styleClass="p-button-rounded p-button-info p-button-text" [routerLink]="['/comercial/editar', pedido.id]" pTooltip="Editar/Aprobar"></p-button>
-                                <p-button *ngIf="pedido.tipo_documento !== 'COTIZACION'" icon="pi pi-whatsapp" styleClass="p-button-rounded p-button-success p-button-text" (click)="compartirWhatsApp(pedido)" pTooltip="Compartir Rastreo"></p-button>
-                                <p-button *ngIf="pedido.tipo_documento !== 'COTIZACION'" icon="pi pi-wallet" styleClass="p-button-rounded p-button-primary p-button-text" (click)="openCobro(pedido)" pTooltip="Ver / Registrar Pagos"></p-button>
+                                <p-button *ngIf="pedido.tipo_documento === 'COTIZACION'" icon="pi pi-pencil" styleClass="p-button-rounded p-button-info p-button-text" [routerLink]="['/comercial/editar', pedido.id]" pTooltip="Editar/Aprobar" [disabled]="pedido.estado === 'ANULADA'"></p-button>
+                                <p-button *ngIf="pedido.tipo_documento !== 'COTIZACION'" icon="pi pi-whatsapp" styleClass="p-button-rounded p-button-success p-button-text" (click)="compartirWhatsApp(pedido)" pTooltip="Compartir Rastreo" [disabled]="pedido.estado === 'ANULADA'"></p-button>
+                                <p-button *ngIf="pedido.tipo_documento !== 'COTIZACION'" icon="pi pi-wallet" styleClass="p-button-rounded p-button-primary p-button-text" (click)="openCobro(pedido)" pTooltip="Ver / Registrar Pagos" [disabled]="pedido.estado === 'ANULADA'"></p-button>
                                 <p-button icon="pi pi-trash" styleClass="p-button-rounded p-button-danger p-button-text" (click)="eliminarPedidoPruebas(pedido)" pTooltip="Eliminar Definitivamente (Modo Pruebas)"></p-button>
                             </div>
                         </td>
@@ -248,33 +255,153 @@
 <p-confirmDialog [style]="{width: '450px'}"></p-confirmDialog>
 
 <!-- Dialog para Convertir a Venta -->
-<p-dialog header="Convertir Cotización a Venta" [(visible)]="displayConversionDialog" [modal]="true" [style]="{width: '450px'}" [closable]="false">
-    <div class="p-fluid">
-        <p class="mb-4">Estás a punto de aprobar esta cotización. Se convertirá en una Orden de Venta y se descontará el stock automáticamente.</p>
-        
-        <div class="field">
-            <label class="font-bold">Estado de Pago Inicial</label>
-            <p-dropdown 
-                [options]="opcionesPago" 
-                [(ngModel)]="conversionConfig.estadoPago" 
-                appendTo="body">
+<p-dialog header="Convertir Cotización a Orden de Venta" [(visible)]="displayConversionDialog" [modal]="true" [style]="{width: '100%', maxWidth: '580px'}" [breakpoints]="{'768px': '95vw'}" [closable]="false" (onShow)="onConversionDialogShow()" (onHide)="onConversionDialogHide()">
+    <div class="p-fluid flex flex-column gap-4" *ngIf="pedidoAConvertir">
+
+        <!-- Resumen de la Cotización (solo lectura) -->
+        <div class="border-round-xl border-1 surface-border overflow-hidden">
+            <div class="bg-primary px-4 py-2">
+                <span class="text-white font-bold text-sm">
+                    <i class="pi pi-file mr-2"></i>Resumen de la Cotización
+                </span>
+            </div>
+            <div class="grid m-0 p-3 surface-50 gap-2">
+                <div class="col-6">
+                    <span class="text-500 text-xs block">Folio</span>
+                    <span class="font-bold text-primary">{{ pedidoAConvertir.folio }}</span>
+                </div>
+                <div class="col-6">
+                    <span class="text-500 text-xs block">Total</span>
+                    <span class="font-bold text-green-600 text-xl">{{ pedidoAConvertir.total | currency:'PEN':'symbol':'1.2-2' }}</span>
+                </div>
+                <div class="col-12">
+                    <span class="text-500 text-xs block">Cliente</span>
+                    <span class="font-medium">{{ pedidoAConvertir.clientes?.nombre_razon_social || 'Consumidor Final' }}</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Separador con instrucción -->
+        <p class="m-0 text-600 text-sm text-center">
+            <i class="pi pi-info-circle mr-1 text-primary"></i>
+            Al aprobar, se generará una Orden de Venta y se descontará el stock automáticamente.
+        </p>
+
+        <!-- Estado de Pago -->
+        <div class="field mb-0">
+            <label class="font-bold text-900 block mb-2">
+                <i class="pi pi-wallet mr-1 text-primary"></i>Estado de Pago Inicial
+            </label>
+            <p-dropdown
+                [options]="opcionesPago"
+                [(ngModel)]="conversionConfig.estadoPago"
+                appendTo="body"
+                styleClass="w-full">
             </p-dropdown>
         </div>
 
-        <div class="field" *ngIf="conversionConfig.estadoPago !== 'PAGADO'">
-            <label class="font-bold">Días de Crédito (Espera)</label>
-            <p-inputNumber 
-                [(ngModel)]="conversionConfig.diasCredito" 
-                [min]="0" 
+        <!-- Campos de pago — visibles si PAGADO o PARCIAL -->
+        <ng-container *ngIf="conversionConfig.estadoPago === 'PAGADO' || conversionConfig.estadoPago === 'PARCIAL'">
+            <!-- Monto de adelanto — solo PARCIAL -->
+            <div class="field mb-0" *ngIf="conversionConfig.estadoPago === 'PARCIAL'">
+                <label class="font-bold text-900 block mb-2">
+                    <i class="pi pi-money-bill mr-1 text-orange-500"></i>Monto de Adelanto (S/)
+                </label>
+                <p-inputNumber
+                    [(ngModel)]="conversionConfig.montoAdelanto"
+                    mode="currency"
+                    currency="PEN"
+                    [min]="0"
+                    [max]="pedidoAConvertir.total"
+                    styleClass="w-full">
+                </p-inputNumber>
+                <small class="text-500">Máximo: {{ pedidoAConvertir.total | currency:'PEN':'symbol':'1.2-2' }}</small>
+            </div>
+
+            <!-- Método de pago -->
+            <div class="field mb-0">
+                <label class="font-bold text-900 block mb-2">
+                    <i class="pi pi-credit-card mr-1 text-primary"></i>Método de Pago
+                </label>
+                <p-dropdown
+                    [options]="metodosPago"
+                    [(ngModel)]="conversionConfig.metodoPago"
+                    appendTo="body"
+                    styleClass="w-full">
+                </p-dropdown>
+            </div>
+
+            <!-- Referencia / N° operación -->
+            <div class="field mb-0" *ngIf="conversionConfig.metodoPago !== 'EFECTIVO'">
+                <label class="font-bold text-900 block mb-2">
+                    <i class="pi pi-hashtag mr-1"></i>N° de Operación / Referencia
+                </label>
+                <input pInputText
+                    [(ngModel)]="conversionConfig.referencia"
+                    placeholder="Ej: 123456789"
+                    class="w-full" />
+            </div>
+        </ng-container>
+
+        <!-- Días de crédito — si no está completamente pagado -->
+        <div class="field mb-0" *ngIf="conversionConfig.estadoPago !== 'PAGADO'">
+            <label class="font-bold text-900 block mb-2">
+                <i class="pi pi-calendar mr-1 text-blue-500"></i>Días de Crédito / Plazo
+            </label>
+            <p-inputNumber
+                [(ngModel)]="conversionConfig.diasCredito"
+                [min]="0"
                 [max]="365"
-                suffix=" días">
+                suffix=" días"
+                styleClass="w-full">
             </p-inputNumber>
-            <small class="text-500">Dejar en 0 si no tiene fecha límite estricta.</small>
+            <small class="text-500">Dejar en 0 si no hay fecha límite estricta.</small>
+        </div>
+
+        <!-- Punto de entrega — solo para pedidos a domicilio/obra -->
+        <div class="border-round-xl border-1 border-blue-200 overflow-hidden"
+             *ngIf="pedidoAConvertir.tipo_entrega === 'DOMICILIO' || pedidoAConvertir.lugar_entrega === 'OBRA' || pedidoAConvertir.lugar_entrega === 'DOMICILIO'">
+            <div class="bg-blue-50 px-4 py-2 flex align-items-center justify-content-between">
+                <span class="text-blue-700 font-bold text-sm">
+                    <i class="pi pi-map-marker mr-2"></i>Punto de Entrega en Mapa (Opcional)
+                </span>
+                <button *ngIf="conversionConfig.lat_destino" pButton
+                        icon="pi pi-times" label="Limpiar"
+                        class="p-button-text p-button-sm text-xs p-0"
+                        style="height:auto"
+                        (click)="limpiarPuntoDestino()">
+                </button>
+            </div>
+            <div class="p-2 surface-0">
+                <div *ngIf="pedidoAConvertir.direccion_entrega_detalle" class="px-1 mb-2">
+                    <span class="text-500 text-xs"><i class="pi pi-home mr-1"></i>{{ pedidoAConvertir.direccion_entrega_detalle }}</span>
+                </div>
+                
+                <div class="flex justify-content-end mb-2 px-1">
+                    <button pButton icon="pi pi-map-marker" label="Centrar en mi ubicación" (click)="centrarEnMiUbicacion()" class="p-button-sm p-button-outlined p-button-info text-xs py-1"></button>
+                </div>
+
+                <!-- Mini mapa Leaflet para seleccionar destino con un clic -->
+                <div id="mapa-seleccion-destino"
+                     style="height: 220px; border-radius: 10px; border: 1.5px solid #bfdbfe; cursor: crosshair;">
+                </div>
+                <!-- Badge de coordenadas seleccionadas -->
+                <div class="mt-2 flex align-items-center gap-2">
+                    <span *ngIf="!conversionConfig.lat_destino" class="text-400 text-xs">
+                        <i class="pi pi-info-circle mr-1"></i>Haz clic en el mapa para marcar el punto de entrega
+                    </span>
+                    <span *ngIf="conversionConfig.lat_destino" class="text-xs text-green-600 font-semibold flex align-items-center gap-1">
+                        <i class="pi pi-check-circle"></i>
+                        Punto marcado: {{ conversionConfig.lat_destino | number:'1.4-4' }}, {{ conversionConfig.lng_destino | number:'1.4-4' }}
+                    </span>
+                </div>
+            </div>
         </div>
     </div>
-    
+
     <ng-template pTemplate="footer">
         <p-button label="Cancelar" icon="pi pi-times" styleClass="p-button-text" (click)="cancelarConversion()"></p-button>
         <p-button label="Aprobar y Convertir" icon="pi pi-check" styleClass="p-button-primary" (click)="confirmarConversion()"></p-button>
     </ng-template>
 </p-dialog>
+

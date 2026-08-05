@@ -35,20 +35,12 @@
   100% { transform: translate(-50%, -50%) scale(2.4); opacity: 0; }
 }
 
-.map-panel-responsive {
-  height: 45vh;
-}
-.timeline-panel-responsive {
-  height: 55vh;
-}
+.map-panel-responsive  { height: 45vh; }
+.timeline-panel-responsive { height: 55vh; }
 
 @media screen and (min-width: 992px) {
-  .map-panel-responsive {
-    height: 100vh;
-  }
-  .timeline-panel-responsive {
-    height: 100vh;
-  }
+  .map-panel-responsive      { height: 100vh; }
+  .timeline-panel-responsive { height: 100vh; }
 }
 
 .map-floating-card {
@@ -63,14 +55,467 @@
 }
 
 @media screen and (max-width: 768px) {
-  .map-floating-card {
-    top: auto;
-    bottom: 1rem;
-    left: 5%;
-    width: 90%;
-    padding: 0.75rem !important;
+  /* La tarjeta flotante ya no se muestra en móviles, se usa un botón Info + Modal */
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   AUDIT HISTORY — REDISEÑO MINIMALISTA Y ELEGANTE
+   ═══════════════════════════════════════════════════════════════════ */
+
+/* ─── Wrapper ─────────────────────────────────────────── */
+.audit-history-wrapper { padding: 0.5rem; }
+
+/* ─── Header ─────────────────────────────────────────── */
+.audit-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1.25rem; /* Reduced from 2rem */
+  padding-bottom: 1rem; /* Reduced from 1.5rem */
+  border-bottom: 1px solid var(--surface-border);
+}
+
+.audit-header-title {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+
+  h3 {
+    margin: 0;
+    font-size: 1.4rem;
+    font-weight: 700;
+    color: var(--text-color);
+    letter-spacing: -0.02em;
   }
 }
 
+.audit-header-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  background: linear-gradient(135deg, var(--primary-color), var(--primary-600, #2563eb));
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 12px rgba(var(--primary-color-rgb, 59, 130, 246), 0.3);
+  
+  i { font-size: 1.1rem; }
+}
 
+.audit-header-badge {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--primary-color-text, #ffffff);
+  background: var(--primary-color);
+  padding: 0.4rem 1rem;
+  border-radius: 999px; /* Pill shape */
+  border: none;
+  letter-spacing: 0.01em;
+}
 
+/* ─── Trip Card (Premium Design) ───────────────────────────────────────── */
+@keyframes fadeSlideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-slide-down {
+  animation: fadeSlideDown 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.trip-card {
+  border: 1px solid var(--surface-border);
+  border-radius: 12px;
+  margin-bottom: 2rem;
+  overflow: hidden;
+  background: var(--surface-card);
+}
+
+.trip-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1.25rem 1.5rem;
+  cursor: pointer;
+  background: transparent;
+  user-select: none;
+  transition: background 0.15s;
+  border-bottom: 1px solid var(--surface-border);
+
+  &:hover { background: var(--surface-hover); }
+}
+
+.trip-card-header-left {
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
+}
+
+.trip-number-badge {
+  width: 2.75rem;
+  height: 2.75rem;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 1.1rem;
+  color: var(--primary-color-text, #ffffff);
+  background: var(--primary-color);
+  border: none;
+}
+
+.trip-card-header-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+}
+
+.trip-card-title {
+  font-weight: 700;
+  font-size: 1.05rem;
+  color: var(--text-color);
+  letter-spacing: -0.015em;
+}
+
+.trip-card-date {
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: var(--text-color-secondary);
+}
+
+.trip-card-header-right {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.chevron-icon {
+  color: var(--text-color-secondary);
+  font-size: 0.8rem;
+  transition: transform 0.2s;
+}
+
+.trip-card-body-inner {
+  padding: 1.5rem 1.5rem; /* Aligns perfectly with the 1.5rem padding + 2.75rem badge of the header */
+}
+
+/* ─── Timeline ────────────────────────────────────────── */
+.audit-timeline {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+}
+
+.timeline-rail {
+  position: absolute;
+  left: 1.375rem;
+  transform: translateX(-50%);
+  top: 1rem;
+  bottom: 1rem;
+  width: 2px;
+  background: var(--surface-border);
+  z-index: 0;
+}
+
+.timeline-event {
+  display: flex;
+  align-items: flex-start;
+  gap: 1.5rem;
+  position: relative;
+  z-index: 1;
+  padding-bottom: 3rem; /* generous vertical padding instead of a horizontal line */
+
+  &.timeline-event--last { 
+    padding-bottom: 0; 
+  }
+}
+
+.event-dot {
+  width: 2.75rem;
+  height: 2.75rem;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  background: var(--surface-card) !important;
+  border: 2px solid var(--surface-border); /* Thicker border */
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08), 0 2px 6px rgba(0, 0, 0, 0.04);
+  margin-top: -0.25rem; /* Adjust alignment to the title */
+  position: relative;
+  z-index: 2;
+  transition: transform 0.2s, box-shadow 0.2s;
+
+  &:hover {
+    transform: translateY(-2px) scale(1.05);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.1), 0 2px 5px rgba(0, 0, 0, 0.04);
+  }
+  
+  i { 
+    font-size: 1.25rem; /* Much larger and bolder icon */
+    color: inherit; 
+  }
+}
+
+/* ─── Event Card ──────────────────────────────────────── */
+.event-card {
+  flex: 1;
+  background: transparent;
+  border: none;
+  padding: 0;
+  min-width: 0;
+  margin-top: 0.2rem;
+}
+
+.subtle-link {
+  color: var(--primary-color);
+  font-size: 0.85rem;
+  font-weight: 500;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.4rem 0.6rem;
+  border-radius: 6px;
+  background: transparent;
+  transition: background 0.2s, color 0.2s;
+
+  &:hover, &.active {
+    background: var(--surface-hover);
+  }
+  
+  i { font-size: 0.85rem; }
+}
+
+.event-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1.25rem;
+}
+
+.event-card-title {
+  font-weight: 600;
+  font-size: 0.95rem;
+  color: var(--text-color);
+  letter-spacing: -0.01em;
+}
+
+.event-card-time {
+  font-size: 0.75rem;
+  color: var(--text-color-secondary);
+}
+
+/* ─── Event Meta Grid ─────────────────────────────────── */
+.event-meta-grid {
+  display: flex;
+  gap: 1.5rem;
+  margin-bottom: 1.5rem;
+  flex-wrap: wrap;
+}
+
+.event-meta-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.85rem;
+}
+
+.event-meta-icon {
+  color: var(--text-color-secondary);
+  font-size: 0.8rem;
+}
+
+.event-meta-label {
+  color: var(--text-color-secondary);
+}
+
+.event-meta-value {
+  color: var(--text-color);
+  font-weight: 500;
+}
+
+.placa-chip {
+  font-family: 'Courier New', monospace;
+  font-weight: 600;
+  color: var(--text-color);
+  letter-spacing: 0.02em;
+}
+
+/* ─── Map Container Styles ──────────────────────────────── */
+.map-back-button {
+  background: var(--surface-card) !important;
+  color: var(--text-color) !important;
+  border: 1px solid var(--surface-border) !important;
+  
+  &:hover {
+    background: var(--surface-hover) !important;
+  }
+}
+
+.map-container {
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--text-color-secondary);
+  margin-bottom: 0.75rem;
+  margin-top: 1rem;
+}
+
+/* ─── Section Label ───────────────────────────────────── */
+.section-label {
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--text-color-secondary);
+  margin-bottom: 0.75rem;
+  margin-top: 1rem;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+
+  i { font-size: 0.75rem; }
+}
+
+/* ─── Data Pills ──────────────────────────────────── */
+.products-section { margin-bottom: 1.5rem; }
+
+.data-pills-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+.data-pill {
+  display: inline-flex;
+  align-items: center;
+  background: var(--surface-card);
+  border: 1px solid var(--surface-border);
+  border-radius: 999px;
+  padding: 0.35rem 0.8rem;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+.pill-name {
+  font-size: 0.85rem;
+  color: var(--text-color-secondary);
+  margin-right: 0.5rem;
+}
+
+.pill-qty {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-color);
+}
+
+/* ─── Glass Photo Stack ───────────────────────────────────── */
+.glass-photo-stack {
+  display: flex;
+  align-items: center;
+  margin-bottom: 1.5rem;
+  margin-top: 0.5rem;
+}
+
+.glass-thumb {
+  position: relative;
+  width: 56px;
+  height: 56px;
+  border-radius: 12px;
+  overflow: hidden;
+  cursor: pointer;
+  border: 2px solid white;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  margin-left: -0.75rem;
+  transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), z-index 0.2s;
+  
+  &:first-child {
+    margin-left: 0;
+  }
+
+  &:hover {
+    transform: translateY(-4px) scale(1.05);
+    z-index: 10;
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.12);
+  }
+
+  img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+}
+
+.glass-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(2px);
+  -webkit-backdrop-filter: blur(2px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 0.2s;
+  color: white;
+
+  i { font-size: 1.2rem; text-shadow: 0 2px 4px rgba(0,0,0,0.5); }
+}
+
+.glass-thumb:hover .glass-overlay {
+  opacity: 1;
+}
+
+/* ─── Banners (Minimalist) ────────────────────────────── */
+.confirmation-banner,
+.delivery-success-banner {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.85rem;
+  color: var(--text-color);
+  margin-bottom: 1.5rem;
+  padding: 0;
+  background: transparent;
+  border: none;
+
+  i { font-size: 1rem; }
+  strong { font-weight: 500; }
+}
+
+.confirmation-banner i { color: var(--text-color-secondary); }
+.delivery-success-banner i { color: var(--text-color-secondary); }
+
+.gps-info-banner {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  font-size: 0.85rem;
+  color: var(--text-color);
+  margin-bottom: 1rem;
+  
+  i { color: var(--text-color-secondary); font-size: 1rem; }
+}
+
+/* ─── Empty & Pending States ──────────────────────────── */
+.event-empty,
+.event-pending {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.8rem;
+  color: var(--text-color-secondary);
+  padding: 0.5rem 0;
+}
+
+/* ─── Action Row ──────────────────────────────────────── */
+.event-action-row { margin-top: 1.5rem; }
