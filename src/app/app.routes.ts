@@ -73,5 +73,6 @@ export const routes: Routes = [
       { path: '', redirectTo: 'dashboard', pathMatch: 'full' }
     ]
   },
+  { path: 'sin-acceso', loadComponent: () => import('./features/sin-acceso/sin-acceso.component').then(m => m.SinAccesoComponent) },
   { path: '**', redirectTo: 'login' }
 ];

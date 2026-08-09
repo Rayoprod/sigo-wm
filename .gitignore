@@ -44,3 +44,4 @@ Thumbs.db
 # Env Variables
 .env
 .vercel
+.env*

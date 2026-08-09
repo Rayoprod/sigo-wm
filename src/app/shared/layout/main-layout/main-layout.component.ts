@@ -11,7 +11,6 @@ import { MenuModule } from 'primeng/menu';
 import { MenuItem } from 'primeng/api';
 import { TooltipModule } from 'primeng/tooltip';
 import { ChatBotComponent } from '../chat-bot/chat-bot.component';
-import { AsArrayPipe } from '../../pipes/as-array.pipe';
 
 @Component({
   selector: 'app-main-layout',
@@ -27,8 +26,7 @@ import { AsArrayPipe } from '../../pipes/as-array.pipe';
     AvatarModule,
     MenuModule,
     TooltipModule,
-    ChatBotComponent,
-    AsArrayPipe
+    ChatBotComponent
   ],
   templateUrl: './main-layout.component.html',
   styleUrl: './main-layout.component.scss'
@@ -40,49 +38,60 @@ export class MainLayoutComponent {
 
   user = this.authService.currentUser;
 
-  // Level A Security - UI Visibility based on roles
-  menuItems = computed<MenuItem[]>(() => {
-    const roles = this.user()?.rol || [];
-    const rolesArr = Array.isArray(roles) ? roles : [roles];
-    
-    const isAdmin = rolesArr.includes('admin');
-    const isVendedor = rolesArr.includes('vendedor');
-    const isDespachador = rolesArr.includes('despachador');
+  /** ¿Puede ver el chatbot? Admin y vendedor tienen acceso. */
+  readonly puedeVerChatbot = computed(() =>
+    this.authService.hasRole('admin', 'vendedor')
+  );
 
-    const items: MenuItem[] = [
-      { label: 'Dashboard', icon: 'pi pi-home', routerLink: '/dashboard', visible: isAdmin || isVendedor }
-    ];
+  /**
+   * Items de menú calculados según los roles del usuario.
+   * Usa authService.isAdmin() y authService.userRoles() directamente
+   * para no acoplar la UI a strings de roles.
+   */
+  menuItems = computed<MenuItem[]>(() => {
+    const isAdmin       = this.authService.isAdmin();
+    const rawRoles      = this.authService.userRoles();
+    const isVendedor    = rawRoles.includes('vendedor');
+    const isDespachador = rawRoles.includes('despachador');
+
+    const items: MenuItem[] = [];
 
     if (isAdmin || isVendedor) {
-      items.push({ label: 'Ventas y Cotizaciones', icon: 'pi pi-shopping-cart', routerLink: '/comercial' });
-      items.push({ label: 'Productos e Inventario', icon: 'pi pi-box', routerLink: '/catalogo' });
-      items.push({ label: 'Clientes', icon: 'pi pi-users', routerLink: '/clientes' });
+      items.push(
+        { label: 'Dashboard',             icon: 'pi pi-home',          routerLink: '/dashboard' },
+        { label: 'Ventas y Cotizaciones', icon: 'pi pi-shopping-cart', routerLink: '/comercial' },
+        { label: 'Productos e Inventario',icon: 'pi pi-box',           routerLink: '/catalogo'  },
+        { label: 'Clientes',              icon: 'pi pi-users',         routerLink: '/clientes'  },
+      );
     }
 
-    if (isAdmin || isDespachador || isVendedor) {
+    if (isAdmin || isVendedor || isDespachador) {
       items.push({ label: 'Logística y Despachos', icon: 'pi pi-truck', routerLink: '/logistica' });
     }
 
+    // Despachador puro (sin vendedor ni admin) también ve Catálogo
     if (isDespachador && !isAdmin && !isVendedor) {
       items.push({ label: 'Productos e Inventario', icon: 'pi pi-box', routerLink: '/catalogo' });
     }
 
     if (isAdmin) {
-      items.push({ label: 'Reportes Analíticos', icon: 'pi pi-chart-bar', routerLink: '/reportes' });
-      items.push({ label: 'Configuración', icon: 'pi pi-cog', routerLink: '/configuracion' });
+      items.push(
+        { label: 'Reportes Analíticos', icon: 'pi pi-chart-bar', routerLink: '/reportes'      },
+        { label: 'Configuración',       icon: 'pi pi-cog',       routerLink: '/configuracion' },
+      );
     }
 
     return items;
   });
 
+  /** Rol principal para mostrar en el topbar (el de mayor jerarquía). */
   get primaryRole(): string {
-    const roles = this.user()?.rol || [];
-    const rolesArr = Array.isArray(roles) ? roles : [roles];
-    if (rolesArr.includes('admin')) return 'admin';
-    if (rolesArr.includes('vendedor')) return 'vendedor';
-    if (rolesArr.includes('despachador')) return 'despachador';
-    if (rolesArr.includes('chofer')) return 'chofer';
-    return rolesArr[0] || 'usuario';
+    if (this.authService.isAdmin())                         return 'admin';
+    const roles = this.authService.userRoles();
+    if (roles.includes('vendedor'))    return 'vendedor';
+    if (roles.includes('despachador')) return 'despachador';
+    if (roles.includes('chofer'))      return 'chofer';
+    return roles[0] || 'usuario';
   }
 
   async logout() {

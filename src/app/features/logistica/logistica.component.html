@@ -87,7 +87,7 @@
                                 <i class="pi pi-user mr-1 text-primary"></i>{{ pedido.chofer.nombre_completo }}
                             </div>
                         </td>
-                        <td class="text-700">{{ pedido.created_at | date:'dd/MM/yyyy' }}</td>
+                        <td class="text-700">{{ pedido.created_at | peruDate:'dd/MM/yyyy' }}</td>
                         <td>
                             <div class="flex align-items-center gap-2">
                                 <p-tag [value]="pedido.lugar_entrega" [severity]="pedido.lugar_entrega === 'OBRA' ? 'warning' : 'info'"></p-tag>
@@ -178,7 +178,7 @@
                         <div class="flex justify-content-between surface-50 p-2 border-round-lg">
                             <div>
                                 <span class="text-color-secondary text-sm block mb-1"><i class="pi pi-calendar mr-1"></i>Fecha Aprob.</span>
-                                <span class="font-medium text-color">{{ pedido.created_at | date:'dd/MM/yyyy' }}</span>
+                                <span class="font-medium text-color">{{ pedido.created_at | peruDate:'dd/MM/yyyy' }}</span>
                             </div>
                             <div class="text-right">
                                 <span class="text-color-secondary text-sm block mb-1"><i class="pi pi-check-circle mr-1"></i>Estado</span>
@@ -382,7 +382,7 @@
                     <div class="px-3 py-2 flex align-items-center justify-content-between"
                          [ngClass]="etaInfo.esEstimado ? 'bg-orange-50' : 'bg-blue-50'">
                         <span class="font-bold text-sm" [ngClass]="etaInfo.esEstimado ? 'text-orange-700' : 'text-blue-700'">
-                            <i class="pi pi-clock mr-1"></i>ETA estimado
+                            <i class="pi pi-clock mr-1"></i>ETA estimado (Viaje #{{ etaInfo.viajeNum }})
                         </span>
                         <span class="font-bold text-lg" [ngClass]="etaInfo.detenido ? 'text-red-600' : (etaInfo.esEstimado ? 'text-orange-600' : 'text-blue-700')">
                             {{ etaInfo.eta }}
@@ -430,7 +430,7 @@
                         <div class="px-3 py-2 flex align-items-center justify-content-between"
                              [ngClass]="etaInfo.esEstimado ? 'bg-orange-50' : 'bg-blue-50'">
                             <span class="font-bold text-sm" [ngClass]="etaInfo.esEstimado ? 'text-orange-700' : 'text-blue-700'">
-                                <i class="pi pi-clock mr-1"></i>ETA estimado
+                                <i class="pi pi-clock mr-1"></i>ETA estimado (Viaje #{{ etaInfo.viajeNum }})
                             </span>
                             <span class="font-bold text-lg" [ngClass]="etaInfo.detenido ? 'text-red-600' : (etaInfo.esEstimado ? 'text-orange-600' : 'text-blue-700')">
                                 {{ etaInfo.eta }}
@@ -490,7 +490,7 @@
                             <div class="trip-card-header-info">
                                 <span class="trip-card-title">Viaje #{{ viajeItem.numero_viaje_secuencial }}</span>
                                 <span class="trip-card-date" *ngIf="viajeItem.despacho?.created_at">
-                                    {{ viajeItem.despacho.created_at | date:'dd MMM yyyy, HH:mm' }}
+                                    {{ viajeItem.despacho.created_at | peruDate:'dd MMM yyyy, HH:mm' }}
                                 </span>
                             </div>
                         </div>
@@ -531,7 +531,7 @@
                                         <span class="event-card-title">{{ event.status }}</span>
                                         <span class="event-card-time" *ngIf="event.date">
                                             <i class="pi pi-clock"></i>
-                                            {{ event.date | date:'dd/MM/yyyy HH:mm' }}
+                                            {{ event.date | peruDate:'dd/MM/yyyy HH:mm' }}
                                         </span>
                                     </div>
 
@@ -650,7 +650,7 @@
                                                 <ng-template pTemplate="body" let-pt>
                                                     <tr class="text-xs">
                                                         <td class="font-semibold">
-                                                            <span *ngIf="pt.timestamp">{{ pt.timestamp | date:'dd/MM HH:mm:ss' }}</span>
+                                                            <span *ngIf="pt.timestamp">{{ pt.timestamp | peruDate:'dd/MM HH:mm:ss' }}</span>
                                                             <span *ngIf="!pt.timestamp" class="text-500 italic">Sin hora</span>
                                                         </td>
                                                         <td class="text-500">{{ pt.latitud | number:'1.4-4' }}</td>
@@ -720,7 +720,7 @@
                             <tr class="text-xs">
                                 <td class="font-bold">{{ sesion.pedido_folio }}</td>
                                 <td>{{ sesion.chofer_nombre }}</td>
-                                <td>{{ sesion.timestamp_inicio | date:'dd/MM HH:mm' }}</td>
+                                <td>{{ sesion.timestamp_inicio | peruDate:'dd/MM HH:mm' }}</td>
                             </tr>
                         </ng-template>
                     </p-table>

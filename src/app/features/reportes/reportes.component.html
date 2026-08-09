@@ -48,7 +48,7 @@
           </ng-template>
           <ng-template pTemplate="body" let-v>
             <tr>
-              <td class="text-sm">{{ v.created_at | date:'dd/MM/yy HH:mm' }}</td>
+              <td class="text-sm">{{ v.created_at | peruDate:'dd/MM/yy HH:mm' }}</td>
               <td class="font-bold text-primary">{{ v.folio }}</td>
               <td><p-tag [value]="v.tipo_documento === 'COTIZACION' ? 'COT' : 'OV'" [severity]="v.tipo_documento === 'COTIZACION' ? 'warning' : 'info'"></p-tag></td>
               <td>
@@ -83,7 +83,7 @@
                 <span class="font-bold text-primary"><i class="pi pi-file mr-1"></i>{{ v.folio }}</span>
                 <p-tag [value]="v.estado" [severity]="getSeverity(v.estado)"></p-tag>
               </div>
-              <div class="text-sm text-color-secondary mb-2"><i class="pi pi-calendar mr-1"></i>{{ v.created_at | date:'dd/MM/yyyy HH:mm' }}</div>
+              <div class="text-sm text-color-secondary mb-2"><i class="pi pi-calendar mr-1"></i>{{ v.created_at | peruDate:'dd/MM/yyyy HH:mm' }}</div>
               <div class="font-medium mb-3 text-color"><i class="pi pi-user mr-1 text-primary"></i>{{ v.cliente_nombre }}</div>
               
               <div class="mobile-card-row surface-50 p-2 border-round-lg">
@@ -129,7 +129,7 @@
           </ng-template>
           <ng-template pTemplate="body" let-d>
             <tr>
-              <td>{{ d.created_at | date:'dd/MM/yyyy' }}</td>
+              <td>{{ d.created_at | peruDate:'dd/MM/yyyy' }}</td>
               <td class="font-bold text-primary">{{ d.folio }}</td>
               <td class="font-medium">{{ d.cliente_nombre }}</td>
               <td>{{ d.cliente_telefono }}</td>
@@ -153,7 +153,7 @@
             <div *ngFor="let d of deudas" class="mobile-card border-red-500" style="border-left: 4px solid var(--red-500)">
               <div class="flex justify-content-between align-items-center mb-2">
                 <span class="font-bold text-primary"><i class="pi pi-file mr-1"></i>{{ d.folio }}</span>
-                <span class="text-sm text-color-secondary"><i class="pi pi-calendar mr-1"></i>{{ d.created_at | date:'dd/MM/yyyy' }}</span>
+                <span class="text-sm text-color-secondary"><i class="pi pi-calendar mr-1"></i>{{ d.created_at | peruDate:'dd/MM/yyyy' }}</span>
               </div>
               <div class="font-medium mb-1 text-color"><i class="pi pi-user mr-1 text-primary"></i>{{ d.cliente_nombre }}</div>
               <div class="text-sm text-color-secondary mb-3"><i class="pi pi-phone mr-1"></i>{{ d.cliente_telefono || 'Sin teléfono' }}</div>

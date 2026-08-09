@@ -1,14 +1,16 @@
-import { Injectable, signal } from '@angular/core';
+import { Injectable, signal, computed } from '@angular/core';
 import { SupabaseService } from './supabase.service';
-import { User, Session } from '@supabase/supabase-js';
+import { Session } from '@supabase/supabase-js';
 import { Router } from '@angular/router';
+import { APP_ROLES, AppRole, WEB_ROLES } from '../auth/roles';
 
 export interface AppUser {
   id: string;
   correo: string;
   nombre_completo?: string;
-  rol: string[];
+  rol: AppRole[];
   activo: boolean;
+  es_superadmin?: boolean;
 }
 
 @Injectable({
@@ -19,6 +21,52 @@ export class AuthService {
   
   currentUser = signal<AppUser | null>(null);
   session = signal<Session | null>(null);
+
+  /**
+   * Computed signal con los roles efectivos del usuario actual.
+   * Siempre devuelve un array (nunca null).
+   * Centraliza la normalización del campo `rol` que históricamente
+   * podía ser string o string[] dependiendo del contexto.
+   */
+  readonly userRoles = computed<AppRole[]>(() => {
+    const user = this.currentUser();
+    if (!user?.rol) return [];
+    return Array.isArray(user.rol) ? user.rol : [user.rol as AppRole];
+  });
+
+  /**
+   * ¿El usuario activo es administrador?
+   * Admin tiene acceso total en web y acceso implícito a todos los roles mobile.
+   */
+  readonly isAdmin = computed(() => this.userRoles().includes(APP_ROLES.ADMIN));
+
+  /**
+   * ¿El usuario tiene AL MENOS UNO de los roles indicados?
+   * Admin siempre retorna true independientemente de qué roles se pasen.
+   *
+   * Uso: auth.hasRole('vendedor', 'despachador')
+   */
+  hasRole(...roles: AppRole[]): boolean {
+    if (this.isAdmin()) return true; // admin tiene acceso total
+    return roles.some(r => this.userRoles().includes(r));
+  }
+
+  /**
+   * ¿El usuario tiene TODOS los roles indicados?
+   * Admin siempre retorna true.
+   */
+  hasAllRoles(...roles: AppRole[]): boolean {
+    if (this.isAdmin()) return true;
+    return roles.every(r => this.userRoles().includes(r));
+  }
+
+  /**
+   * ¿El usuario tiene acceso a la web?
+   * Bloquea a los choferes puros (solo mobile).
+   */
+  hasWebAccess(): boolean {
+    return this.hasRole(...WEB_ROLES);
+  }
 
   private sessionInitialized = false;
   private sessionPromise: Promise<void>;
@@ -140,7 +188,17 @@ export class AuthService {
   }
 
   async signOut() {
-    await this.supabase.auth.signOut();
+    try {
+      await this.supabase.auth.signOut();
+    } catch (e) {
+      // Ignorar errores de red: igual limpiamos el estado local
+      console.warn('[AuthService] signOut server call failed (possibly offline):', e);
+    } finally {
+      // Siempre limpiar estado local y redirigir, incluso si no hay red
+      this.session.set(null);
+      this.currentUser.set(null);
+      this.router.navigate(['/login'], { replaceUrl: true });
+    }
   }
 
   async createStaffUser(email: string, password: string, roles: string[], nombreCompleto?: string) {

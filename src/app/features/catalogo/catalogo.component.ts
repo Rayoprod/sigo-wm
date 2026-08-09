@@ -14,6 +14,7 @@ import { InputTextModule } from 'primeng/inputtext';
 import { TooltipModule } from 'primeng/tooltip';
 import { CardModule } from 'primeng/card';
 import { TabViewModule } from 'primeng/tabview';
+import { PeruDatePipe } from '../../shared/pipes/peru-date.pipe';
 
 @Component({
   selector: 'app-catalogo',
@@ -30,7 +31,8 @@ import { TabViewModule } from 'primeng/tabview';
     InputTextModule,
     TooltipModule,
     CardModule,
-    TabViewModule
+    TabViewModule,
+    PeruDatePipe
   ],
   templateUrl: './catalogo.component.html',
   styleUrl: './catalogo.component.scss'

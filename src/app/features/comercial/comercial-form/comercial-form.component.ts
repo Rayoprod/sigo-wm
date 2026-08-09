@@ -152,7 +152,7 @@ export class ComercialFormComponent implements OnInit {
       return;
     }
 
-    this.map = L.map(container).setView([-12.046374, -77.042793], 12);
+    this.map = L.map(container, { maxZoom: 19 }).setView([-12.046374, -77.042793], 12);
     L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
       maxZoom: 19,
       attribution: '&copy; OpenStreetMap'

@@ -19,6 +19,7 @@ import { CardModule } from 'primeng/card';
 
 import { PdfService } from '../../../core/services/pdf.service';
 import { InventarioService } from '../../../core/services/inventario.service';
+import { PeruDatePipe } from '../../../shared/pipes/peru-date.pipe';
 
 @Component({
   selector: 'app-comercial-list',
@@ -36,7 +37,8 @@ import { InventarioService } from '../../../core/services/inventario.service';
     DialogModule,
     InputNumberModule,
     CardModule,
-    TooltipModule
+    TooltipModule,
+    PeruDatePipe
   ],
   providers: [ConfirmationService, MessageService],
   templateUrl: './comercial-list.component.html',

@@ -26,7 +26,7 @@
 
                     <div class="mobile-card-row surface-50 p-2 border-round-lg mb-2">
                         <div class="mobile-card-label flex align-items-center"><i class="pi pi-calendar mr-2"></i>Fecha</div>
-                        <div class="mobile-card-value">{{ pedido.created_at | date:'dd/MM/yyyy' }}</div>
+                        <div class="mobile-card-value">{{ pedido.created_at | peruDate:'dd/MM/yyyy' }}</div>
                     </div>
                     
                     <div class="mobile-card-row surface-50 p-2 border-round-lg mb-2">
@@ -127,7 +127,7 @@
                         </td>
                         <td>{{ pedido.tipo_documento === 'COTIZACION' ? 'Cotización' : 'Venta' }}</td>
                         <td>{{ pedido.clientes?.nombre_razon_social }}</td>
-                        <td>{{ pedido.created_at | date:'dd/MM/yyyy HH:mm' }}</td>
+                        <td>{{ pedido.created_at | peruDate:'dd/MM/yyyy HH:mm' }}</td>
                         <td class="font-semibold text-primary text-right">{{ pedido.total | currency:'PEN':'symbol':'1.2-2' }}</td>
                         <td>
                             <div *ngIf="isCotizacionVencida(pedido); else dropdownTemplate">
@@ -233,7 +233,7 @@
                 </ng-template>
                 <ng-template pTemplate="body" let-pago>
                     <tr>
-                        <td>{{ pago.fecha_pago | date:'dd/MM/yyyy HH:mm' }}</td>
+                        <td>{{ pago.fecha_pago | peruDate:'dd/MM/yyyy HH:mm' }}</td>
                         <td class="font-bold text-green-600">{{ pago.monto_pagado | currency:'PEN':'symbol':'1.2-2' }}</td>
                         <td><p-tag [value]="pago.metodo_pago" severity="info"></p-tag></td>
                         <td class="text-sm text-500"><i class="pi pi-user mr-1"></i>{{ pago.usuarios?.nombre_completo || 'Sistema' }}</td>

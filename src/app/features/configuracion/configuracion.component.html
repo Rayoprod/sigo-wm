@@ -39,8 +39,8 @@
                                         </div>
                                     </div>
                                     <div class="flex gap-2 w-full">
-                                        <button pButton label="Editar" icon="pi pi-pencil" class="p-button-info p-button-outlined flex-1 p-button-sm border-round-lg font-bold" [disabled]="user.correo === 'ryan@admin.com' && myEmail !== 'ryan@admin.com'" (click)="editarUsuario(user)"></button>
-                                        <button pButton [label]="user.activo ? 'Desactivar' : 'Activar'" [icon]="user.activo ? 'pi pi-ban' : 'pi pi-check-circle'" [class]="user.activo ? 'p-button-danger p-button-outlined flex-1 p-button-sm border-round-lg font-bold' : 'p-button-success p-button-outlined flex-1 p-button-sm border-round-lg font-bold'" [disabled]="user.correo === 'ryan@admin.com' && myEmail !== 'ryan@admin.com'" (click)="toggleUserStatus(user)"></button>
+                                        <button pButton label="Editar" icon="pi pi-pencil" class="p-button-info p-button-outlined flex-1 p-button-sm border-round-lg font-bold" [disabled]="user.es_superadmin && !currentUserIsSuperAdmin" (click)="editarUsuario(user)"></button>
+                                        <button pButton [label]="user.activo ? 'Desactivar' : 'Activar'" [icon]="user.activo ? 'pi pi-ban' : 'pi pi-check-circle'" [class]="user.activo ? 'p-button-danger p-button-outlined flex-1 p-button-sm border-round-lg font-bold' : 'p-button-success p-button-outlined flex-1 p-button-sm border-round-lg font-bold'" [disabled]="user.es_superadmin && !currentUserIsSuperAdmin" (click)="toggleUserStatus(user)"></button>
                                     </div>
                                 </div>
                                 <div *ngIf="!loadingUsuarios && usuarios.length === 0" class="text-center p-4 text-color-secondary">
@@ -82,12 +82,12 @@
                                             <p-button icon="pi pi-pencil" 
                                                       pTooltip="Editar Nombre/Rol"
                                                       styleClass="p-button-text p-button-info"
-                                                      [disabled]="user.correo === 'ryan@admin.com' && myEmail !== 'ryan@admin.com'"
+                                                      [disabled]="user.es_superadmin && !currentUserIsSuperAdmin"
                                                       (click)="editarUsuario(user)"></p-button>
                                             <p-button [icon]="user.activo ? 'pi pi-ban' : 'pi pi-check-circle'" 
                                                       [pTooltip]="user.activo ? 'Desactivar' : 'Activar'"
                                                       [styleClass]="user.activo ? 'p-button-text p-button-danger' : 'p-button-text p-button-success'"
-                                                      [disabled]="user.correo === 'ryan@admin.com' && myEmail !== 'ryan@admin.com'"
+                                                      [disabled]="user.es_superadmin && !currentUserIsSuperAdmin"
                                                       (click)="toggleUserStatus(user)"></p-button>
                                         </div>
                                     </td>

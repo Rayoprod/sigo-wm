@@ -190,7 +190,7 @@
                             <td class="text-sm text-color">{{deuda.clientes?.nombre_razon_social || 'Consumidor Final'}}</td>
                             <td>
                                 <span class="font-bold text-red-500" *ngIf="deuda.fecha_vencimiento">
-                                    {{deuda.fecha_vencimiento | date:'dd/MM/yyyy'}}
+                                    {{deuda.fecha_vencimiento | peruDate:'dd/MM/yyyy'}}
                                 </span>
                                 <span class="text-color-secondary italic" *ngIf="!deuda.fecha_vencimiento">Sin fecha</span>
                             </td>

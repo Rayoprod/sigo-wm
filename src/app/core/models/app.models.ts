@@ -158,10 +158,11 @@ export interface SesionesGps {
 export interface Usuarios {
   id: string;
   correo: string;
-  rol: string;
+  rol: string[];         // Array de roles — un usuario puede tener múltiples
   activo?: boolean;
   created_at?: string;
   nombre_completo?: string;
+  es_superadmin?: boolean; // Protege al dueño original del sistema de ser modificado por otros admins
   [key: string]: any;
 }
 

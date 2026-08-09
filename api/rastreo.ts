@@ -27,9 +27,9 @@ export default async function handler(req: any, res: any) {
     return res.status(400).json({ error: 'Token de rastreo es requerido' });
   }
 
-  // Validar formato de UUID para mayor seguridad
-  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-  if (!uuidRegex.test(token)) {
+  // Validar formato de UUID o Folio (letras, números y guiones) para mayor seguridad
+  const tokenRegex = /^[a-zA-Z0-9\-]+$/;
+  if (!tokenRegex.test(token)) {
     return res.status(400).json({ error: 'Token de rastreo inválido' });
   }
 

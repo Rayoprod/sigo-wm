@@ -3,11 +3,12 @@ import { CommonModule } from '@angular/common';
 import { ActivatedRoute } from '@angular/router';
 import { HttpClient, HttpClientModule } from '@angular/common/http';
 import * as L from 'leaflet';
+import { PeruDatePipe } from '../../shared/pipes/peru-date.pipe';
 
 @Component({
   selector: 'app-rastreo',
   standalone: true,
-  imports: [CommonModule, HttpClientModule],
+  imports: [CommonModule, HttpClientModule, PeruDatePipe],
   templateUrl: './rastreo.component.html',
   styleUrls: ['./rastreo.component.scss']
 })
@@ -23,14 +24,14 @@ export class RastreoComponent implements OnInit, OnDestroy {
   private map: L.Map | null = null;
   private markerCamion: L.Marker | null = null;
   private markerDestino: L.Marker | null = null;
-  private polylineRuta: L.Polyline | null = null;
+  private polylineRuta: L.Polyline | null = null; // kept for type compatibility, not drawn
+  /** Evita resetear el zoom cuando el usuario ha hecho zoom manual. */
+  private fitBoundsDone = false;
   
   etaInfo: {
     eta: string;
     distanciaKm: string;
-    velocidadKmh: string;
     esEstimado: boolean;
-    detenido: boolean;
     edadMin: number;
   } | null = null;
 
@@ -58,6 +59,7 @@ export class RastreoComponent implements OnInit, OnDestroy {
     if (this.map) {
       this.map.remove();
       this.map = null;
+      this.fitBoundsDone = false;
     }
   }
 
@@ -81,7 +83,22 @@ export class RastreoComponent implements OnInit, OnDestroy {
         const oldStr = JSON.stringify({ ...this.trackingData, gps_actual: null });
         
         if (newStr !== oldStr) {
-          this.trackingData = data;
+          // Usar Object.assign en lugar de reemplazar la referencia completa del objeto.
+          // Si reasignamos this.trackingData = data, Angular detecta un nuevo objeto y destruye
+          // y recrea TODOS los *ngFor del template, causando el parpadeo visual evidente.
+          // Con Object.assign actualizamos las propiedades en el mismo objeto, sin cambiar la referencia.
+          if (!this.trackingData) {
+            this.trackingData = data;
+          } else {
+            Object.assign(this.trackingData, data);
+          }
+
+          if (this.trackingData && this.trackingData.eventos) {
+            const despachoEvent = this.trackingData.eventos.find((e: any) => e.tipo === 'DESPACHO_INICIADO');
+            if (despachoEvent && despachoEvent.items) {
+              this.trackingData.detalles = despachoEvent.items;
+            }
+          }
         } else if (data.gps_actual) {
           // Si solo cambió el GPS, actualizarlo sin perder referencia del objeto
           this.trackingData.gps_actual = data.gps_actual;
@@ -103,14 +120,20 @@ export class RastreoComponent implements OnInit, OnDestroy {
           this.loading = false;
           // Inicializar mapa un momento después de que la vista cargue
           setTimeout(() => {
-            if (this.isDispatched && !this.isDelivered && this.trackingData.lat_destino && this.trackingData.lng_destino) {
+            if (this.isDispatched && !this.map) {
               this.initMap();
             }
-          }, 500);
+          }, 800); // Dar más tiempo al DOM
         } else {
-          // Actualizar mapa si ya existe
+          // Actualizar mapa si ya existe, si no intentar inicializar
           if (this.map) {
             this.updateMapAndETA();
+          } else {
+            setTimeout(() => {
+              if (this.isDispatched && !this.map) {
+                this.initMap();
+              }
+            }, 300);
           }
         }
       },
@@ -129,112 +152,138 @@ export class RastreoComponent implements OnInit, OnDestroy {
     const mapElement = document.getElementById('rastreo-map');
     if (!mapElement) return;
 
-    const latD = parseFloat(this.trackingData.lat_destino);
-    const lngD = parseFloat(this.trackingData.lng_destino);
+    // Coordenadas de destino
+    let latD = this.trackingData.lat_destino ? parseFloat(this.trackingData.lat_destino) : -12.046374;
+    let lngD = this.trackingData.lng_destino ? parseFloat(this.trackingData.lng_destino) : -77.042793;
 
     this.map = L.map('rastreo-map', {
       zoomControl: false,
       attributionControl: false,
       dragging: true,
-      scrollWheelZoom: false, // Mejor experiencia en móviles
+      scrollWheelZoom: false,
       touchZoom: true
-    }).setView([latD, lngD], 14);
+    }).setView([latD, lngD], 13);
 
-    // Usar Voyager de CARTO
     L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', { 
-        subdomains: 'abcd', maxZoom: 22, maxNativeZoom: 19
+      attribution: '© OpenStreetMap contributors',
+      maxZoom: 19
     }).addTo(this.map);
 
-    // Marcador de Destino
-    const destinoIcon = L.divIcon({
-      html: `<div class="destination-marker"><i class="pi pi-home"></i></div>`,
-      className: 'custom-div-icon',
-      iconSize: [40, 40],
-      iconAnchor: [20, 40]
+    // Icono de destino (punto rojo fijo)
+    const destIcon = L.divIcon({
+      className: '',
+      html: `<div style="background:#ef4444;width:22px;height:22px;border-radius:50%;border:3px solid white;box-shadow:0 2px 8px rgba(0,0,0,0.4);display:flex;align-items:center;justify-content:center;">🏁</div>`,
+      iconSize: [22, 22],
+      iconAnchor: [11, 11]
     });
-    this.markerDestino = L.marker([latD, lngD], { icon: destinoIcon }).addTo(this.map);
 
-    // Camión
-    const camionIcon = L.divIcon({
-      html: `<div class="truck-marker pulse-animation"><i class="pi pi-truck"></i></div>`,
-      className: 'custom-div-icon',
-      iconSize: [44, 44],
-      iconAnchor: [22, 22]
+    // Icono de origen del viaje (punto verde)
+    const origenIcon = L.divIcon({
+      className: '',
+      html: `<div style="background:#10b981;width:18px;height:18px;border-radius:50%;border:3px solid white;box-shadow:0 2px 8px rgba(0,0,0,0.4);"></div>`,
+      iconSize: [18, 18],
+      iconAnchor: [9, 9]
     });
+
+    // Ícono del camión en vivo — estado inicial: en movimiento
+    const camionIcon = this.buildLiveTruckIcon('moving', 0);
+
+    // Marcador de destino siempre fijo
+    if (this.trackingData.lat_destino && this.trackingData.lng_destino) {
+      this.markerDestino = L.marker([latD, lngD], { icon: destIcon }).addTo(this.map)
+        .bindTooltip('Destino de entrega', { permanent: false, direction: 'top' });
+    }
+
+    // Marcador de origen del despacho (si existe)
+    const despacho = this.trackingData.eventos?.find((e: any) => e.tipo === 'DESPACHO_INICIADO' || e.tipo === 'RECEPCION_CHOFER');
+    if (despacho?.lat && despacho?.lng) {
+      L.marker([parseFloat(despacho.lat), parseFloat(despacho.lng)], { icon: origenIcon }).addTo(this.map!)
+        .bindTooltip('Punto de salida', { permanent: false, direction: 'top' });
+    }
+
+    // Marcador del camión en vivo (comienza en destino o despacho)
     this.markerCamion = L.marker([latD, lngD], { icon: camionIcon }).addTo(this.map);
 
-    this.polylineRuta = L.polyline([], { color: '#3b82f6', weight: 4, dashArray: '5, 10' }).addTo(this.map);
-
     this.updateMapAndETA();
+    setTimeout(() => this.map?.invalidateSize(), 500);
   }
 
   private updateMapAndETA() {
-    if (!this.map || !this.trackingData || !this.trackingData.lat_destino || !this.trackingData.lng_destino || !this.markerCamion) return;
+    if (!this.map || !this.trackingData || !this.markerCamion) return;
 
-    const latD = parseFloat(this.trackingData.lat_destino);
-    const lngD = parseFloat(this.trackingData.lng_destino);
+    const latD = this.trackingData.lat_destino ? parseFloat(this.trackingData.lat_destino) : -12.046374;
+    const lngD = this.trackingData.lng_destino ? parseFloat(this.trackingData.lng_destino) : -77.042793;
 
-    let latC = -12.046374; // Base cantera por defecto
-    let lngC = -77.042793;
-    let lastUpdate = new Date();
-    let estadoVehiculo = 'EN_CAMINO';
+    // Obtener la posición más reciente del GPS
+    let latC = latD;
+    let lngC = lngD;
+    let lastUpdate = new Date(this.trackingData.fecha_pedido || Date.now());
     let gpsDisponible = false;
 
-    if (this.trackingData.gps_actual) {
+    if (this.trackingData.gps_actual?.latitud && this.trackingData.gps_actual?.longitud) {
       const gps = this.trackingData.gps_actual;
       latC = parseFloat(gps.latitud);
       lngC = parseFloat(gps.longitud);
       lastUpdate = new Date(gps.timestamp);
-      estadoVehiculo = gps.vehiculo_estado;
       gpsDisponible = true;
     }
 
-    // Mover camión de forma suave
-    this.markerCamion.setLatLng([latC, lngC]);
-    if (!gpsDisponible) {
-        this.markerCamion.setOpacity(0.5);
+    // Determinar estado del camión según antigüedad del GPS
+    const edadMin = (Date.now() - lastUpdate.getTime()) / 60000;
+    let markerState: 'moving' | 'stopped' | 'no_signal';
+    if (!gpsDisponible || edadMin > 10) {
+      markerState = 'no_signal';
+    } else if (edadMin >= 3) {
+      markerState = 'stopped';
     } else {
-        this.markerCamion.setOpacity(1);
+      markerState = 'moving';
     }
-    
-    this.polylineRuta?.setLatLngs([[latC, lngC], [latD, lngD]]);
 
-    // Reajustar vista para que se vean ambos
-    const bounds = L.latLngBounds([[latC, lngC], [latD, lngD]]);
-    this.map.fitBounds(bounds, { padding: [50, 50], maxZoom: 16 });
+    // Mover marcador y actualizar ícono según estado
+    this.markerCamion.setLatLng([latC, lngC]);
+    this.markerCamion.setIcon(this.buildLiveTruckIcon(markerState, edadMin));
 
-    this.calculateETA(latC, lngC, latD, lngD, lastUpdate, estadoVehiculo, gpsDisponible);
+    // Ajustar vista para que se vean camión y destino — SOLO en la primera carga
+    // para no resetear el zoom si el usuario ha hecho zoom manual.
+    if (!this.fitBoundsDone && (latC !== latD || lngC !== lngD)) {
+      const bounds = L.latLngBounds([[latC, lngC], [latD, lngD]]);
+      this.map.fitBounds(bounds, { padding: [60, 60], maxZoom: 15 });
+      this.fitBoundsDone = true;
+    }
+
+    // ETA solo si el viaje activo está EN RUTA (el chofer lo recibió)
+    const viajeActivo = this.viajeActivo;
+    if (!viajeActivo || !viajeActivo.enRuta || viajeActivo.entregado) {
+      this.etaInfo = null;
+    } else {
+      this.calculateETA(latC, lngC, latD, lngD, lastUpdate, gpsDisponible);
+    }
   }
 
-  private calculateETA(latC: number, lngC: number, latD: number, lngD: number, lastUpdate: Date, estadoVehiculo: string, gpsDisponible: boolean) {
+
+  private calculateETA(latC: number, lngC: number, latD: number, lngD: number, lastUpdate: Date, gpsDisponible: boolean) {
     const distanciaKm = this.getDistanceFromLatLonInKm(latC, lngC, latD, lngD);
     const ahora = new Date();
     const difMinutos = (ahora.getTime() - lastUpdate.getTime()) / 60000;
-    
-    // Si la señal es vieja (> 5 min) o dice detenido, usar vel. promedio
-    const detenido = gpsDisponible && (estadoVehiculo === 'DETENIDO' || difMinutos > 5);
-    const velKmh = detenido ? 0 : 35; // Asumimos 35km/h urbano si está en movimiento para el cálculo del cliente
+    const esEstimado = !gpsDisponible || difMinutos > 5;
 
-    let horasRestantes = 0;
-    if (velKmh > 0) {
-      horasRestantes = distanciaKm / velKmh;
-    } else {
-      // Si está detenido, calcular con velocidad promedio para dar una idea, pero marcar en naranja
-      horasRestantes = distanciaKm / 35; 
-    }
-
+    const velKmh = 35; // Velocidad urbana promedio asumida
+    const horasRestantes = distanciaKm / velKmh;
     const fechaLlegada = new Date(ahora.getTime() + horasRestantes * 3600000);
-    const formatoLlegada = fechaLlegada.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    const formatoLlegada = fechaLlegada.toLocaleTimeString('es-PE', {
+      hour: '2-digit',
+      minute: '2-digit',
+      timeZone: 'America/Lima'
+    });
 
     this.etaInfo = {
       eta: formatoLlegada,
       distanciaKm: distanciaKm.toFixed(1),
-      velocidadKmh: velKmh.toFixed(0),
-      esEstimado: !gpsDisponible || detenido,
-      detenido: detenido,
-      edadMin: gpsDisponible ? Math.floor(difMinutos) : 0
+      esEstimado: esEstimado,
+      edadMin: Math.floor(difMinutos)
     };
   }
+
 
   private getDistanceFromLatLonInKm(lat1: number, lon1: number, lat2: number, lon2: number) {
     const R = 6371; // Radius of the earth in km
@@ -251,13 +300,71 @@ export class RastreoComponent implements OnInit, OnDestroy {
   private deg2rad(deg: number) { return deg * (Math.PI/180); }
 
   get isDelivered(): boolean { return this.trackingData?.estado === 'COMPLETADA'; }
-  get isDispatched(): boolean { return this.trackingData?.eventos?.some((e: any) => e.tipo === 'DESPACHO_INICIADO') || this.isDelivered; }
 
   get eventosFiltrados(): any[] {
     if (!this.trackingData?.eventos) return [];
-    if (this.trackingData.lugar_entrega === 'CANTERA') return this.trackingData.eventos.filter((e: any) => e.tipo === 'DESPACHO_INICIADO');
-    if (this.trackingData.lugar_entrega === 'OBRA') return this.trackingData.eventos.filter((e: any) => e.tipo === 'ENTREGA_REALIZADA');
-    return this.trackingData.eventos;
+    return this.trackingData.eventos
+      .filter((e: any) => e.tipo === 'DESPACHO_INICIADO' || e.tipo === 'ENTREGA_REALIZADA' || e.tipo === 'RECEPCION_CHOFER')
+      .sort((a: any, b: any) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
+  }
+
+  // Cache para evitar que viajesAgrupados devuelva objetos nuevos en cada ciclo de change detection,
+  // lo que causaba que *ngFor destruyera y recreara el DOM provocando el parpadeo visible.
+  private _cachedViajesKey: string = '';
+  private _cachedViajes: any[] = [];
+
+  get viajesAgrupados(): any[] {
+    const eventos = this.eventosFiltrados;
+    const key = eventos.map((e: any) => `${e.tipo}|${e.timestamp}|${e.id}`).join(',');
+    if (key === this._cachedViajesKey) return this._cachedViajes;
+    this._cachedViajesKey = key;
+
+    if (!eventos || eventos.length === 0) {
+      this._cachedViajes = [];
+      return this._cachedViajes;
+    }
+
+    const viajesMap: { [key: number]: any } = {};
+    let viajeSecuencial = 1;
+
+    eventos.forEach((e: any) => {
+      const match = e.detalle?.match(/#(\d+)/);
+      let num = match ? parseInt(match[1], 10) : null;
+      if (!num) {
+        num = viajeSecuencial;
+        if (e.tipo === 'ENTREGA_REALIZADA') viajeSecuencial++;
+      }
+      if (!viajesMap[num]) {
+        viajesMap[num] = { numero: num, eventos: [], despachado: false, enRuta: false, entregado: false, items: null, placa: null, chofer: null };
+      }
+      viajesMap[num].eventos.push(e);
+      if (e.placa_vehiculo) viajesMap[num].placa = e.placa_vehiculo;
+      if (e.chofer_nombre) viajesMap[num].chofer = e.chofer_nombre;
+      if (e.tipo === 'DESPACHO_INICIADO') { viajesMap[num].despachado = true; if (e.items) viajesMap[num].items = e.items; }
+      if (e.tipo === 'RECEPCION_CHOFER')  { viajesMap[num].enRuta = true; }
+      if (e.tipo === 'ENTREGA_REALIZADA') { viajesMap[num].entregado = true; }
+    });
+
+    this._cachedViajes = Object.values(viajesMap).sort((a: any, b: any) => a.numero - b.numero);
+    return this._cachedViajes;
+  }
+
+  get viajeActivo(): any | null {
+    return this.viajesAgrupados.find(v => !v.entregado) || null;
+  }
+
+  get viajesHistoricos(): any[] {
+    return this.viajesAgrupados.filter(v => v.entregado).sort((a: any, b: any) => b.numero - a.numero);
+  }
+
+  /** Para el mapa: solo si hay un viaje activo en curso (no entregado). */
+  get isDispatched(): boolean {
+    return this.viajeActivo !== null && (this.viajeActivo.despachado || this.viajeActivo.enRuta);
+  }
+
+  /** Para el stepper: permanece true incluso cuando todos los viajes ya fueron entregados. */
+  get hasBeenDispatched(): boolean {
+    return this.viajesAgrupados.some(v => v.despachado || v.entregado);
   }
 
   get hasPhotos(): boolean {
@@ -268,4 +375,85 @@ export class RastreoComponent implements OnInit, OnDestroy {
 
   abrirEvidencia(url: string) { if (url) window.open(url, '_blank'); }
   trackByEventId(index: number, evento: any): string { return evento.id || (evento.tipo + evento.timestamp); }
+  trackByViajeNum(index: number, viaje: any): number { return viaje.numero; }
+
+  // ─── Helpers de ícono de camión en vivo (compartidos con logistica) ───────────
+
+  /**
+   * Inyecta los estilos del marcador de camión una sola vez en <head>.
+   * El CSS ID es compartido con logistica.component.ts para no duplicarlo.
+   */
+  private injectLiveMarkerStyles(): void {
+    if (document.getElementById('sigo-live-truck-styles')) return;
+    const style = document.createElement('style');
+    style.id = 'sigo-live-truck-styles';
+    style.textContent = `
+      .sigo-truck-wrap { display:flex; flex-direction:column; align-items:center; gap:2px; }
+      .sigo-truck-circle {
+        width:42px; height:42px; border-radius:50%;
+        border:3px solid rgba(255,255,255,0.95);
+        display:flex; align-items:center; justify-content:center;
+        font-size:20px; position:relative; cursor:pointer;
+        transition: background 0.4s ease;
+      }
+      .sigo-truck-badge {
+        font-size:9px; font-weight:700; color:white;
+        padding:2px 6px; border-radius:6px;
+        white-space:nowrap; letter-spacing:0.4px;
+        box-shadow:0 1px 4px rgba(0,0,0,0.3);
+      }
+      .sigo-truck-moving .sigo-truck-circle {
+        background:#2563eb;
+        animation: sigoTruckPulse 2s ease-in-out infinite;
+      }
+      .sigo-truck-moving .sigo-truck-badge  { background:#1d4ed8; }
+      .sigo-truck-stopped .sigo-truck-circle {
+        background:#f59e0b;
+        box-shadow:0 3px 14px rgba(245,158,11,0.5);
+      }
+      .sigo-truck-stopped .sigo-truck-badge  { background:#d97706; }
+      .sigo-truck-nosignal .sigo-truck-circle {
+        background:#64748b;
+        box-shadow:0 3px 14px rgba(100,116,139,0.35);
+        opacity:0.85;
+      }
+      .sigo-truck-nosignal .sigo-truck-badge { background:#475569; }
+      @keyframes sigoTruckPulse {
+        0%,100% { box-shadow:0 3px 14px rgba(37,99,235,0.55), 0 0 0 0   rgba(37,99,235,0.35); }
+        60%     { box-shadow:0 3px 14px rgba(37,99,235,0.55), 0 0 0 14px rgba(37,99,235,0);   }
+      }
+    `;
+    document.head.appendChild(style);
+  }
+
+  /**
+   * Crea el ícono Leaflet del camión en vivo con apariencia diferenciada según estado.
+   * @param state   'moving' | 'stopped' | 'no_signal'
+   * @param edadMin Minutos desde el último punto GPS
+   */
+  private buildLiveTruckIcon(state: 'moving' | 'stopped' | 'no_signal', edadMin: number): L.DivIcon {
+    this.injectLiveMarkerStyles();
+    const labels: Record<typeof state, string> = {
+      moving:    '▶ En movimiento',
+      stopped:   `⏸ Lento/detenido · ${Math.round(edadMin)}m`,
+      no_signal: `📡 Sin señal · ${Math.round(edadMin)}m`
+    };
+    const clsMap: Record<typeof state, string> = {
+      moving:    'sigo-truck-moving',
+      stopped:   'sigo-truck-stopped',
+      no_signal: 'sigo-truck-nosignal'
+    };
+    const html = `<div class="sigo-truck-wrap ${clsMap[state]}">
+      <div class="sigo-truck-circle">🚛</div>
+      <div class="sigo-truck-badge">${labels[state]}</div>
+    </div>`;
+    return L.divIcon({
+      className: '',
+      html,
+      iconSize:    [88, 60],
+      iconAnchor:  [44, 21],
+      popupAnchor: [0, -24]
+    });
+  }
 }
+

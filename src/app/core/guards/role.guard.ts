@@ -1,42 +1,51 @@
 import { inject } from '@angular/core';
 import { CanActivateFn, Router } from '@angular/router';
 import { AuthService } from '../services/auth.service';
+import { AppRole } from '../auth/roles';
 
+/**
+ * Guard de roles para rutas protegidas.
+ *
+ * Uso en routes:
+ *   canActivate: [roleGuard],
+ *   data: { roles: ['admin', 'vendedor'] }
+ *
+ * - Si no hay sesi\u00f3n        → redirige a /login
+ * - Si es admin             → acceso total (sin revisar roles requeridos)
+ * - Si tiene al menos un rol requerido → acceso permitido
+ * - Si no tiene ning\u00fan rol requerido → redirige a /sin-acceso
+ */
 export const roleGuard: CanActivateFn = async (route, state) => {
-  const authService = inject(AuthService);
+  const auth   = inject(AuthService);
   const router = inject(Router);
 
-  // Esperar a que la sesión esté inicializada (crítico en recargas de página)
-  const currentUser = await authService.waitForAuth();
+  await auth.waitForAuth();
 
-  if (!currentUser) {
+  // Sin sesión → login
+  if (!auth.currentUser()) {
     return router.createUrlTree(['/login']);
   }
 
-  // Los roles permitidos se definen en el data de cada ruta
-  const allowedRoles = route.data['roles'] as Array<'admin' | 'vendedor' | 'despachador' | 'chofer'>;
-
-  // Extraemos los roles del usuario de manera segura
-  let userRoles: string[] = [];
-  if (Array.isArray(currentUser.rol)) {
-    userRoles = currentUser.rol;
-  } else if (typeof currentUser.rol === 'string') {
-    userRoles = [currentUser.rol];
-  }
-
-  // El Administrador tiene acceso irrestricto en la app web
-  if (userRoles.includes('admin')) {
+  // Admin tiene paso libre en toda la web
+  if (auth.isAdmin()) {
+    // Excepción: si solo intenta ir al dashboard y también es despachador
+    // puro (sin admin/vendedor), lo mandamos a logística.
+    // Pero si ES admin, puede ir al dashboard sin restricción.
     return true;
   }
 
-  // Verifica si hay intersección (el usuario tiene al menos uno de los roles permitidos)
-  if (allowedRoles && !allowedRoles.some(r => userRoles.includes(r))) {
-    return router.createUrlTree(['/login']);
+  // Verificar roles requeridos por la ruta
+  const requiredRoles = route.data?.['roles'] as AppRole[] | undefined;
+  if (requiredRoles?.length && !auth.hasRole(...requiredRoles)) {
+    return router.createUrlTree(['/sin-acceso']);
   }
 
-  // Si intenta ir al dashboard y SOLO es despachador, mandarlo a logistica
-  // (Si es admin y despachador a la vez, sí puede ver el dashboard)
-  if ((state.url === '/' || state.url === '/dashboard') && userRoles.includes('despachador') && !userRoles.includes('admin') && !userRoles.includes('vendedor')) {
+  // Despachador puro intentando ir al dashboard → logística
+  if (
+    (state.url === '/' || state.url === '/dashboard') &&
+    auth.hasRole('despachador') &&
+    !auth.hasRole('vendedor')
+  ) {
     return router.createUrlTree(['/logistica']);
   }
 

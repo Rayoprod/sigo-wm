@@ -7,11 +7,12 @@ import { Subscription } from 'rxjs';
 import { SupabaseService } from '../../core/services/supabase.service';
 import { AuthService } from '../../core/services/auth.service';
 import { ThemeService } from '../../core/services/theme.service';
+import { PeruDatePipe } from '../../shared/pipes/peru-date.pipe';
 
 @Component({
   selector: 'app-dashboard',
   standalone: true,
-  imports: [CommonModule, RouterModule, TableModule, ChartModule],
+  imports: [CommonModule, RouterModule, TableModule, ChartModule, PeruDatePipe],
   templateUrl: './dashboard.component.html',
   styleUrl: './dashboard.component.scss'
 })
@@ -39,10 +40,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
   predictiveInsights: string[] = [];
 
   async ngOnInit() {
-    const roles = this.auth.currentUser()?.rol || [];
-    this.canViewDashboard = Array.isArray(roles) 
-      ? (roles.includes('admin') || roles.includes('vendedor'))
-      : (roles === 'admin' || roles === 'vendedor');
+    this.canViewDashboard = this.auth.hasRole('admin', 'vendedor');
       
     if (!this.canViewDashboard) return;
 

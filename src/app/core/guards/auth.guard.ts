@@ -4,31 +4,21 @@ import { AuthService } from '../services/auth.service';
 
 /**
  * Guard para la ruta /login.
- * Si el usuario ya tiene sesión activa, lo redirige al panel principal
- * en lugar de mostrarle el formulario de login.
+ * Si el usuario ya tiene sesi\u00f3n activa, lo redirige al panel correcto
+ * seg\u00fan sus roles, en lugar de mostrarle el formulario de login.
  */
-export const authGuard: CanActivateFn = async (route, state) => {
-  const authService = inject(AuthService);
+export const authGuard: CanActivateFn = async () => {
+  const auth   = inject(AuthService);
   const router = inject(Router);
 
-  const currentUser = await authService.waitForAuth();
+  const currentUser = await auth.waitForAuth();
+  if (!currentUser) return true; // No autenticado → mostrar login
 
-  if (currentUser) {
-    // Ya autenticado: redirigir al panel según su rol
-    let userRoles: string[] = [];
-    if (Array.isArray(currentUser.rol)) {
-      userRoles = currentUser.rol;
-    } else if (typeof currentUser.rol === 'string') {
-      userRoles = [currentUser.rol];
-    }
-    
-    // Si solo es despachador (y no admin/vendedor), mandarlo a logistica
-    if (userRoles.includes('despachador') && !userRoles.includes('admin') && !userRoles.includes('vendedor')) {
-      return router.createUrlTree(['/logistica']);
-    }
-    return router.createUrlTree(['/']);
+  // Ya autenticado: redirigir según roles
+  // Despachador puro (sin admin ni vendedor) → logística directamente
+  if (auth.hasRole('despachador') && !auth.hasRole('vendedor')) {
+    return router.createUrlTree(['/logistica']);
   }
 
-  // No autenticado: permitir acceso al login
-  return true;
+  return router.createUrlTree(['/']);
 };

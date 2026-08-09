@@ -75,4 +75,4 @@
 </div>
 
 <!-- Chat Bot Global Flotante (Solo visible para Admin y Vendedor) -->
-<app-chat-bot *ngIf="(user()?.rol | asArray).includes('admin') || (user()?.rol | asArray).includes('vendedor')"></app-chat-bot>
+<app-chat-bot *ngIf="puedeVerChatbot()"></app-chat-bot>

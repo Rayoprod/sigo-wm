@@ -11,6 +11,7 @@ import { InputTextModule } from 'primeng/inputtext';
 import { ChipModule } from 'primeng/chip';
 import { SupabaseService } from '../../core/services/supabase.service';
 import { environment } from '../../../environments/environment';
+import { PeruDatePipe } from '../../shared/pipes/peru-date.pipe';
 
 @Component({
   selector: 'app-reportes',
@@ -25,7 +26,8 @@ import { environment } from '../../../environments/environment';
     CalendarModule,
     DropdownModule,
     InputTextModule,
-    ChipModule
+    ChipModule,
+    PeruDatePipe
   ],
   templateUrl: './reportes.component.html',
   styleUrl: './reportes.component.scss'

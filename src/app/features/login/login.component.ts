@@ -44,26 +44,17 @@ export class LoginComponent {
     
     try {
       await this.authService.signIn(this.email, this.password);
-      const user = await this.authService.waitForAuth();
+      await this.authService.waitForAuth();
       
-      let userRoles: string[] = [];
-      if (user?.rol) {
-        if (Array.isArray(user.rol)) {
-          userRoles = user.rol;
-        } else if (typeof user.rol === 'string') {
-          userRoles = [(user.rol as unknown) as string];
-        }
-      }
-      
-      if (userRoles.includes('chofer') && userRoles.length === 1) {
+      // Choferes puros solo usan la app móvil
+      if (this.authService.hasRole('chofer') && !this.authService.hasRole('vendedor', 'despachador')) {
         await this.authService.signOut();
         this.errorMsg = 'Acceso denegado. Los choferes deben usar la aplicación móvil, no la plataforma web.';
         return;
       }
       
-      if (userRoles.includes('despachador') && !userRoles.includes('admin') && !userRoles.includes('vendedor')) {
-        // replaceUrl: true elimina /login del historial del navegador.
-        // Sin esto, el botón "Atrás" desde el panel regresa a /login.
+      // Despachadores puros (sin admin ni vendedor) van directo a logística
+      if (this.authService.hasRole('despachador') && !this.authService.hasRole('vendedor')) {
         this.router.navigate(['/logistica'], { replaceUrl: true });
       } else {
         this.router.navigate(['/'], { replaceUrl: true });

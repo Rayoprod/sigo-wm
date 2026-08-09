@@ -46,8 +46,14 @@ export class ConfiguracionComponent implements OnInit {
   authService = inject(AuthService);
   supabase = this.supabaseService.client;
   
-  get myEmail(): string {
-    return this.authService.currentUser()?.correo || '';
+  /**
+   * ¿El usuario actual es superadmin?
+   * El superadmin es el dueño original del sistema y no puede ser
+   * modificado ni desactivado por otros administradores.
+   * Se controla con el campo `es_superadmin` en la BD, no con el email.
+   */
+  get currentUserIsSuperAdmin(): boolean {
+    return this.authService.currentUser()?.es_superadmin === true;
   }
 
   // Secundary Client for User Creation (prevents logout of Admin)
@@ -148,7 +154,7 @@ export class ConfiguracionComponent implements OnInit {
   }
 
   editarUsuario(usuario: any) {
-    if (usuario.correo === 'ryan@admin.com' && this.myEmail !== 'ryan@admin.com') {
+    if (usuario.es_superadmin && !this.currentUserIsSuperAdmin) {
       alert('🔒 Acceso denegado: No tienes permisos para editar la cuenta del Administrador Principal.');
       return;
     }
@@ -262,7 +268,7 @@ export class ConfiguracionComponent implements OnInit {
   }
 
   async toggleUserStatus(usuario: any) {
-    if (usuario.correo === 'ryan@admin.com' && this.myEmail !== 'ryan@admin.com') {
+    if (usuario.es_superadmin && !this.currentUserIsSuperAdmin) {
       alert('🔒 Acceso denegado: No tienes permisos para desactivar la cuenta del Administrador Principal.');
       return;
     }
