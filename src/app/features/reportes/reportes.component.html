@@ -23,7 +23,7 @@
             <p-dropdown styleClass="w-full" [options]="estadosVentas" [(ngModel)]="estadoVentaFiltro" (onChange)="aplicarFiltrosVentas()" appendTo="body"></p-dropdown>
           </div>
           <div class="field mb-0 flex align-items-end md:ml-auto w-full md:w-auto">
-            <button pButton label="Exportar Excel/CSV" icon="pi pi-file-excel" class="p-button-success w-full" (click)="exportExcel(dtVentas)"></button>
+            <button pButton label="Exportar Excel/CSV" icon="pi pi-file-excel" class="p-button-success w-full" (click)="exportExcel('ventas')"></button>
           </div>
         </div>
 
@@ -56,8 +56,10 @@
                 <span class="text-color-secondary text-xs">{{ v.cliente_doc }}</span>
               </td>
               <td class="text-sm">{{ v.tipo_entrega_label }}</td>
-              <td class="text-right text-sm">S/ {{ v.subtotal | number:'1.2-2' }}</td>
-              <td class="text-right text-sm" [ngClass]="{'text-primary': v.igv > 0}">S/ {{ v.igv | number:'1.2-2' }}</td>
+              <td class="text-right text-sm">S/ {{ v.subtotal | number:'1.2-2' }}
+                <span *ngIf="v.precios_con_igv" class="text-xs text-primary font-medium ml-1" title="Los precios incluyen IGV">c/IGV</span>
+              </td>
+              <td class="text-right text-sm" [ngClass]="{'text-primary': v.igv > 0}" title="{{ v.precios_con_igv ? 'IGV incluido en el subtotal' : 'IGV agregado al subtotal' }}">S/ {{ v.igv | number:'1.2-2' }}</td>
               <td class="font-bold text-green-600 text-right">S/ {{ v.total | number:'1.2-2' }}</td>
               <td class="text-right text-sm">S/ {{ v.total_pagado | number:'1.2-2' }}</td>
               <td class="text-right" [ngClass]="{'text-red-500 font-bold': v.saldo_pendiente > 0, 'text-color-secondary': v.saldo_pendiente === 0}">S/ {{ v.saldo_pendiente | number:'1.2-2' }}</td>
@@ -81,6 +83,7 @@
             <div *ngFor="let v of ventas" class="mobile-card">
               <div class="flex justify-content-between align-items-center mb-2">
                 <span class="font-bold text-primary"><i class="pi pi-file mr-1"></i>{{ v.folio }}</span>
+                <span *ngIf="v.precios_con_igv" class="text-xs text-primary font-medium" title="Los precios incluyen IGV">c/IGV</span>
                 <p-tag [value]="v.estado" [severity]="getSeverity(v.estado)"></p-tag>
               </div>
               <div class="text-sm text-color-secondary mb-2"><i class="pi pi-calendar mr-1"></i>{{ v.created_at | peruDate:'dd/MM/yyyy HH:mm' }}</div>
@@ -111,7 +114,7 @@
         </div>
         <div class="flex flex-column md:flex-row gap-3 justify-content-between md:align-items-center mb-4 surface-50 p-3 border-round">
           <h3 class="m-0 text-700 text-sm md:text-base"><i class="pi pi-info-circle mr-2"></i> Solo se muestran ventas con deuda pendiente.</h3>
-          <button pButton label="Exportar Excel/CSV" icon="pi pi-file-excel" class="p-button-success w-full md:w-auto" (click)="exportExcel(dtDeudas)"></button>
+          <button pButton label="Exportar Excel/CSV" icon="pi pi-file-excel" class="p-button-success w-full md:w-auto" (click)="exportExcel('deudas')"></button>
         </div>
 
         <!-- VISTA PC (Tabla) -->
@@ -183,7 +186,7 @@
         </div>
         <div class="flex flex-column md:flex-row gap-3 justify-content-between md:align-items-center mb-4 surface-50 p-3 border-round">
           <h3 class="m-0 text-700 text-sm md:text-base"><i class="pi pi-info-circle mr-2"></i> Valorización = Stock Físico × Precio de Venta Base.</h3>
-          <button pButton label="Exportar Excel/CSV" icon="pi pi-file-excel" class="p-button-success w-full md:w-auto" (click)="exportExcel(dtInventario)"></button>
+          <button pButton label="Exportar Excel/CSV" icon="pi pi-file-excel" class="p-button-success w-full md:w-auto" (click)="exportExcel('inventario')"></button>
         </div>
 
         <!-- VISTA PC (Tabla) -->

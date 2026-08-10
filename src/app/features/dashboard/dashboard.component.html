@@ -149,7 +149,7 @@
                                       [ngClass]="{
                                         'bg-orange-soft text-orange-500': pedido.estado === 'PENDIENTE',
                                         'bg-green-soft text-green-500': pedido.estado === 'APROBADA' || pedido.estado === 'COMPLETADA',
-                                        'bg-blue-soft text-blue-500': pedido.estado === 'BORRADOR',
+                                        'bg-red-soft text-red-500': pedido.estado === 'RECHAZADA',
                                         'surface-200 text-500': pedido.estado === 'ANULADA'
                                       }">
                                     {{pedido.estado}}

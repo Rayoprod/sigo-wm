@@ -72,6 +72,12 @@
                         <button pButton *ngIf="pedido.tipo_documento !== 'COTIZACION'" icon="pi pi-whatsapp" class="p-button-success p-button-outlined flex-1 p-button-sm border-round-lg font-bold" (click)="compartirWhatsApp(pedido)" [disabled]="pedido.estado === 'ANULADA'"></button>
                         <button pButton *ngIf="pedido.tipo_documento !== 'COTIZACION'" icon="pi pi-wallet" class="p-button-primary p-button-outlined flex-1 p-button-sm border-round-lg font-bold" (click)="openCobro(pedido)" [disabled]="pedido.estado === 'ANULADA'"></button>
                     </div>
+
+                    <!-- Botones explícitos Aprobar / Rechazar (solo cotizaciones pendientes) -->
+                    <div class="flex gap-2 w-full mt-2" *ngIf="pedido.tipo_documento === 'COTIZACION' && pedido.estado === 'PENDIENTE'">
+                        <button pButton label="Aprobar" icon="pi pi-check" class="p-button-success flex-1 p-button-sm border-round-lg font-bold" (click)="aprobarCotizacion(pedido)" [disabled]="isCotizacionVencida(pedido)"></button>
+                        <button pButton label="Rechazar" icon="pi pi-times" class="p-button-danger p-button-outlined flex-1 p-button-sm border-round-lg font-bold" (click)="rechazarCotizacion(pedido)"></button>
+                    </div>
                 </div>
             </div>
             
@@ -111,7 +117,7 @@
                         <th pSortableColumn="total" class="text-right">Total <p-sortIcon field="total"></p-sortIcon></th>
                         <th pSortableColumn="estado">Estado <p-sortIcon field="estado"></p-sortIcon></th>
                         <th pSortableColumn="estado_pago">Pago <p-sortIcon field="estado_pago"></p-sortIcon></th>
-                        <th class="text-center" style="width: 12rem">Acciones</th>
+                        <th class="text-center" style="width: 17rem">Acciones</th>
                     </tr>
                 </ng-template>
 
@@ -161,7 +167,9 @@
                         <td class="text-center">
                             <div class="flex justify-content-center gap-2">
                                 <p-button icon="pi pi-file-pdf" [loading]="generatingPdfId === pedido.id" styleClass="p-button-rounded p-button-danger p-button-text" (click)="generarPDF(pedido)" pTooltip="Ver PDF"></p-button>
-                                <p-button *ngIf="pedido.tipo_documento === 'COTIZACION'" icon="pi pi-pencil" styleClass="p-button-rounded p-button-info p-button-text" [routerLink]="['/comercial/editar', pedido.id]" pTooltip="Editar/Aprobar" [disabled]="pedido.estado === 'ANULADA'"></p-button>
+                                <p-button *ngIf="pedido.tipo_documento === 'COTIZACION'" icon="pi pi-pencil" styleClass="p-button-rounded p-button-info p-button-text" [routerLink]="['/comercial/editar', pedido.id]" pTooltip="Editar" [disabled]="pedido.estado === 'ANULADA'"></p-button>
+                                <p-button *ngIf="pedido.tipo_documento === 'COTIZACION' && pedido.estado === 'PENDIENTE'" label="Aprobar" icon="pi pi-check" styleClass="p-button-sm p-button-success" (click)="aprobarCotizacion(pedido)" [disabled]="isCotizacionVencida(pedido)" pTooltip="Aprobar y convertir a venta"></p-button>
+                                <p-button *ngIf="pedido.tipo_documento === 'COTIZACION' && pedido.estado === 'PENDIENTE'" label="Rechazar" icon="pi pi-times" styleClass="p-button-sm p-button-danger p-button-outlined" (click)="rechazarCotizacion(pedido)" pTooltip="Rechazar cotización"></p-button>
                                 <p-button *ngIf="pedido.tipo_documento !== 'COTIZACION'" icon="pi pi-whatsapp" styleClass="p-button-rounded p-button-success p-button-text" (click)="compartirWhatsApp(pedido)" pTooltip="Compartir Rastreo" [disabled]="pedido.estado === 'ANULADA'"></p-button>
                                 <p-button *ngIf="pedido.tipo_documento !== 'COTIZACION'" icon="pi pi-wallet" styleClass="p-button-rounded p-button-primary p-button-text" (click)="openCobro(pedido)" pTooltip="Ver / Registrar Pagos" [disabled]="pedido.estado === 'ANULADA'"></p-button>
                                 <p-button icon="pi pi-trash" styleClass="p-button-rounded p-button-danger p-button-text" (click)="eliminarPedidoPruebas(pedido)" pTooltip="Eliminar Definitivamente (Modo Pruebas)"></p-button>

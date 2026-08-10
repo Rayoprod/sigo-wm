@@ -26,8 +26,8 @@
                         <div class="mobile-card-label flex align-items-center"><i class="pi pi-id-card mr-2"></i>Documento</div>
                         <div class="inline-flex align-items-center font-medium text-color mt-1">
                             <span *ngIf="cliente.documento_identidad" class="px-2 py-1 border-round text-xs font-bold mr-2" 
-                                [ngClass]="{'bg-blue-soft text-blue-500': cliente.documento_identidad.length === 8, 'bg-purple-100 text-purple-700': cliente.documento_identidad.length === 11, 'bg-surface-soft text-color-secondary': cliente.documento_identidad.length !== 8 && cliente.documento_identidad.length !== 11}">
-                                {{cliente.documento_identidad.length === 8 ? 'DNI' : (cliente.documento_identidad.length === 11 ? 'RUC' : 'OTRO')}}
+                                [ngClass]="tipoDocBadge(cliente.documento_identidad, 'mobile')">
+                                {{tipoDocLabel(cliente.documento_identidad)}}
                             </span>
                             <span>{{ cliente.documento_identidad || '-' }}</span>
                         </div>
@@ -74,7 +74,7 @@
                 <ng-template pTemplate="header">
                     <tr>
                         <th pSortableColumn="nombre_razon_social">Razón Social / Nombre <p-sortIcon field="nombre_razon_social"></p-sortIcon></th>
-                        <th pSortableColumn="documento_identidad">Documento (RUC/DNI) <p-sortIcon field="documento_identidad"></p-sortIcon></th>
+                        <th pSortableColumn="documento_identidad">Documento (RUC/DNI/CE) <p-sortIcon field="documento_identidad"></p-sortIcon></th>
                         <th pSortableColumn="direccion">Dirección <p-sortIcon field="direccion"></p-sortIcon></th>
                         <th>Teléfono</th>
                         <th>Correo</th>
@@ -87,8 +87,8 @@
                         <td>
                             <div class="inline-flex align-items-center">
                                 <span *ngIf="cliente.documento_identidad" class="px-2 py-1 border-round text-xs font-bold mr-2" 
-                                      [ngClass]="{'bg-blue-100 text-blue-700': cliente.documento_identidad.length === 8, 'bg-purple-100 text-purple-700': cliente.documento_identidad.length === 11, 'bg-gray-100 text-gray-700': cliente.documento_identidad.length !== 8 && cliente.documento_identidad.length !== 11}">
-                                    {{cliente.documento_identidad.length === 8 ? 'DNI' : (cliente.documento_identidad.length === 11 ? 'RUC' : 'OTRO')}}
+                                      [ngClass]="tipoDocBadge(cliente.documento_identidad)">
+                                    {{tipoDocLabel(cliente.documento_identidad)}}
                                 </span>
                                 <span>{{ cliente.documento_identidad || '-' }}</span>
                             </div>
@@ -117,7 +117,7 @@
 <p-dialog header="Nuevo Cliente" [(visible)]="displayModal" [modal]="true" [style]="{width: '450px'}">
     <div class="p-fluid grid formgrid pt-2">
         <div class="field col-12">
-            <label>Documento (RUC/DNI para Autocompletar)</label>
+            <label>Documento (RUC/DNI/CE para Autocompletar)</label>
             <div class="p-inputgroup">
                 <input pInputText type="text" [(ngModel)]="nuevoCliente.documento_identidad" (keyup.enter)="buscarDocApiPeru()" placeholder="Escriba y presione buscar..." />
                 <button type="button" pButton icon="pi pi-search" styleClass="p-button-primary" (click)="buscarDocApiPeru()" [loading]="isSearchingDoc"></button>

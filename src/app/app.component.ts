@@ -94,11 +94,11 @@ export class AppComponent implements OnInit {
         'postgres_changes',
         { event: 'UPDATE', schema: 'public', table: 'despachos_viajes_cabecera' },
         (payload) => {
-          if (payload.new['estado_viaje'] === 'COMPLETADO') {
+          if (payload.new['estado_viaje'] === 'ENTREGADO') {
             this.messageService.add({
               severity: 'info',
-              summary: 'Despacho Completado',
-              detail: `El equipo de logística ha entregado el pedido.`,
+              summary: 'Entrega Completada',
+              detail: `El chofer ha entregado el viaje del pedido.`,
               life: 5000
             });
             this.playNotificationSound();

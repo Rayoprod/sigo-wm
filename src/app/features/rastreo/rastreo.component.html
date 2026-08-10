@@ -13,11 +13,11 @@
       <div class="error-icon">⚠️</div>
       <h2>Pedido No Encontrado</h2>
       <p>{{ error }}</p>
-      <button class="btn-primary-premium" onclick="location.reload()">Reintentar</button>
+      <button class="btn-primary-premium" (click)="reintentar()">Reintentar</button>
     </div>
 
     <!-- MAIN TRACKING CONTENT -->
-    <div *ngIf="!loading && !error && trackingData" class="tracking-content-premium" [ngClass]="{'no-map': !isDispatched}">
+    <div *ngIf="!loading && !error && trackingData" class="tracking-content-premium" [ngClass]="{'no-map': !isDispatched || esCantera}">
       
       <!-- HEADER GLASS CARD -->
       <header class="glass-card header-premium">
@@ -26,14 +26,14 @@
           <div class="folio-badge">ORDEN N° {{ trackingData.folio }}</div>
         </div>
         <h1 class="main-status-title" [ngClass]="{'delivered-text': isDelivered, 'dispatched-text': isDispatched && !isDelivered}">
-          {{ isDelivered ? 'Entregado con Éxito' : (isDispatched ? 'Pedido en Camino' : 'Preparando Despacho') }}
+          {{ estadoTitulo }}
         </h1>
         <div class="destination-detail">
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="svg-icon marker-icon">
             <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
             <circle cx="12" cy="10" r="3"></circle>
           </svg>
-          <span>Destino: {{ trackingData.destino }}</span>
+          <span>Destino: {{ esCantera ? 'Recojo en Planta W&M' : (trackingData.destino || 'Sin dirección registrada') }}</span>
         </div>
       </header>
 
@@ -52,10 +52,15 @@
       <ng-container *ngIf="trackingData.estado !== 'ANULADA'">
 
         <!-- LIVE GPS TRACKING & ETA CARD - Solo visible cuando hay viaje activo EN RUTA -->
-        <section *ngIf="isDispatched" class="live-tracking-section">
+        <section *ngIf="isDispatched && !esCantera" class="live-tracking-section">
           <div class="map-container">
             <div id="rastreo-map" class="rastreo-map"></div>
             
+            <!-- Aviso mientras no llega señal GPS del chofer -->
+            <div class="gps-waiting-note" *ngIf="!gpsDisponible">
+              <span class="gps-pulse-dot"></span> Esperando señal GPS del chofer...
+            </div>
+
             <!-- ETA Overlay Card: solo si el chofer ya inició el viaje -->
             <div class="eta-glass-card" *ngIf="etaInfo">
               <div class="eta-header" [style.background]="etaInfo.esEstimado ? 'rgba(251,146,60,0.15)' : 'rgba(59,130,246,0.15)'">
@@ -64,9 +69,12 @@
                 </span>
               </div>
               <div class="eta-body">
-                <span class="eta-time" [style.color]="etaInfo.esEstimado ? '#ea580c' : '#1d4ed8'">
-                  {{ etaInfo.eta }}
-                </span>
+                <div class="eta-time-row">
+                  <span class="eta-time" [style.color]="etaInfo.esEstimado ? '#ea580c' : '#1d4ed8'">
+                    {{ etaInfo.eta }}
+                  </span>
+                  <span class="eta-day" [style.color]="etaInfo.esEstimado ? '#c2410c' : '#1d4ed8'">{{ etaInfo.etaDia }}</span>
+                </div>
                 <div class="eta-stats">
                   <span>
                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="svg-icon mr-1"><polygon points="3 11 22 2 13 21 11 13 3 11"></polygon></svg>
@@ -108,7 +116,7 @@
 
             <div class="step-node" [ngClass]="{'active': hasBeenDispatched}">
               <div class="step-indicator">
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="svg-icon" [ngClass]="{'ping-pulse': isDispatched && !isDelivered}">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="svg-icon" [ngClass]="{'ping-pulse': isDispatched && !isDelivered && !esCantera}">
                   <rect x="1" y="3" width="15" height="13"></rect>
                   <polygon points="16 8 20 8 23 11 23 16 16 16 16 8"></polygon>
                   <circle cx="5.5" cy="18.5" r="2.5"></circle>
@@ -116,8 +124,8 @@
                 </svg>
               </div>
               <div class="step-info">
-                <span class="step-label">En Camino</span>
-                <span class="step-date" *ngIf="hasBeenDispatched">Despachos en proceso</span>
+                <span class="step-label">{{ esCantera ? 'Listo para Recojo' : 'En Camino' }}</span>
+                <span class="step-date" *ngIf="hasBeenDispatched">{{ esCantera ? 'Recojo disponible en planta' : 'Despachos en proceso' }}</span>
                 <span class="step-date text-muted" *ngIf="!hasBeenDispatched">En espera...</span>
               </div>
             </div>
@@ -130,8 +138,8 @@
                 </svg>
               </div>
               <div class="step-info">
-                <span class="step-label">Completado</span>
-                <span class="step-date" *ngIf="isDelivered">Pedido finalizado</span>
+                <span class="step-label">{{ esCantera ? 'Recogido en Planta' : 'Completado' }}</span>
+                <span class="step-date" *ngIf="isDelivered">{{ esCantera ? 'Pedido listo y recogido' : 'Pedido finalizado' }}</span>
                 <span class="step-date text-muted" *ngIf="!isDelivered">Pendiente</span>
               </div>
             </div>
@@ -154,14 +162,14 @@
               <span class="info-value">{{ trackingData.cliente }}</span>
             </div>
             <div class="info-item">
-              <span class="info-label">Zona de Entrega</span>
-              <span class="info-value">{{ trackingData.lugar_entrega }}</span>
+              <span class="info-label">{{ esCantera ? 'Modalidad' : 'Zona de Entrega' }}</span>
+              <span class="info-value">{{ esCantera ? 'Recojo en Planta' : trackingData.lugar_entrega }}</span>
             </div>
           </div>
         </section>
 
         <!-- TIMELINE AND EVIDENCE -->
-        <section class="timeline-premium-section" *ngIf="viajeActivo">
+        <section class="timeline-premium-section" *ngIf="viajeActivo && !esCantera">
           <h2 class="section-title">
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="svg-icon mr-2">
               <circle cx="12" cy="12" r="10"></circle>
@@ -202,11 +210,17 @@
                       <span class="mini-time">{{ ev.timestamp | peruDate:'dd/MM/yyyy HH:mm' }}</span>
                     </div>
                   </div>
-                  <!-- Indicador de estado actual animado -->
-                  <div class="mini-step" style="opacity: 0.6;">
+                  <!-- Indicador de estado actual -->
+                  <div class="mini-step" style="opacity: 0.6;" *ngIf="viajeActivo.enRuta">
                     <div class="mini-dot" style="background: #94a3b8; animation: pulse 1.5s infinite;"></div>
                     <div class="mini-info">
                       <span class="mini-label" style="color: #94a3b8; font-style: italic;">En camino al destino...</span>
+                    </div>
+                  </div>
+                  <div class="mini-step" style="opacity: 0.6;" *ngIf="!viajeActivo.enRuta">
+                    <div class="mini-dot" style="background: #94a3b8;"></div>
+                    <div class="mini-info">
+                      <span class="mini-label" style="color: #94a3b8; font-style: italic;">Esperando que el chofer inicie el viaje...</span>
                     </div>
                   </div>
                 </div>
@@ -215,7 +229,7 @@
                 <div *ngIf="viajeActivo.enRuta && etaInfo" 
                      style="background: rgba(59,130,246,0.08); border: 1px solid rgba(59,130,246,0.2); border-radius: 10px; padding: 12px 14px; margin-bottom: 14px;">
                   <span style="font-size: 0.85rem; color: #475569;">⏱ Llegada aproximada al destino:</span><br>
-                  <span style="font-size: 1.2rem; font-weight: 700; color: #1d4ed8;">{{ etaInfo.eta }}</span>
+                  <span style="font-size: 1.2rem; font-weight: 700; color: #1d4ed8;">{{ etaInfo.eta }} <small style="font-size: 0.75rem; font-weight: 600;">{{ etaInfo.etaDia }}</small></span>
                   <span style="font-size: 0.8rem; color: #64748b; margin-left: 8px;">(± {{ etaInfo.distanciaKm }} km)</span>
                 </div>
 
@@ -233,6 +247,70 @@
                       <tr *ngFor="let item of viajeActivo.items" style="border-bottom: 1px dashed #f1f5f9;">
                         <td style="padding: 6px 0; color: #1e293b;">{{ item.descripcion }}</td>
                         <td style="padding: 6px 0; color: #0f172a; font-weight: 700;">{{ item.cantidad | number:'1.0-2' }} {{ item.unidad }}</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- RECOJO EN PLANTA — pedidos CANTERA (solo hay registros del despachador, no de chofer) -->
+        <section class="timeline-premium-section" *ngIf="esCantera && viajesAgrupados.length > 0">
+          <h2 class="section-title">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="svg-icon mr-2">
+              <polygon points="2 4 22 4 22 20 2 20 2 4"></polygon>
+              <line x1="2" y1="10" x2="22" y2="10"></line>
+            </svg>
+            Recojo en Planta
+          </h2>
+          <div class="timeline-flow" style="margin-top: 20px;">
+            <div class="timeline-item glass-card" *ngFor="let rec of viajesAgrupados; trackBy: trackByViajeNum" style="margin-bottom: 20px; border-left: 4px solid #3b82f6;">
+              <div class="timeline-body" style="padding-left: 15px;">
+                <div class="timeline-header" style="border-bottom: 1px solid #e2e8f0; padding-bottom: 10px; margin-bottom: 15px;">
+                  <h3 style="color: #0369a1; font-weight: 700;">
+                    {{ isDelivered ? 'Recojo #' + rec.numero + ' — ✅ Recogido en Planta' : 'Recojo #' + rec.numero + ' — 📦 Listo para Recojo' }}
+                  </h3>
+                  <span class="timeline-time">{{ rec.eventos[0]?.timestamp | peruDate:'dd/MM/yyyy HH:mm' }}</span>
+                </div>
+
+                <div class="flex gap-3 mb-3" *ngIf="rec.despachador || rec.placa">
+                  <div *ngIf="rec.despachador" class="text-sm font-medium" style="color: #475569; display: flex; align-items: center;">
+                    <i class="pi pi-user mr-1 text-500"></i>Despachado por: {{ rec.despachador }}
+                  </div>
+                  <div *ngIf="rec.placa" class="badge-placa" style="font-size: 0.85rem; background: #e0f2fe; color: #0369a1; border-color: #bae6fd; padding: 4px 8px;">
+                    <i class="pi pi-car mr-1"></i>{{ rec.placa }}
+                  </div>
+                </div>
+
+                <!-- Mini-timeline del recojo (eventos del despachador) -->
+                <div class="mini-timeline" style="margin-bottom: 16px;">
+                  <ng-container *ngFor="let ev of rec.eventos; trackBy: trackByEventId">
+                    <div class="mini-step">
+                      <div class="mini-dot" style="background: #3b82f6;"></div>
+                      <div class="mini-info">
+                        <span class="mini-label">Pedido preparado y listo para recojo en planta</span>
+                        <span class="mini-time">{{ ev.timestamp | peruDate:'dd/MM/yyyy HH:mm' }}</span>
+                      </div>
+                    </div>
+                  </ng-container>
+                  <div class="mini-step" style="opacity: 0.6;" *ngIf="!isDelivered">
+                    <div class="mini-dot" style="background: #94a3b8; animation: pulse 1.5s infinite;"></div>
+                    <div class="mini-info">
+                      <span class="mini-label" style="color: #94a3b8; font-style: italic;">Acércate a la planta para recoger tu pedido...</span>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Productos listos para recojo -->
+                <div class="dispatch-items-table" *ngIf="rec.items && rec.items.length > 0" style="margin-bottom: 15px;">
+                  <span class="evidence-title" style="font-weight: 600; color: #475569; font-size: 0.85rem; display: block; margin-bottom: 8px;">Productos listos para recojo</span>
+                  <table class="items-table" style="width: 100%; text-align: left; border-collapse: collapse; font-size: 0.9rem;">
+                    <tbody>
+                      <tr *ngFor="let item of rec.items" style="border-bottom: 1px dashed #f1f5f9;">
+                        <td style="padding: 5px 0; color: #1e293b;">{{ item.descripcion }}</td>
+                        <td style="padding: 5px 0; color: #0f172a; font-weight: 700;">{{ item.cantidad | number:'1.0-2' }} {{ item.unidad }}</td>
                       </tr>
                     </tbody>
                   </table>
@@ -339,7 +417,7 @@
                   <h3>Orden Creada y Aprobada</h3>
                   <span class="timeline-time">{{ trackingData.fecha_pedido | peruDate:'dd/MM/yyyy HH:mm' }}</span>
                 </div>
-                <p class="timeline-desc">El pedido ha sido ingresado al sistema de logística y está en fila para despacho.</p>
+                <p class="timeline-desc">{{ esCantera ? 'Tu pedido se está preparando en planta y estará disponible para recojo.' : 'El pedido ha sido ingresado al sistema de logística y está en fila para despacho.' }}</p>
               </div>
             </div>
           </div>

@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { SupabaseService } from '../../core/services/supabase.service';
 import { ApiPeruService } from '../../core/services/api-peru.service';
+import { CE_SIN_AUTOCOMPLETAR, getTipoDocumento } from '../../shared/utils/documento-identidad';
 
 import { TableModule } from 'primeng/table';
 import { ButtonModule } from 'primeng/button';
@@ -98,8 +99,10 @@ export class ClientesComponent implements OnInit {
   async buscarDocApiPeru() {
     const doc = this.nuevoCliente.documento_identidad?.trim();
     if (!doc) return;
-    if (doc.length !== 8 && doc.length !== 11) {
-      alert('El documento debe tener 8 (DNI) u 11 (RUC) dígitos.');
+
+    const tipoDoc = getTipoDocumento(doc);
+    if (!tipoDoc) {
+      alert('El documento debe ser un DNI (8 dígitos), RUC (11 dígitos) o Carné de Extranjería.');
       return;
     }
 
@@ -117,14 +120,22 @@ export class ClientesComponent implements OnInit {
         this.isSearchingDoc = false;
         return;
       }
+
+      // 2. El CE no se autocompleta con la API externa (apiperu.dev no lo soporta)
+      if (tipoDoc === 'CE') {
+        alert(CE_SIN_AUTOCOMPLETAR);
+        this.isSearchingDoc = false;
+        return;
+      }
+
       const res = await this.apiPeruService.buscarDocumento(doc);
       if (res && res.success !== false) { // Handle both wrapper logic
         const data = res.data ? res.data : res;
-        if (doc.length === 8) {
+        if (tipoDoc === 'DNI') {
           const paterno = data.apellido_paterno || data.apellidoPaterno || '';
           const materno = data.apellido_materno || data.apellidoMaterno || '';
           this.nuevoCliente.nombre_razon_social = `${data.nombres || ''} ${paterno} ${materno}`.trim();
-        } else if (doc.length === 11) {
+        } else if (tipoDoc === 'RUC') {
           this.nuevoCliente.nombre_razon_social = data.nombre_o_razon_social || data.razonSocial || '';
           this.nuevoCliente.direccion = data.direccion_completa || data.direccion || '';
         }
@@ -136,6 +147,20 @@ export class ClientesComponent implements OnInit {
     } finally {
       this.isSearchingDoc = false;
     }
+  }
+
+  /** Etiqueta corta del tipo de documento para los badges (DNI | RUC | CE). */
+  tipoDocLabel(doc: string | null | undefined): string {
+    return getTipoDocumento(doc) || '';
+  }
+
+  /** Clases de color del badge según tipo de documento. */
+  tipoDocBadge(doc: string | null | undefined, variante: 'mobile' | 'desktop' = 'desktop'): string {
+    const tipo = getTipoDocumento(doc);
+    if (tipo === 'DNI') return variante === 'mobile' ? 'bg-blue-soft text-blue-500' : 'bg-blue-100 text-blue-700';
+    if (tipo === 'RUC') return 'bg-purple-100 text-purple-700';
+    if (tipo === 'CE')  return 'bg-teal-100 text-teal-700';
+    return variante === 'mobile' ? 'bg-surface-soft text-color-secondary' : 'bg-gray-100 text-gray-700';
   }
 
   async guardarCliente() {

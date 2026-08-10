@@ -730,6 +730,54 @@ $text-dim: #94a3b8;
   }
 }
 
+.eta-time-row {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.eta-day {
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-transform: capitalize;
+  opacity: 0.85;
+}
+
+/* Aviso mientras no llega señal GPS del chofer */
+.gps-waiting-note {
+  position: absolute;
+  bottom: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 1000;
+  background: rgba(15, 23, 42, 0.85);
+  backdrop-filter: blur(8px);
+  color: #f8fafc;
+  font-size: 0.8rem;
+  font-weight: 600;
+  padding: 8px 14px;
+  border-radius: 999px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25);
+  white-space: nowrap;
+
+  .gps-pulse-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #f59e0b;
+    animation: gps-blink 1.2s ease-in-out infinite;
+    flex-shrink: 0;
+  }
+}
+
+@keyframes gps-blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.35; }
+}
+
 /* Custom Markers */
 .custom-div-icon {
   background: transparent;

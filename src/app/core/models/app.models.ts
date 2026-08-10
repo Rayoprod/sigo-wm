@@ -93,6 +93,7 @@ export interface Pedidos {
   descuento_global?: number;
   igv?: number;
   total?: number;
+  precios_con_igv?: boolean;
   observaciones?: string;
   created_at?: string;
   dias_credito?: number;

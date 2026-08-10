@@ -4,7 +4,7 @@ import { SupabaseService } from '../../core/services/supabase.service';
 import { AuthService } from '../../core/services/auth.service';
 import { FormsModule } from '@angular/forms';
 import * as L from 'leaflet';
-import { Pedidos, DespachosViajesCabecera, PedidosItems, ViajesEntregas, SesionesGps, RutasGps } from '../../core/models/app.models';
+import { Pedidos, PedidosItems, ViajesEntregas, SesionesGps, RutasGps } from '../../core/models/app.models';
 
 import { CardModule } from 'primeng/card';
 import { ButtonModule } from 'primeng/button';
@@ -62,15 +62,10 @@ export class LogisticaComponent implements OnInit, OnDestroy {
   expandedRows: { [key: string]: boolean } = {};
   itemsDelPedidoMap: { [key: string]: PedidosItems[] } = {};
   loadingItemsMap: { [key: string]: boolean } = {};
-  
-  viajesDelPedidoMap: { [key: string]: DespachosViajesCabecera[] } = {};
-  loadingViajesMap: { [key: string]: boolean } = {};
   expandedViajeMap: { [key: number]: boolean } = {};
 
   displayViajeModal = false;
-  displayAsignarModal = false;
   displayMapInfoMobile = false;
-  selectedChoferId: string | null = null;
   selectedPedido: Pedidos | null = null;
   viajeForm = {
     placa: '',
@@ -83,9 +78,7 @@ export class LogisticaComponent implements OnInit, OnDestroy {
   gpsLoading = false;
 
   // Auditoría
-  displayAuditoriaModal = false;
   viajesAuditoria: any[] = []; // Unified map object
-  loadingAuditoria = false;
 
   // QR Transferencia
   displayQrModal = false;
@@ -146,6 +139,8 @@ export class LogisticaComponent implements OnInit, OnDestroy {
     await this.cargarPedidos();
     await this.cargarVehiculos();
     this.suscribirCambiosViajes();
+    // Panel de sesiones GPS huérfanas (desconectadas del flujo de despacho)
+    await this.cargarSesionesHuerfanas();
   }
 
   ngOnDestroy() {
@@ -199,7 +194,6 @@ export class LogisticaComponent implements OnInit, OnDestroy {
 
         for (const targetId of targets) {
           this.cargarItemsPedido(targetId, true);
-          this.cargarViajesPedido(targetId, true);
         }
       })
       .subscribe();
@@ -212,11 +206,9 @@ export class LogisticaComponent implements OnInit, OnDestroy {
         // Refrescar lista de pedidos principal silenciosamente
         await this.cargarPedidos(true);
         
-        // Si hay filas expandidas o modal de auditoría, refrescar sus items y viajes silenciosamente
+        // Si hay filas expandidas, refrescar sus items silenciosamente
         const targets = new Set<string>();
         if (this.expandedPedidoId) targets.add(this.expandedPedidoId);
-        if (this.displayAuditoriaModal && this.selectedPedido) targets.add(this.selectedPedido.id);
-        
         Object.keys(this.expandedRows).forEach(id => {
           if (this.expandedRows[id]) targets.add(id);
         });
@@ -224,7 +216,6 @@ export class LogisticaComponent implements OnInit, OnDestroy {
         const fetchPromises: Promise<void>[] = [];
         for (const targetId of targets) {
           fetchPromises.push(this.cargarItemsPedido(targetId, true));
-          fetchPromises.push(this.cargarViajesPedido(targetId, true));
         }
         await Promise.all(fetchPromises);
       });
@@ -241,7 +232,14 @@ export class LogisticaComponent implements OnInit, OnDestroy {
       .order('created_at', { ascending: false });
 
     if (!error) {
-      this.pedidos = data || [];
+      const nuevos = data || [];
+      // Solo reasignar la referencia si realmente cambió algo, para evitar
+      // que el polling global re-renderice toda la tabla en cada ciclo.
+      const claveActual = this.pedidos.map(p => `${p.id}:${p.estado}:${p.updated_at || ''}`).join('|');
+      const claveNueva = nuevos.map(p => `${p.id}:${p.estado}:${p.updated_at || ''}`).join('|');
+      if (claveActual !== claveNueva) {
+        this.pedidos = nuevos;
+      }
     }
     if (!silent) this.loading = false;
   }
@@ -265,14 +263,12 @@ export class LogisticaComponent implements OnInit, OnDestroy {
     } else {
       this.expandedPedidoId = pedidoId;
       await this.cargarItemsPedido(pedidoId);
-      await this.cargarViajesPedido(pedidoId);
     }
   }
 
   async onRowExpand(event: any) {
     const pedidoId = event.data.id;
     await this.cargarItemsPedido(pedidoId);
-    await this.cargarViajesPedido(pedidoId);
   }
 
   async onRowCollapse(event: any) {
@@ -327,41 +323,6 @@ export class LogisticaComponent implements OnInit, OnDestroy {
       this.itemsDelPedidoMap[pedidoId] = items || [];
     }
     if (!silent) this.loadingItemsMap[pedidoId] = false;
-  }
-
-  async cargarViajesPedido(pedidoId: string, silent: boolean = false) {
-    if (this.viajesDelPedidoMap[pedidoId] && !silent) return;
-
-    if (!silent) this.loadingViajesMap[pedidoId] = true;
-    const { data, error } = await this.supabase
-      .from('despachos_viajes_cabecera')
-      .select(`
-        *,
-        usuarios!despachos_viajes_cabecera_chofer_id_fkey(nombre_completo)
-      `)
-      .eq('pedido_id', pedidoId)
-      .order('numero_viaje_secuencial', { ascending: false });
-
-    if (!error) {
-      this.viajesDelPedidoMap[pedidoId] = data || [];
-    }
-    if (!silent) this.loadingViajesMap[pedidoId] = false;
-  }
-
-  async obtenerCantidadesEnTransito(pedidoId: string): Promise<Record<string, number>> {
-    const { data, error } = await this.supabase
-      .from('despachos_viajes_detalle')
-      .select('pedido_item_id, cantidad_viaje, despachos_viajes_cabecera!inner(estado_viaje, pedido_id)')
-      .eq('despachos_viajes_cabecera.pedido_id', pedidoId)
-      .in('despachos_viajes_cabecera.estado_viaje', ['ASIGNADO', 'EN RUTA']);
-
-    const enTransitoMap: Record<string, number> = {};
-    if (!error && data) {
-      data.forEach((d: any) => {
-        enTransitoMap[d.pedido_item_id] = (enTransitoMap[d.pedido_item_id] || 0) + Number(d.cantidad_viaje);
-      });
-    }
-    return enTransitoMap;
   }
 
   // --- REGISTRO DE VIAJE (V2) ---
@@ -589,36 +550,63 @@ export class LogisticaComponent implements OnInit, OnDestroy {
         fotosUrls.push(publicUrl);
       }
 
-      // 1.6 Guardar placa en base de datos global (si es nueva)
+      // 1.6 Guardar placa en base de datos global (solo si no está en el catálogo local)
       if (this.viajeForm.placa && this.viajeForm.placa.trim().length > 0) {
         const p = this.viajeForm.placa.trim().toUpperCase();
-        try {
-          await this.supabase.from('vehiculos').insert({ placa: p });
           if (!this.vehiculosOptions.find(o => o.value === p)) {
+          try {
+            await this.supabase.from('vehiculos').insert({ placa: p });
             this.vehiculosOptions.push({ label: p, value: p });
+          } catch (e) {
+            // Ignorar error si ya existe (p.ej. otra pestaña ya la registró)
           }
-        } catch (e) {
-          // Ignorar error si ya existe
         }
       }
 
-      // 2. Insertar Cabecera
-      const { data: cabeceraData, error: insertError } = await this.supabase
-        .from('despachos_viajes_cabecera')
-        .insert({
-          pedido_id: this.selectedPedido!.id,
-          despachador_id: user?.id,
-          placa_vehiculo: this.viajeForm.placa?.trim().toUpperCase(),
-          numero_viaje_secuencial: numSecuencial,
-          estado_viaje: 'ASIGNADO',
-          latitud: this.viajeForm.lat,
-          longitud: this.viajeForm.lng,
-          fotos_urls: fotosUrls
-        })
-        .select()
-        .single();
+      // 2. Insertar Cabecera.
+      // Dos despachadores pueden calcular el mismo numero_viaje_secuencial
+      // (max+1) casi en paralelo. Para evitar el choque de unicidad, se
+      // reintenta recalculando el máximo hasta 3 veces.
+      let cabeceraData: any = null;
+      let insertError: any = null;
+      for (let intento = 0; intento < 3 && !cabeceraData; intento++) {
+        const { data: maxViajeData2 } = await this.supabase
+          .from('despachos_viajes_cabecera')
+          .select('numero_viaje_secuencial')
+          .eq('pedido_id', this.selectedPedido!.id)
+          .order('numero_viaje_secuencial', { ascending: false })
+          .limit(1);
 
-      if (insertError) throw insertError;
+        let secIntent = 1;
+        if (maxViajeData2 && maxViajeData2.length > 0 && maxViajeData2[0].numero_viaje_secuencial) {
+          secIntent = Number(maxViajeData2[0].numero_viaje_secuencial) + 1;
+        }
+
+        const res = await this.supabase
+          .from('despachos_viajes_cabecera')
+          .insert({
+            pedido_id: this.selectedPedido!.id,
+            despachador_id: user?.id,
+            placa_vehiculo: this.viajeForm.placa?.trim().toUpperCase(),
+            numero_viaje_secuencial: secIntent,
+            estado_viaje: 'ASIGNADO',
+            latitud: this.viajeForm.lat,
+            longitud: this.viajeForm.lng,
+            fotos_urls: fotosUrls
+          })
+          .select()
+          .single();
+
+        cabeceraData = res.data;
+        insertError = res.error;
+        // 23505 = unique_violation: otro despachador insertó la misma secuencia
+        if (insertError && (insertError as any).code === '23505' && !cabeceraData) {
+          insertError = null;
+          continue;
+        }
+      }
+
+      if (insertError && !cabeceraData) throw insertError;
 
       // 3. Insertar Detalles
       const detallesAInsertar = this.viajeForm.items
@@ -655,9 +643,8 @@ export class LogisticaComponent implements OnInit, OnDestroy {
 
       this.displayViajeModal = false;
       
-      // Refrescar el ítem y los viajes del pedido
-      delete this.viajesDelPedidoMap[this.selectedPedido!.id];
-      await this.cargarViajesPedido(this.selectedPedido!.id);
+      // Refrescar los ítems del pedido y la lista de pedidos
+      delete this.itemsDelPedidoMap[this.selectedPedido!.id];
       await this.cargarItemsPedido(this.selectedPedido!.id);
       await this.cargarPedidos();
 
@@ -667,33 +654,6 @@ export class LogisticaComponent implements OnInit, OnDestroy {
       this.isSavingViaje = false;
     }
   }
-
-  // --- ASIGNACIÓN DE CHOFER ÚNICA ---
-  async tieneRutaEnCurso(pedidoId: string): Promise<boolean> {
-    try {
-      const { data: sesiones } = await this.supabase
-        .from('sesiones_gps')
-        .select('id')
-        .eq('pedido_id', pedidoId)
-        .eq('estado', 'ACTIVO')
-        .limit(1);
-
-      if (sesiones && sesiones.length > 0) return true;
-
-      const { data: viajes } = await this.supabase
-        .from('despachos_viajes_cabecera')
-        .select('id')
-        .eq('pedido_id', pedidoId)
-        .eq('estado_viaje', 'EN RUTA')
-        .limit(1);
-
-      return !!(viajes && viajes.length > 0);
-    } catch (e) {
-      return false;
-    }
-  }
-
-
 
   async abrirRutaChofer(pedido: any) {
     this.selectedPedidoParaRuta = pedido;
@@ -846,15 +806,21 @@ export class LogisticaComponent implements OnInit, OnDestroy {
       // 5. Construir Historial Unificado para la línea de tiempo y colores
       this.historialTracking = [];
       const TRAMO_COLORS = ['#3b82f6', '#8b5cf6', '#10b981', '#f59e0b', '#06b6d4', '#ec4899'];
-      let currentTramoIndex = 0;
 
       const newViajes = Array.from(consolidadosMap.values())
         .sort((a, b) => b.numero_viaje_secuencial - a.numero_viaje_secuencial);
 
+      // Color consistente por secuencial (basado en el orden ASCENDENTE) para que
+      // coincidan el timeline, las tarjetas y el mapa en cualquier vista.
+      const colorPorSecuencial = new Map<number, string>();
+      [...newViajes]
+        .sort((a, b) => a.numero_viaje_secuencial - b.numero_viaje_secuencial)
+        .forEach((v, i) => colorPorSecuencial.set(v.numero_viaje_secuencial, TRAMO_COLORS[i % TRAMO_COLORS.length]));
+
       // Agrupamos por Secuencial de Viaje para poder trazar un polyline por cada viaje
       for (const aud of newViajes) {
         const seqNum = aud.numero_viaje_secuencial;
-        const colorTramo = TRAMO_COLORS[currentTramoIndex % TRAMO_COLORS.length];
+        const colorTramo = colorPorSecuencial.get(seqNum) || TRAMO_COLORS[0];
         const puntosDelViaje: L.LatLngTuple[] = [];
 
         // 5a. Añadir evento de Despacho (Si tiene coords)
@@ -892,6 +858,14 @@ export class LogisticaComponent implements OnInit, OnDestroy {
         // 5c. Puntos GPS del viaje, con corte temporal en el punto de entrega.
         const soloUnViaje = (despachosData || []).length <= 1;
 
+        // En pedidos multi-viaje los puntos sin numero_viaje_secuencial no se
+        // pueden atribuir a un viaje ya entregado; se asignan al viaje EN CURSO
+        // (EN RUTA / ASIGNADO), que es el que genera GPS ahora mismo.
+        const viajeActivoSeq = (despachosData || [])
+          .find(d => d.estado_viaje === 'EN RUTA' || d.estado_viaje === 'ASIGNADO')
+          ?.numero_viaje_secuencial ?? null;
+        const esViajeActivo = viajeActivoSeq !== null && seqNum === viajeActivoSeq;
+
         // Usamos fecha_dispositivo (reloj del teléfono) con fallback a created_at (reloj del servidor).
         const entregaTs = aud.chofer
           ? new Date(aud.chofer.fecha_dispositivo || aud.chofer.created_at).getTime()
@@ -900,7 +874,8 @@ export class LogisticaComponent implements OnInit, OnDestroy {
         const gpsDeEsteViaje = this.puntosRuta.filter(p => {
           const perteneceAEsteViaje =
             p.numero_viaje_secuencial === seqNum ||
-            (soloUnViaje && (p.numero_viaje_secuencial === null || p.numero_viaje_secuencial === undefined));
+            (soloUnViaje && (p.numero_viaje_secuencial === null || p.numero_viaje_secuencial === undefined)) ||
+            (esViajeActivo && (p.numero_viaje_secuencial === null || p.numero_viaje_secuencial === undefined));
 
           if (!perteneceAEsteViaje) return false;
 
@@ -928,7 +903,7 @@ export class LogisticaComponent implements OnInit, OnDestroy {
             type: 'ENTREGA',
             lat: aud.chofer.latitud,
             lng: aud.chofer.longitud,
-            timestamp: new Date(aud.chofer.created_at),
+            timestamp: new Date(aud.chofer.fecha_dispositivo || aud.chofer.created_at),
             title: `Viaje #${seqNum} Entregado por ${aud.chofer.chofer?.nombre_completo || 'Chofer'}`,
             icon: 'pi pi-check-circle',
             color: 'text-green-500',
@@ -939,7 +914,10 @@ export class LogisticaComponent implements OnInit, OnDestroy {
 
         aud.mapaPuntos = puntosDelViaje;
         aud.mapaColor = colorTramo;
-        currentTramoIndex++;
+
+        // Precalcular eventos de timeline una sola vez por merge (evita recalcular
+        // en cada detección de cambios del *ngFor del template).
+        aud.eventosTimeline = this.getTimelineEvents(aud);
       }
 
       // Ordenar la línea de tiempo de manera DECRECIENTE (más recientes primero)
@@ -951,6 +929,11 @@ export class LogisticaComponent implements OnInit, OnDestroy {
       if (this.viajesAuditoria.length === 0) {
         this.viajesAuditoria = newViajes;
       } else {
+        // Sincronización bidireccional: eliminar viajes que ya no existen en la
+        // fuente (p. ej. un borrado hecho en la app móvil).
+        const seqsFuente = new Set(newViajes.map(v => v.numero_viaje_secuencial));
+        this.viajesAuditoria = this.viajesAuditoria.filter(v => seqsFuente.has(v.numero_viaje_secuencial));
+
         // Actualizar propiedades de los objetos existentes (sin reemplazar referencias de objeto)
         newViajes.forEach(newV => {
           const existingIdx = this.viajesAuditoria.findIndex(v => v.numero_viaje_secuencial === newV.numero_viaje_secuencial);
@@ -970,22 +953,15 @@ export class LogisticaComponent implements OnInit, OnDestroy {
         }
       });
 
-      // Renderizar el mapa de Leaflet
-      setTimeout(() => {
-        this.initBaseMap();              // Inicializa tile layer + grupos si es la primera vez
-        const esPrimeraCarga = !this.mapInitialBoundsDone;
-        this.renderMap(esPrimeraCarga); // fitBounds solo en la primera carga
-      }, 300);
-
       // Fallback: si rutas_gps no tiene datos recientes, usar el último punto
-      // conocido directamente desde rutas_gps filtrando por chofer_id
-      if (this.puntosRuta.length === 0 || (() => {
+      // conocido directamente desde rutas_gps filtrando por chofer_id.
+      // Se ejecuta ANTES de renderizar para que el marcador vivo y el ETA lo incluyan.
+      const hayGpsReciente = this.puntosRuta.length > 0 && (() => {
         const sorted = [...this.puntosRuta].sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
-        return Date.now() - new Date(sorted[0]?.timestamp).getTime() > 180000;
-      })()) {
-        const viajeActivo = this.viajesAuditoria.find(
-          v => v.despacho && (v.despacho.estado_viaje === 'EN RUTA' || v.despacho.estado_viaje === 'ASIGNADO')
-        );
+        return Date.now() - new Date(sorted[0]?.timestamp).getTime() <= 180000;
+      })();
+      if (!hayGpsReciente) {
+        const viajeActivo = this.viajeEnCurso();
         if (viajeActivo?.despacho?.chofer_id) {
           // Usar rutas_gps (tabla correcta) en lugar de gps_tracking (no existe)
           const { data: gpsLive } = await this.supabase
@@ -998,16 +974,26 @@ export class LogisticaComponent implements OnInit, OnDestroy {
             const g = gpsLive[0];
             const edadMs = Date.now() - new Date(g.timestamp).getTime();
             if (edadMs < 180000) {
-              this.puntosRuta = [{
-                latitud: g.latitud,
-                longitud: g.longitud,
-                timestamp: g.timestamp,
-                numero_viaje_secuencial: viajeActivo.despacho.numero_viaje_secuencial
-              } as any, ...this.puntosRuta];
+              this.puntosRuta = [
+                {
+                  latitud: g.latitud,
+                  longitud: g.longitud,
+                  timestamp: g.timestamp,
+                  numero_viaje_secuencial: viajeActivo.despacho.numero_viaje_secuencial
+                } as any,
+                ...this.puntosRuta
+              ].sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
             }
           }
         }
       }
+
+      // Renderizar el mapa de Leaflet (después del fallback para incluir el punto vivo)
+      setTimeout(() => {
+        this.initBaseMap();              // Inicializa tile layer + grupos si es la primera vez
+        const esPrimeraCarga = !this.mapInitialBoundsDone;
+        this.renderMap(esPrimeraCarga); // fitBounds solo en la primera carga
+      }, 300);
 
       // Calcular ETA una vez que puntosRuta y selectedPedidoParaRuta están listos
       this.calcularETAActual();
@@ -1140,7 +1126,7 @@ export class LogisticaComponent implements OnInit, OnDestroy {
         this.mapFocus = null;
       } else {
         const numViaje = aud.numero_viaje_secuencial;
-        const color = TRAMO_COLORS[(numViaje - 1) % TRAMO_COLORS.length];
+        const color = aud.mapaColor || TRAMO_COLORS[(numViaje - 1) % TRAMO_COLORS.length];
 
         // Punto de despacho (origen, morado)
         if (aud.despacho?.latitud && aud.despacho?.longitud) {
@@ -1213,7 +1199,7 @@ export class LogisticaComponent implements OnInit, OnDestroy {
 
       for (let idx = 0; idx < viajes.length; idx++) {
         const aud = viajes[idx];
-        const color = TRAMO_COLORS[idx % TRAMO_COLORS.length];
+        const color = aud.mapaColor || TRAMO_COLORS[idx % TRAMO_COLORS.length];
         const num = aud.numero_viaje_secuencial;
 
         const gps: L.LatLngTuple[] = (aud.gpsPuntos || []).map((p: any) => [p.latitud, p.longitud] as L.LatLngTuple);
@@ -1270,67 +1256,76 @@ export class LogisticaComponent implements OnInit, OnDestroy {
       }
     }
 
-    // ── Marcador vivo del camión: visible siempre que haya GPS y el viaje esté activo ──
-    if (this.puntosRuta.length > 0) {
-      const sorted = [...this.puntosRuta].sort(
+    // ── Marcador vivo del camión: visible solo si hay un viaje EN CURSO ──
+    // (EN RUTA/ASIGNADO) y GPS reciente. Evita mostrar el camión "en vivo"
+    // cuando el pedido ya fue entregado o cuando el último punto GPS pertenece
+    // a un viaje anterior ya finalizado.
+    const viajeActivoVivo = this.viajeEnCurso();
+    // 'ENTREGADA' no existe como estado de pedido: solo 'COMPLETADA'.
+    const pedidoTerminado = this.selectedPedidoParaRuta?.estado === 'COMPLETADA';
+    const gpsVivo = (viajeActivoVivo?.gpsPuntos && viajeActivoVivo.gpsPuntos.length)
+      ? viajeActivoVivo.gpsPuntos
+      : this.puntosRuta;
+
+    if (viajeActivoVivo && !pedidoTerminado && gpsVivo.length > 0) {
+      const sorted = [...gpsVivo].sort(
         (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
       );
       const ultimo  = sorted[0];
       const edadMs  = Date.now() - new Date(ultimo.timestamp).getTime();
       const edadMin = edadMs / 60000;
-      const isCompleted = this.selectedPedidoParaRuta?.estado === 'COMPLETADA'
-                       || this.selectedPedidoParaRuta?.estado === 'ENTREGADA';
 
-      if (!isCompleted) {
         const lv: L.LatLngTuple = [ultimo.latitud, ultimo.longitud];
 
-        // Determinar estado: sin señal / detenido / en movimiento
-        let markerState: 'moving' | 'stopped' | 'no_signal';
-        if (edadMin >= 5) {
-          markerState = 'no_signal';
-        } else if (sorted.length >= 2) {
-          const prev = sorted[1];
-          const d = this.haversineKm(prev.latitud, prev.longitud, ultimo.latitud, ultimo.longitud);
-          const t = (new Date(ultimo.timestamp).getTime() - new Date(prev.timestamp).getTime()) / 3_600_000;
-          const vel = t > 0 ? d / t : 0;
-          markerState = vel < 3 ? 'stopped' : 'moving';
-        } else {
-          markerState = 'moving';
-        }
-
-        const icon = this.buildLiveTruckIcon(markerState, edadMin);
-        const popupText = markerState === 'moving'
-          ? '🚛 Chofer en movimiento'
-          : markerState === 'stopped'
-          ? `⏸ Chofer detenido · ${Math.round(edadMin)} min sin desplazamiento`
-          : `📡 Sin señal GPS · última posición hace ${Math.round(edadMin)} min`;
-
-        if (this.liveMarker) {
-          this.liveMarker.setLatLng(lv);
-          this.liveMarker.setIcon(icon);
-          this.liveMarker.setPopupContent(popupText);
-          if (!this.map!.hasLayer(this.liveMarker)) {
-            this.liveMarker.addTo(this.layerGroupVivo!);
-          }
-        } else {
-          this.liveMarker = L.marker(lv, { icon, zIndexOffset: 1000 })
-            .bindPopup(popupText)
-            .addTo(this.layerGroupVivo!);
-        }
-      } else if (this.liveMarker) {
-        this.layerGroupVivo?.removeLayer(this.liveMarker);
-        this.liveMarker = null;
+      // Determinar estado: sin señal / detenido / en movimiento
+      let markerState: 'moving' | 'stopped' | 'no_signal';
+      if (edadMin >= 5) {
+        markerState = 'no_signal';
+      } else if (sorted.length >= 2) {
+        const prev = sorted[1];
+        const d = this.haversineKm(prev.latitud, prev.longitud, ultimo.latitud, ultimo.longitud);
+        const t = (new Date(ultimo.timestamp).getTime() - new Date(prev.timestamp).getTime()) / 3_600_000;
+        const vel = t > 0 ? d / t : 0;
+        markerState = vel < 3 ? 'stopped' : 'moving';
+      } else {
+        markerState = 'moving';
       }
+
+      const icon = this.buildLiveTruckIcon(markerState, edadMin);
+      const popupText = markerState === 'moving'
+        ? '🚛 Chofer en movimiento'
+        : markerState === 'stopped'
+        ? `⏸ Chofer detenido · ${Math.round(edadMin)} min sin desplazamiento`
+        : `📡 Sin señal GPS · última posición hace ${Math.round(edadMin)} min`;
+
+      if (this.liveMarker) {
+        this.liveMarker.setLatLng(lv);
+        this.liveMarker.setIcon(icon);
+        this.liveMarker.setPopupContent(popupText);
+        if (!this.map!.hasLayer(this.liveMarker)) {
+          this.liveMarker.addTo(this.layerGroupVivo!);
+        }
+      } else {
+        this.liveMarker = L.marker(lv, { icon, zIndexOffset: 1000 })
+          .bindPopup(popupText)
+          .addTo(this.layerGroupVivo!);
+      }
+    } else if (this.liveMarker) {
+      this.layerGroupVivo?.removeLayer(this.liveMarker);
+      this.liveMarker = null;
     }
 
     // ── fitBounds: solo cuando se solicita explícitamente ────────────────────
     if (applyFitBounds) {
       if (pointsAdded > 0 && bounds.isValid()) {
         this.map!.fitBounds(bounds, { padding: [50, 50], maxZoom: 17 });
+        // Solo marcar como inicializado cuando realmente se pudieron encuadrar datos
+        this.mapInitialBoundsDone = true;
       } else if (!this.mapInitialBoundsDone) {
+        // Sin datos todavía: centrar en Lima sin marcar como "ya inicializado",
+        // para que el primer poll con datos reales sí haga el fitBounds.
         this.map!.setView([-12.046374, -77.042793], 13);
       }
-      this.mapInitialBoundsDone = true;
     }
   }
 
@@ -1359,20 +1354,6 @@ export class LogisticaComponent implements OnInit, OnDestroy {
   }
 
 
-
-  centrarMapa(lat: number, lng: number, title: string, timestamp: Date) {
-    if (this.map && lat && lng) {
-      this.map.flyTo([lat, lng], 17, {
-        animate: true,
-        duration: 1.5
-      });
-
-      L.popup({ autoClose: true, closeOnClick: true })
-        .setLatLng([lat, lng])
-        .setContent(`<b>${title}</b><br>${timestamp.toLocaleString()}`)
-        .openOn(this.map);
-    }
-  }
 
   getTimelineEvents(viajeItem: any) {
     return [
@@ -1471,8 +1452,6 @@ export class LogisticaComponent implements OnInit, OnDestroy {
       && (this.mapFocus as any).lat === lat
       && (this.mapFocus as any).lng === lng;
   }
-
-  // ─── Cálculo de ETA basado en velocidad promedio y última posición GPS ────────
 
   // ─── Helpers de ícono de camión en vivo ──────────────────────────────────
 
@@ -1585,6 +1564,19 @@ export class LogisticaComponent implements OnInit, OnDestroy {
       return;
     }
 
+    // Pedidos CANTERA (recojo en planta): no hay traslado ni destino GPS.
+    // El formulario comercial guarda lat_destino/lng_destino como null y el
+    // aviso del modal ya indica "No requiere ruta GPS", así que el ETA no aplica.
+    // Sin este guard, el fallback de "último punto de ENTREGA" usaba la propia
+    // planta como destino y mostraba un ETA sin sentido (≈0 km).
+    const esEntregaCantera =
+      this.selectedPedidoParaRuta.tipo_entrega === 'CANTERA' ||
+      this.selectedPedidoParaRuta.lugar_entrega === 'CANTERA';
+    if (esEntregaCantera) {
+      this.etaInfo = null;
+      return;
+    }
+
     // Bug 1: Si el pedido no tiene lat/lng guardados, intentar usar el último punto
     // de despacho del historial como aproximación del destino
     let latDestino = this.selectedPedidoParaRuta.lat_destino
@@ -1608,22 +1600,28 @@ export class LogisticaComponent implements OnInit, OnDestroy {
       }
     }
 
-    if (this.selectedPedidoParaRuta.estado === 'COMPLETADA' || this.selectedPedidoParaRuta.estado === 'ENTREGADA') {
+    if (this.selectedPedidoParaRuta.estado === 'COMPLETADA') {
       this.etaInfo = null;
       return;
     }
 
-    // El ETA solo tiene sentido si hay un viaje activamente en ruta o asignado.
-    // Un pedido multi-viaje puede tener viajes ya entregados; en ese caso el ETA
-    // del viaje anterior no debe mostrarse hasta que el próximo viaje salga.
-    const viajeEnCurso = this.viajesAuditoria.find(
-      v => v.despacho && (v.despacho.estado_viaje === 'EN RUTA' || v.despacho.estado_viaje === 'ASIGNADO')
-    );
+    // El ETA solo tiene sentido cuando el chofer YA recibió la carga
+    // (fecha_recepcion_chofer registrada) y el viaje está EN RUTA hacia el
+    // destino. Mientras el viaje siga solo ASIGNADO (despachado pero aún no
+    // recepcionado por el chofer), el ETA no debe mostrarse. En pedidos
+    // multi-viaje, el ETA siempre corresponde al viaje activo en curso.
+    const viajeEnCurso = this.viajeEnRuta();
     if (!viajeEnCurso) {
       this.etaInfo = null;
       return;
     }
     const viajeNum = viajeEnCurso.numero_viaje_secuencial || 1;
+
+    // Usar SOLO el GPS del viaje en curso (no de todos los viajes del pedido),
+    // para que el ETA no se calcule con puntos de un viaje ya entregado.
+    const gpsDelViaje = (viajeEnCurso.gpsPuntos && viajeEnCurso.gpsPuntos.length)
+      ? viajeEnCurso.gpsPuntos
+      : (this.puntosRuta || []);
 
     // Buscar el punto de despacho / recepción más reciente
     let fallbackLat: number | null = null;
@@ -1633,7 +1631,8 @@ export class LogisticaComponent implements OnInit, OnDestroy {
     if (this.historialTracking && this.historialTracking.length > 0) {
       const dispatchEvents = this.historialTracking.filter(h => h.type === 'DESPACHO' || h.type === 'RECEPCION');
       if (dispatchEvents.length > 0) {
-        const lastEvent = dispatchEvents[dispatchEvents.length - 1];
+        // historialTracking está ordenado DESCENDENTE → [0] es el más reciente
+        const lastEvent = dispatchEvents[0];
         fallbackLat = lastEvent.lat;
         fallbackLng = lastEvent.lng;
         fallbackDate = lastEvent.timestamp;
@@ -1644,14 +1643,20 @@ export class LogisticaComponent implements OnInit, OnDestroy {
     let lngOrigen = fallbackLng;
     let tsActual = fallbackDate;
     let tieneGps = false;
+    let sortedAsc: any[] = [];
 
-    if (this.puntosRuta && this.puntosRuta.length > 0) {
-      const sorted = [...this.puntosRuta].sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
-      const utl = sorted[0];
-      latOrigen = Number(utl.latitud);
-      lngOrigen = Number(utl.longitud);
-      tsActual = new Date(utl.timestamp);
-      tieneGps = true;
+    if (gpsDelViaje.length > 0) {
+      // Orden ascendente por timestamp: el último elemento es la posición actual
+      sortedAsc = [...gpsDelViaje].sort(
+        (a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
+      );
+      const utl = sortedAsc[sortedAsc.length - 1];
+      if (utl && Number(utl.latitud) && Number(utl.longitud)) {
+        latOrigen = Number(utl.latitud);
+        lngOrigen = Number(utl.longitud);
+        tsActual = new Date(utl.timestamp);
+        tieneGps = true;
+      }
     }
 
     if (!latOrigen || !lngOrigen) {
@@ -1667,16 +1672,17 @@ export class LogisticaComponent implements OnInit, OnDestroy {
     const edadMin = Math.round((ahora.getTime() - tsActual.getTime()) / 60000);
 
     let vel = 35;
-    
-    if (tieneGps && this.puntosRuta.length >= 2) {
-      const current = this.puntosRuta[this.puntosRuta.length - 1];
-      const prev = this.puntosRuta[this.puntosRuta.length - 2];
+
+    if (tieneGps && sortedAsc.length >= 2) {
+      // Los dos últimos puntos (en orden cronológico) definen la velocidad
+      const current = sortedAsc[sortedAsc.length - 1];
+      const prev = sortedAsc[sortedAsc.length - 2];
       const d = this.haversineKm(prev.latitud, prev.longitud, current.latitud, current.longitud);
       const t = (new Date(current.timestamp).getTime() - new Date(prev.timestamp).getTime()) / 3600000;
       if (t > 0) {
         vel = d / t;
-        if (vel < 5) vel = 5; 
-        if (vel > 90) vel = 90; 
+        if (vel < 5) vel = 5;
+        if (vel > 90) vel = 90;
       }
     }
 
@@ -1693,5 +1699,30 @@ export class LogisticaComponent implements OnInit, OnDestroy {
       edadMin: edadMin,
       viajeNum: viajeNum
     };
+  }
+
+  /**
+   * Devuelve el viaje del pedido que está EN RUTA o ASIGNADO (el "viaje en curso").
+   * Se usa para: marcador vivo y atribución de puntos GPS sin secuencial.
+   */
+  private viajeEnCurso(): any {
+    return this.viajesAuditoria.find(
+      v => v.despacho && (v.despacho.estado_viaje === 'EN RUTA' || v.despacho.estado_viaje === 'ASIGNADO')
+    );
+  }
+
+  /**
+   * Devuelve el viaje del pedido cuyo chofer YA confirmó la recepción de la carga
+   * (fecha_recepcion_chofer) y está EN RUTA hacia el destino.
+   * Es el único caso en el que tiene sentido mostrar un ETA de llegada.
+   * (viajeEnCurso, en cambio, también incluye viajes ASIGNADOS aún no
+   * recepcionados, que se usan para el marcador vivo y la atribución de GPS.)
+   */
+  private viajeEnRuta(): any {
+    return this.viajesAuditoria.find(
+      v => v.despacho
+        && v.despacho.estado_viaje === 'EN RUTA'
+        && !!v.despacho.fecha_recepcion_chofer
+    );
   }
 }

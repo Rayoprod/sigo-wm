@@ -96,9 +96,9 @@
                         </td>
                         <td>
                             <p-tag 
-                              [value]="pedido.estado === 'COMPLETADA' ? 'Entregado' : 'Pendiente'"
+                              [value]="pedido.estado === 'COMPLETADA' ? 'Entregado' : 'Por despachar'"
                               [severity]="pedido.estado === 'COMPLETADA' ? 'success' : 'warning'"
-                              [icon]="pedido.estado === 'COMPLETADA' ? 'pi pi-check-circle' : 'pi pi-clock'"
+                              [icon]="pedido.estado === 'COMPLETADA' ? 'pi pi-check-circle' : 'pi pi-truck'"
                               styleClass="border-round-2xl px-3 py-1">
                             </p-tag>
                         </td>
@@ -183,7 +183,7 @@
                             <div class="text-right">
                                 <span class="text-color-secondary text-sm block mb-1"><i class="pi pi-check-circle mr-1"></i>Estado</span>
                                 <p-tag 
-                                  [value]="pedido.estado === 'COMPLETADA' ? 'Entregado' : 'En proceso'"
+                                  [value]="pedido.estado === 'COMPLETADA' ? 'Entregado' : 'Por despachar'"
                                   [severity]="pedido.estado === 'COMPLETADA' ? 'success' : 'warning'"
                                   [icon]="pedido.estado === 'COMPLETADA' ? 'pi pi-check-circle' : 'pi pi-truck'">
                                 </p-tag>
@@ -359,7 +359,7 @@
             <div class="map-floating-card shadow-4 border-round-xl p-3 flex-column gap-2 hidden md:flex">
                 <div class="flex justify-content-between align-items-center border-bottom-1 surface-border pb-2">
                     <span class="font-bold text-color text-xl"><i class="pi pi-file mr-2 text-primary"></i>{{ selectedPedidoParaRuta?.folio }}</span>
-                    <p-tag [value]="selectedPedidoParaRuta?.estado === 'COMPLETADA' ? 'ENTREGADO' : 'EN RUTA'" [severity]="selectedPedidoParaRuta?.estado === 'COMPLETADA' ? 'success' : 'info'" styleClass="font-bold"></p-tag>
+                    <p-tag [value]="selectedPedidoParaRuta?.estado === 'COMPLETADA' ? 'Entregado' : 'En curso'" [severity]="selectedPedidoParaRuta?.estado === 'COMPLETADA' ? 'success' : 'info'" styleClass="font-bold"></p-tag>
                 </div>
                 <div class="text-sm text-color-secondary font-medium">
                     <i class="pi pi-building mr-2 text-500"></i>{{ selectedPedidoParaRuta?.clientes?.nombre_razon_social }}
@@ -408,7 +408,7 @@
                 <div class="flex flex-column gap-3">
                     <div class="flex justify-content-between align-items-center border-bottom-1 surface-border pb-2">
                         <span class="font-bold text-color text-xl"><i class="pi pi-file mr-2 text-primary"></i>{{ selectedPedidoParaRuta?.folio }}</span>
-                        <p-tag [value]="selectedPedidoParaRuta?.estado === 'COMPLETADA' ? 'ENTREGADO' : 'EN RUTA'" [severity]="selectedPedidoParaRuta?.estado === 'COMPLETADA' ? 'success' : 'info'" styleClass="font-bold"></p-tag>
+                        <p-tag [value]="selectedPedidoParaRuta?.estado === 'COMPLETADA' ? 'Entregado' : 'En curso'" [severity]="selectedPedidoParaRuta?.estado === 'COMPLETADA' ? 'success' : 'info'" styleClass="font-bold"></p-tag>
                     </div>
                     <div class="text-sm text-color-secondary font-medium">
                         <i class="pi pi-building mr-2 text-500"></i>{{ selectedPedidoParaRuta?.clientes?.nombre_razon_social }}
@@ -518,7 +518,7 @@
 
                                 <div class="timeline-rail"></div>
 
-                            <div *ngFor="let event of getTimelineEvents(viajeItem); let last = last; trackBy: trackByEventType"
+                            <div *ngFor="let event of viajeItem.eventosTimeline; let last = last; trackBy: trackByEventType"
                                  class="timeline-event" [ngClass]="{'timeline-event--last': last}">
 
                                 <div class="event-dot" [style.border-color]="event.color" [style.color]="event.color">

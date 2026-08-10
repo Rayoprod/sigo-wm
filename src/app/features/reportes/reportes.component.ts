@@ -118,6 +118,7 @@ export class ReportesComponent implements OnInit {
           descuento_global,
           igv,
           total,
+          precios_con_igv,
           tipo_entrega,
           lugar_entrega,
           direccion_entrega_detalle,
@@ -176,6 +177,7 @@ export class ReportesComponent implements OnInit {
           subtotal:          Number((v as any).subtotal)         || 0,
           descuento_global:  Number((v as any).descuento_global) || 0,
           igv:               Number((v as any).igv)              || 0,
+          precios_con_igv:   (v as any).precios_con_igv === true,
         };
       });
     } catch (e) {
@@ -265,10 +267,39 @@ export class ReportesComponent implements OnInit {
     }
   }
 
-  exportExcel(dt: any) {
-    // PrimeNG exportCSV is good enough to be opened in Excel, 
-    // it will just prompt a download as .csv
-    dt.exportCSV();
+  exportExcel(tipo: 'ventas' | 'deudas' | 'inventario') {
+    const configs: Record<string, { filename: string; columns: any[]; rows: any[] }> = {
+      ventas:     { filename: 'Reporte_Ventas',               columns: this.colsVentas,     rows: this.ventas },
+      deudas:     { filename: 'Reporte_Cuentas_por_Cobrar',   columns: this.colsDeudas,     rows: this.deudas },
+      inventario: { filename: 'Reporte_Valorizacion_Inventario', columns: this.colsInventario, rows: this.inventario }
+    };
+    const cfg = configs[tipo];
+    if (!cfg || cfg.rows.length === 0) {
+      alert('No hay datos para exportar en este reporte.');
+      return;
+    }
+    this.descargarCsv(cfg.filename, cfg.columns, cfg.rows);
+  }
+
+  // Genera y descarga un CSV compatible con Excel (UTF-8 con BOM y ';' como separador).
+  private descargarCsv(filename: string, columns: { field: string; header: string }[], rows: any[]) {
+    const escapar = (valor: any) => {
+      const texto = valor === null || valor === undefined ? '' : String(valor);
+      return '"' + texto.replace(/"/g, '""') + '"';
+    };
+    const encabezado = columns.map(c => escapar(c.header)).join(';');
+    const lineas = rows.map(row => columns.map(c => escapar(row[c.field])).join(';'));
+    // BOM UTF-8 para que Excel reconozca caracteres especiales (ó, ñ, S/)
+    const csv = '\uFEFF' + [encabezado, ...lineas].join('\r\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename + '.csv';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    window.URL.revokeObjectURL(url);
   }
 
 }

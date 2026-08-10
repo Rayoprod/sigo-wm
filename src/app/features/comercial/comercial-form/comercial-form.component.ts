@@ -5,6 +5,7 @@ import { Router, ActivatedRoute, RouterModule } from '@angular/router';
 import { SupabaseService } from '../../../core/services/supabase.service';
 import { AuthService } from '../../../core/services/auth.service';
 import { ApiPeruService } from '../../../core/services/api-peru.service';
+import { CE_SIN_AUTOCOMPLETAR, getTipoDocumento } from '../../../shared/utils/documento-identidad';
 import { TablaCarritoComponent, CarritoItem } from './tabla-carrito/tabla-carrito.component';
 import { InventarioService } from '../../../core/services/inventario.service';
 import * as L from 'leaflet';
@@ -107,8 +108,20 @@ export class ComercialFormComponent implements OnInit {
 
   lat_destino: number | null = null;
   lng_destino: number | null = null;
-  map: L.Map | null = null;
-  markerDestino: L.Marker | null = null;
+
+  // Selección de punto de entrega en el mapa (modal grande interactivo)
+  displayMapaModal = false;
+  coordsTemp: { lat: number; lng: number } | null = null;
+  direccionTemp = '';
+  direccionPunto = ''; // Dirección confirmada para mostrar en la tarjeta
+  busquedaQuery = '';
+  resultadosBusqueda: any[] = [];
+  buscandoLugar = false;
+  locating = false;
+  private mapaModalMap: L.Map | null = null;
+  private mapaModalMarker: L.Marker | null = null;
+  private busquedaTimer: any = null;
+  private reverseGeocodeDebounced: any = null;
 
   // Venta Exclusives
   metodosPago = [
@@ -141,77 +154,212 @@ export class ComercialFormComponent implements OnInit {
 
   isSaving = false;
 
-  onPreciosConIgvChange() {}
+  onPreciosConIgvChange() { this.recalcularTotales(); }
   
-  initMap() {
-    const container = document.getElementById('mapa-destino-form');
+  // ─── Mapa: selección de punto de entrega ───────────────────────────────
+  // La tarjeta del formulario muestra el estado (con/sin punto) y abre el
+  // modal grande donde se ubica el punto con búsqueda, GPS o clic en el mapa.
+
+  private pinIcon(): L.DivIcon {
+    const color = '#dc2626';
+    const size = 36;
+    const html = `
+      <div class="mapa-pin" style="width:${size}px;height:${size}px;">
+        <svg viewBox="0 0 24 24" width="${size}" height="${size}">
+          <path fill="${color}" stroke="#ffffff" stroke-width="1.4"
+                d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"/>
+          <circle cx="12" cy="9" r="3.2" fill="#ffffff"/>
+        </svg>
+      </div>`;
+    return L.divIcon({
+      className: 'mapa-pin-wrapper',
+      html,
+      iconSize: [size, size],
+      iconAnchor: [size / 2, size]
+    });
+  }
+
+  abrirMapaGrande(): void {
+    this.displayMapaModal = true;
+    setTimeout(() => this.initMapaModal(), 150);
+  }
+
+  private initMapaModal(): void {
+    const container = document.getElementById('mapa-destino-modal');
     if (!container) return;
+    this.destroyMapaModal();
 
-    if (this.map) {
-      this.map.invalidateSize();
-      return;
-    }
-
-    this.map = L.map(container, { maxZoom: 19 }).setView([-12.046374, -77.042793], 12);
+    this.mapaModalMap = L.map(container, { maxZoom: 19, attributionControl: false });
     L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
       maxZoom: 19,
       attribution: '&copy; OpenStreetMap'
-    }).addTo(this.map);
+    }).addTo(this.mapaModalMap);
 
-    this.map.on('click', (e: L.LeafletMouseEvent) => {
-      this.lat_destino = e.latlng.lat;
-      this.lng_destino = e.latlng.lng;
-      this.updateMapMarker();
-    });
+    this.coordsTemp = (this.lat_destino && this.lng_destino) ? { lat: this.lat_destino, lng: this.lng_destino } : null;
+    this.direccionTemp = '';
+    this.resultadosBusqueda = [];
+    this.busquedaQuery = '';
 
-    if (this.lat_destino && this.lng_destino) {
-      this.updateMapMarker();
-      this.map.setView([this.lat_destino, this.lng_destino], 15);
+    const centro: [number, number] = this.coordsTemp ? [this.coordsTemp.lat, this.coordsTemp.lng] : [-12.046374, -77.042793];
+    this.mapaModalMap.setView(centro, this.coordsTemp ? 16 : 12);
+
+    if (this.coordsTemp) {
+      this.colocarPinModal(this.coordsTemp.lat, this.coordsTemp.lng, false);
+      this.reverseGeocode(this.coordsTemp.lat, this.coordsTemp.lng);
     }
-    
-    // Arreglar íconos de Leaflet por defecto en Angular
-    delete (L.Icon.Default.prototype as any)._getIconUrl;
-    L.Icon.Default.mergeOptions({
-      iconRetinaUrl: 'assets/marker-icon-2x.png',
-      iconUrl: 'assets/marker-icon.png',
-      shadowUrl: 'assets/marker-shadow.png',
+
+    this.mapaModalMap.on('click', (e: L.LeafletMouseEvent) => {
+      this.colocarPinModal(e.latlng.lat, e.latlng.lng, true);
     });
+
+    // El diálogo anima su tamaño al abrir: recalcular el mapa cuando ya es visible
+    setTimeout(() => this.mapaModalMap?.invalidateSize(), 250);
+    setTimeout(() => this.mapaModalMap?.invalidateSize(), 500);
   }
 
-  updateMapMarker() {
-    if (!this.map || !this.lat_destino || !this.lng_destino) return;
-    
-    if (this.markerDestino) {
-      this.markerDestino.setLatLng([this.lat_destino, this.lng_destino]);
+  private destroyMapaModal(): void {
+    if (this.mapaModalMap) {
+      try { this.mapaModalMap.remove(); } catch (e) {}
+      this.mapaModalMap = null;
+      this.mapaModalMarker = null;
+    }
+  }
+
+  private colocarPinModal(lat: number, lng: number, geocodificar: boolean): void {
+    this.coordsTemp = { lat, lng };
+    if (!this.mapaModalMap) return;
+
+    if (this.mapaModalMarker) {
+      this.mapaModalMarker.setLatLng([lat, lng]);
     } else {
-      this.markerDestino = L.marker([this.lat_destino, this.lng_destino]).addTo(this.map);
+      this.mapaModalMarker = L.marker([lat, lng], { icon: this.pinIcon(), draggable: true }).addTo(this.mapaModalMap);
+      this.mapaModalMarker.on('dragend', (e: any) => {
+        const p = e.target.getLatLng();
+        this.coordsTemp = { lat: p.lat, lng: p.lng };
+        this.reverseGeocode(p.lat, p.lng);
+      });
     }
+    if (geocodificar) this.reverseGeocode(lat, lng);
   }
 
-  limpiarPuntoDestinoForm() {
+  confirmarPuntoMapa(): void {
+    if (!this.coordsTemp) return;
+    this.lat_destino = this.coordsTemp.lat;
+    this.lng_destino = this.coordsTemp.lng;
+    this.direccionPunto = this.direccionTemp;
+
+    // Si aún no hay referencia escrita, pre-completar con la dirección del punto
+    if (this.direccionTemp && !(this.direccion_entrega_detalle || '').trim()) {
+      this.direccion_entrega_detalle = this.direccionTemp;
+    }
+
+    this.cerrarMapaGrande();
+  }
+
+  cerrarMapaGrande(): void {
+    clearTimeout(this.busquedaTimer);
+    this.displayMapaModal = false;
+    this.coordsTemp = null;
+    this.direccionTemp = '';
+    this.resultadosBusqueda = [];
+    this.busquedaQuery = '';
+    this.destroyMapaModal();
+  }
+
+  limpiarPuntoDestinoForm(): void {
     this.lat_destino = null;
     this.lng_destino = null;
-    if (this.markerDestino && this.map) {
-      this.map.removeLayer(this.markerDestino);
-      this.markerDestino = null;
+    this.coordsTemp = null;
+    this.direccionTemp = '';
+    this.direccionPunto = '';
+  }
+
+  usarMiUbicacionEnMapa(): void {
+    if (!navigator.geolocation) {
+      alert('Tu navegador no soporta geolocalización');
+      return;
+    }
+    this.locating = true;
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        this.locating = false;
+        const { latitude, longitude } = position.coords;
+        if (this.mapaModalMap) this.mapaModalMap.setView([latitude, longitude], 16);
+        this.colocarPinModal(latitude, longitude, true);
+      },
+      (error) => {
+        this.locating = false;
+        alert('No se pudo obtener tu ubicación: ' + error.message);
+      },
+      { enableHighAccuracy: true, timeout: 10000 }
+    );
+  }
+
+  // Búsqueda de direcciones (Nominatim / OpenStreetMap)
+  onBuscarLugar(): void {
+    const q = (this.busquedaQuery || '').trim();
+    if (q.length < 3) {
+      this.resultadosBusqueda = [];
+      return;
+    }
+    clearTimeout(this.busquedaTimer);
+    this.busquedaTimer = setTimeout(() => this.ejecutarBusqueda(q), 450);
+  }
+
+  private async ejecutarBusqueda(q: string): Promise<void> {
+    this.buscandoLugar = true;
+    try {
+      const res = await fetch(
+        `https://nominatim.openstreetmap.org/search?format=jsonv2&limit=6&accept-language=es&q=${encodeURIComponent(q)}`,
+        { headers: { Accept: 'application/json' } }
+      );
+      if (!res.ok) {
+        this.resultadosBusqueda = [];
+        return;
+      }
+      const data = await res.json();
+      this.resultadosBusqueda = Array.isArray(data) ? data : [];
+    } catch (e) {
+      this.resultadosBusqueda = [];
+    } finally {
+      this.buscandoLugar = false;
     }
   }
-  
-  centrarEnMiUbicacion() {
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          if (this.map) {
-            this.map.setView([position.coords.latitude, position.coords.longitude], 15);
-          }
-        },
-        (error) => {
-          alert('No se pudo obtener tu ubicación: ' + error.message);
-        }
-      );
-    } else {
-      alert('Tu navegador no soporta geolocalización');
-    }
+
+  seleccionarResultadoBusqueda(r: any): void {
+    const lat = parseFloat(r.lat);
+    const lng = parseFloat(r.lon);
+    if (isNaN(lat) || isNaN(lng)) return;
+    clearTimeout(this.busquedaTimer);
+    this.busquedaQuery = r.display_name || '';
+    this.resultadosBusqueda = [];
+    if (this.mapaModalMap) this.mapaModalMap.setView([lat, lng], 17);
+    this.colocarPinModal(lat, lng, false);
+    this.direccionTemp = r.display_name || '';
+  }
+
+  private reverseGeocode(lat: number, lng: number): void {
+    clearTimeout(this.reverseGeocodeDebounced);
+    this.reverseGeocodeDebounced = setTimeout(async () => {
+      try {
+        const res = await fetch(
+          `https://nominatim.openstreetmap.org/reverse?format=jsonv2&zoom=18&accept-language=es&lat=${lat}&lon=${lng}`,
+          { headers: { Accept: 'application/json' } }
+        );
+        if (!res.ok) return;
+        const data = await res.json();
+        this.direccionTemp = this.resumenDireccion(data) || data?.display_name || '';
+      } catch (e) {
+        this.direccionTemp = '';
+      }
+    }, 400);
+  }
+
+  private resumenDireccion(data: any): string {
+    const a = data?.address || {};
+    const partes = [a.house_number, a.road, a.neighbourhood, a.suburb, a.city_district, a.city, a.state];
+    const corta = partes.filter((p: any) => p && String(p).trim()).join(', ');
+    return corta.length > 120 ? corta.slice(0, 117) + '…' : corta;
   }
 
   get isClienteValido(): boolean {
@@ -241,19 +389,25 @@ export class ComercialFormComponent implements OnInit {
       this.pedidoIdAEditar = id;
       await this.cargarPedido(id);
     } else {
-      if (this.tipo_entrega === 'DOMICILIO') {
-        setTimeout(() => this.initMap(), 300);
-      }
+      // Sin mapa embebido: el punto se ubica desde la tarjeta "Seleccionar en el mapa"
     }
+  }
+
+  ngOnDestroy(): void {
+    clearTimeout(this.busquedaTimer);
+    clearTimeout(this.reverseGeocodeDebounced);
+    this.destroyMapaModal();
   }
 
   onTipoEntregaChange() {
     if (this.tipo_entrega === 'CANTERA') {
       this.lugar_entrega = 'CANTERA';
       this.direccion_entrega_detalle = '';
+      this.lat_destino = null;
+      this.lng_destino = null;
+      this.direccionPunto = '';
     } else {
       this.lugar_entrega = 'OBRA';
-      setTimeout(() => this.initMap(), 300);
     }
   }
 
@@ -285,6 +439,8 @@ export class ComercialFormComponent implements OnInit {
     this.dias_credito = pedido.dias_credito || 0;
     this.observaciones = pedido.observaciones || '';
     this.descuento_global = pedido.descuento_global || 0;
+    this.preciosConIgv = pedido.precios_con_igv === true;
+    this.afectaIgv = !this.preciosConIgv && Number(pedido.igv) > 0;
     
     if (pedido.pedidos_items) {
       this.items = pedido.pedidos_items.map((i: any) => ({
@@ -301,9 +457,6 @@ export class ComercialFormComponent implements OnInit {
       this.recalcularTotales();
     }
     
-    if (this.tipo_entrega === 'DOMICILIO') {
-      setTimeout(() => this.initMap(), 300);
-    }
   }
 
   async buscarClienteLocal(event: any) {
@@ -389,9 +542,14 @@ export class ComercialFormComponent implements OnInit {
         return;
       }
 
-      // 2. Si no existe, buscar en SUNAT/RENIEC
-      if (doc.length !== 8 && doc.length !== 11) {
-        throw new Error('El documento debe tener 8 (DNI) o 11 (RUC) dígitos.');
+      // 2. Si no existe, buscar en SUNAT/RENIEC (solo DNI/RUC; el CE se ingresa manualmente)
+      const tipoDoc = getTipoDocumento(doc);
+      if (!tipoDoc) {
+        throw new Error('El documento debe ser un DNI (8 dígitos), RUC (11 dígitos) o Carné de Extranjería.');
+      }
+      if (tipoDoc === 'CE') {
+        alert(CE_SIN_AUTOCOMPLETAR);
+        return;
       }
 
       const res = await this.apiPeru.buscarDocumento(doc);
@@ -402,12 +560,12 @@ export class ComercialFormComponent implements OnInit {
         this.clienteActual.telefono = '';
         this.clienteActual.correo = '';
         
-        if (doc.length === 8) {
+        if (tipoDoc === 'DNI') {
           const paterno = data.apellido_paterno || data.apellidoPaterno || '';
           const materno = data.apellido_materno || data.apellidoMaterno || '';
           this.clienteActual.nombre_razon_social = `${data.nombres || ''} ${paterno} ${materno}`.trim();
           this.clienteSearchText = this.clienteActual.nombre_razon_social;
-        } else if (doc.length === 11) {
+        } else if (tipoDoc === 'RUC') {
           this.clienteActual.nombre_razon_social = data.nombre_o_razon_social || data.razonSocial || '';
           this.clienteSearchText = this.clienteActual.nombre_razon_social;
           this.clienteActual.direccion = data.direccion_completa || data.direccion || '';
@@ -426,13 +584,17 @@ export class ComercialFormComponent implements OnInit {
     this.subtotal = this.items.reduce((acc, item) => acc + (item.subtotal || 0), 0);
     const neto = this.subtotal - (this.descuento_global || 0);
     
-    if (this.afectaIgv) {
-      this.igv = neto * 0.18;
+    if (this.preciosConIgv) {
+      // Los precios ya incluyen el 18%: el IGV se extrae (solo informativo) y NO se suma al total
+      this.igv = Math.round(neto * 0.18 / 1.18 * 100) / 100;
+      this.total = neto;
+    } else if (this.afectaIgv) {
+      this.igv = Math.round(neto * 0.18 * 100) / 100;
+      this.total = neto + this.igv;
     } else {
       this.igv = 0;
+      this.total = neto;
     }
-    
-    this.total = neto + this.igv;
   }
 
   onItemsChange(newItems: CarritoItem[]) {
@@ -506,6 +668,7 @@ export class ComercialFormComponent implements OnInit {
           descuento_global: this.descuento_global || 0,
           igv: this.igv,
           total: this.total,
+          precios_con_igv: this.preciosConIgv,
           observaciones: this.observaciones
       };
 

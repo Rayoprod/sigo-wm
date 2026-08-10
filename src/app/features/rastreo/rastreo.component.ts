@@ -24,12 +24,12 @@ export class RastreoComponent implements OnInit, OnDestroy {
   private map: L.Map | null = null;
   private markerCamion: L.Marker | null = null;
   private markerDestino: L.Marker | null = null;
-  private polylineRuta: L.Polyline | null = null; // kept for type compatibility, not drawn
   /** Evita resetear el zoom cuando el usuario ha hecho zoom manual. */
   private fitBoundsDone = false;
   
   etaInfo: {
     eta: string;
+    etaDia: string;
     distanciaKm: string;
     esEstimado: boolean;
     edadMin: number;
@@ -53,14 +53,32 @@ export class RastreoComponent implements OnInit, OnDestroy {
   }
 
   ngOnDestroy() {
+    this.detenerSeguimiento();
+  }
+
+  /**
+   * Detiene el polling y destruye el mapa (idempotente).
+   * Se usa al finalizar/anular el pedido o cuando el token no es válido.
+   */
+  private detenerSeguimiento(): void {
     if (this.refreshInterval) {
       clearInterval(this.refreshInterval);
+      this.refreshInterval = null;
     }
     if (this.map) {
       this.map.remove();
       this.map = null;
+      this.markerCamion = null;
+      this.markerDestino = null;
       this.fitBoundsDone = false;
     }
+  }
+
+  /** Reintenta la carga desde el estado de error. */
+  reintentar() {
+    this.error = '';
+    this.loading = true;
+    this.fetchData(true);
   }
 
   fetchData(isFirstLoad = true) {
@@ -93,34 +111,21 @@ export class RastreoComponent implements OnInit, OnDestroy {
             Object.assign(this.trackingData, data);
           }
 
-          if (this.trackingData && this.trackingData.eventos) {
-            const despachoEvent = this.trackingData.eventos.find((e: any) => e.tipo === 'DESPACHO_INICIADO');
-            if (despachoEvent && despachoEvent.items) {
-              this.trackingData.detalles = despachoEvent.items;
-            }
-          }
         } else if (data.gps_actual) {
           // Si solo cambió el GPS, actualizarlo sin perder referencia del objeto
           this.trackingData.gps_actual = data.gps_actual;
         }
 
-        // Si el estado es anulado, detener el polling y limpiar mapa
-        if (this.trackingData.estado === 'ANULADA') {
-            if (this.refreshInterval) {
-                clearInterval(this.refreshInterval);
-                this.refreshInterval = null;
-            }
-            if (this.map) {
-                this.map.remove();
-                this.map = null;
-            }
+        // Pedido finalizado o anulado: detener polling y limpiar el mapa
+        if (this.trackingData.estado === 'COMPLETADA' || this.trackingData.estado === 'ANULADA') {
+          this.detenerSeguimiento();
         }
 
         if (isFirstLoad) {
           this.loading = false;
           // Inicializar mapa un momento después de que la vista cargue
           setTimeout(() => {
-            if (this.isDispatched && !this.map) {
+            if (this.isDispatched && !this.esCantera && !this.map) {
               this.initMap();
             }
           }, 800); // Dar más tiempo al DOM
@@ -130,7 +135,7 @@ export class RastreoComponent implements OnInit, OnDestroy {
             this.updateMapAndETA();
           } else {
             setTimeout(() => {
-              if (this.isDispatched && !this.map) {
+              if (this.isDispatched && !this.esCantera && !this.map) {
                 this.initMap();
               }
             }, 300);
@@ -140,8 +145,12 @@ export class RastreoComponent implements OnInit, OnDestroy {
       error: (err) => {
         console.error(err);
         if (isFirstLoad) {
-          this.error = err.error?.error || 'No se pudo cargar la información del pedido. Verifica que el folio sea correcto.';
+          this.error = err.error?.error || 'No se pudo cargar la información del pedido. Verifica el enlace de rastreo.';
           this.loading = false;
+          // Token inválido o pedido inexistente: no tiene sentido seguir consultando
+          if (err.status === 400 || err.status === 404) {
+            this.detenerSeguimiento();
+          }
         }
       }
     });
@@ -149,20 +158,23 @@ export class RastreoComponent implements OnInit, OnDestroy {
 
   // Lógica del Mapa
   private initMap() {
+    // CANTERA es recojo en planta: no hay ruta GPS ni mapa que mostrar.
+    if (this.esCantera) return;
     const mapElement = document.getElementById('rastreo-map');
     if (!mapElement) return;
 
-    // Coordenadas de destino
-    let latD = this.trackingData.lat_destino ? parseFloat(this.trackingData.lat_destino) : -12.046374;
-    let lngD = this.trackingData.lng_destino ? parseFloat(this.trackingData.lng_destino) : -77.042793;
+    const destino = this.getCoordenadasDestino();
+    const ultimaPos = this.getUltimaPosicionConocida();
+    // Centro inicial: destino > última posición conocida > Lima (fallback)
+    const centro = destino ?? ultimaPos ?? { lat: -12.046374, lng: -77.042793 };
 
     this.map = L.map('rastreo-map', {
-      zoomControl: false,
-      attributionControl: false,
+      zoomControl: true,
+      attributionControl: true,
       dragging: true,
       scrollWheelZoom: false,
       touchZoom: true
-    }).setView([latD, lngD], 13);
+    }).setView([centro.lat, centro.lng], 13);
 
     L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', { 
       attribution: '© OpenStreetMap contributors',
@@ -185,12 +197,9 @@ export class RastreoComponent implements OnInit, OnDestroy {
       iconAnchor: [9, 9]
     });
 
-    // Ícono del camión en vivo — estado inicial: en movimiento
-    const camionIcon = this.buildLiveTruckIcon('moving', 0);
-
-    // Marcador de destino siempre fijo
-    if (this.trackingData.lat_destino && this.trackingData.lng_destino) {
-      this.markerDestino = L.marker([latD, lngD], { icon: destIcon }).addTo(this.map)
+    // Marcador de destino (solo si el pedido tiene coordenadas registradas)
+    if (destino) {
+      this.markerDestino = L.marker([destino.lat, destino.lng], { icon: destIcon }).addTo(this.map)
         .bindTooltip('Destino de entrega', { permanent: false, direction: 'top' });
     }
 
@@ -201,32 +210,73 @@ export class RastreoComponent implements OnInit, OnDestroy {
         .bindTooltip('Punto de salida', { permanent: false, direction: 'top' });
     }
 
-    // Marcador del camión en vivo (comienza en destino o despacho)
-    this.markerCamion = L.marker([latD, lngD], { icon: camionIcon }).addTo(this.map);
+    // Posición inicial del camión: GPS en vivo > última posición conocida > centro
+    const gps = this.trackingData.gps_actual;
+    let camionPos = centro;
+    let estadoInicial: 'moving' | 'stopped' | 'no_signal' = 'no_signal';
+    let edadInicial = 0;
+    if (gps?.latitud && gps?.longitud) {
+      camionPos = { lat: parseFloat(gps.latitud), lng: parseFloat(gps.longitud) };
+      const edad = (Date.now() - new Date(gps.timestamp).getTime()) / 60000;
+      edadInicial = edad;
+      estadoInicial = edad > 10 ? 'no_signal' : (edad >= 3 ? 'stopped' : 'moving');
+    } else if (ultimaPos) {
+      camionPos = ultimaPos;
+    }
+    this.markerCamion = L.marker([camionPos.lat, camionPos.lng], { icon: this.buildLiveTruckIcon(estadoInicial, edadInicial) }).addTo(this.map);
 
     this.updateMapAndETA();
     setTimeout(() => this.map?.invalidateSize(), 500);
   }
 
+  /** Coordenadas de destino registradas en el pedido, o null si no existen. */
+  private getCoordenadasDestino(): { lat: number; lng: number } | null {
+    const lat = this.trackingData?.lat_destino ? parseFloat(this.trackingData.lat_destino) : null;
+    const lng = this.trackingData?.lng_destino ? parseFloat(this.trackingData.lng_destino) : null;
+    if (lat !== null && lng !== null && !isNaN(lat) && !isNaN(lng)) {
+      return { lat, lng };
+    }
+    return null;
+  }
+
+  /** Última posición conocida (despacho/recepción) por timestamp, o null. */
+  private getUltimaPosicionConocida(): { lat: number; lng: number } | null {
+    if (!this.trackingData?.eventos) return null;
+    const conPos = this.trackingData.eventos
+      .filter((e: any) => e.lat !== null && e.lat !== undefined && e.lng !== null && e.lng !== undefined)
+      .sort((a: any, b: any) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
+    const ultimo = conPos[conPos.length - 1];
+    if (!ultimo) return null;
+    const lat = parseFloat(ultimo.lat);
+    const lng = parseFloat(ultimo.lng);
+    if (isNaN(lat) || isNaN(lng)) return null;
+    return { lat, lng };
+  }
+
   private updateMapAndETA() {
+    if (this.esCantera) return;
     if (!this.map || !this.trackingData || !this.markerCamion) return;
 
-    const latD = this.trackingData.lat_destino ? parseFloat(this.trackingData.lat_destino) : -12.046374;
-    const lngD = this.trackingData.lng_destino ? parseFloat(this.trackingData.lng_destino) : -77.042793;
+    const destino = this.getCoordenadasDestino();
+    const ultimaPos = this.getUltimaPosicionConocida();
 
-    // Obtener la posición más reciente del GPS
-    let latC = latD;
-    let lngC = lngD;
+    // Posición del camión: GPS en vivo > última posición conocida
+    const gps = this.trackingData.gps_actual;
+    const gpsDisponible = !!(gps?.latitud && gps?.longitud);
+    let latC: number | null = null;
+    let lngC: number | null = null;
     let lastUpdate = new Date(this.trackingData.fecha_pedido || Date.now());
-    let gpsDisponible = false;
 
-    if (this.trackingData.gps_actual?.latitud && this.trackingData.gps_actual?.longitud) {
-      const gps = this.trackingData.gps_actual;
+    if (gpsDisponible) {
       latC = parseFloat(gps.latitud);
       lngC = parseFloat(gps.longitud);
       lastUpdate = new Date(gps.timestamp);
-      gpsDisponible = true;
+    } else if (ultimaPos) {
+      latC = ultimaPos.lat;
+      lngC = ultimaPos.lng;
     }
+
+    if (latC === null || lngC === null) return;
 
     // Determinar estado del camión según antigüedad del GPS
     const edadMin = (Date.now() - lastUpdate.getTime()) / 60000;
@@ -245,18 +295,18 @@ export class RastreoComponent implements OnInit, OnDestroy {
 
     // Ajustar vista para que se vean camión y destino — SOLO en la primera carga
     // para no resetear el zoom si el usuario ha hecho zoom manual.
-    if (!this.fitBoundsDone && (latC !== latD || lngC !== lngD)) {
-      const bounds = L.latLngBounds([[latC, lngC], [latD, lngD]]);
+    if (!this.fitBoundsDone && destino && (latC !== destino.lat || lngC !== destino.lng)) {
+      const bounds = L.latLngBounds([[latC, lngC], [destino.lat, destino.lng]]);
       this.map.fitBounds(bounds, { padding: [60, 60], maxZoom: 15 });
       this.fitBoundsDone = true;
     }
 
-    // ETA solo si el viaje activo está EN RUTA (el chofer lo recibió)
+    // ETA solo si hay coordenadas de destino y el viaje activo está EN RUTA
     const viajeActivo = this.viajeActivo;
-    if (!viajeActivo || !viajeActivo.enRuta || viajeActivo.entregado) {
+    if (!destino || !viajeActivo || !viajeActivo.enRuta || viajeActivo.entregado) {
       this.etaInfo = null;
     } else {
-      this.calculateETA(latC, lngC, latD, lngD, lastUpdate, gpsDisponible);
+      this.calculateETA(latC, lngC, destino.lat, destino.lng, lastUpdate, gpsDisponible);
     }
   }
 
@@ -270,14 +320,30 @@ export class RastreoComponent implements OnInit, OnDestroy {
     const velKmh = 35; // Velocidad urbana promedio asumida
     const horasRestantes = distanciaKm / velKmh;
     const fechaLlegada = new Date(ahora.getTime() + horasRestantes * 3600000);
+
     const formatoLlegada = fechaLlegada.toLocaleTimeString('es-PE', {
       hour: '2-digit',
       minute: '2-digit',
       timeZone: 'America/Lima'
     });
 
+    // Día de llegada en hora de Perú (hoy / mañana / fecha corta)
+    const fmtDia = (d: Date) => d.toLocaleDateString('en-CA', { timeZone: 'America/Lima' });
+    const hoyLima = fmtDia(ahora);
+    const mananaLima = fmtDia(new Date(ahora.getTime() + 24 * 3600000));
+    const llegadaLima = fmtDia(fechaLlegada);
+    let etaDia: string;
+    if (llegadaLima === hoyLima) {
+      etaDia = 'hoy';
+    } else if (llegadaLima === mananaLima) {
+      etaDia = 'mañana';
+    } else {
+      etaDia = fechaLlegada.toLocaleDateString('es-PE', { day: '2-digit', month: 'short', timeZone: 'America/Lima' });
+    }
+
     this.etaInfo = {
       eta: formatoLlegada,
+      etaDia,
       distanciaKm: distanciaKm.toFixed(1),
       esEstimado: esEstimado,
       edadMin: Math.floor(difMinutos)
@@ -300,6 +366,22 @@ export class RastreoComponent implements OnInit, OnDestroy {
   private deg2rad(deg: number) { return deg * (Math.PI/180); }
 
   get isDelivered(): boolean { return this.trackingData?.estado === 'COMPLETADA'; }
+
+  /** El pedido es de modalidad CANTERA (recojo en planta): no hay ruta GPS ni ETA de llegada. */
+  get esCantera(): boolean {
+    return this.trackingData?.lugar_entrega === 'CANTERA';
+  }
+
+  /** Título principal de estado según la modalidad del pedido. */
+  get estadoTitulo(): string {
+    if (!this.trackingData) return '';
+    if (this.esCantera) {
+      return this.isDelivered
+        ? 'Pedido Recogido en Planta'
+        : (this.isDispatched ? 'Listo para Recojo en Planta' : 'Preparando tu Pedido para Recojo');
+    }
+    return this.isDelivered ? 'Entregado con Éxito' : (this.isDispatched ? 'Pedido en Camino' : 'Preparando Despacho');
+  }
 
   get eventosFiltrados(): any[] {
     if (!this.trackingData?.eventos) return [];
@@ -335,14 +417,21 @@ export class RastreoComponent implements OnInit, OnDestroy {
         if (e.tipo === 'ENTREGA_REALIZADA') viajeSecuencial++;
       }
       if (!viajesMap[num]) {
-        viajesMap[num] = { numero: num, eventos: [], despachado: false, enRuta: false, entregado: false, items: null, placa: null, chofer: null };
+        viajesMap[num] = { numero: num, eventos: [], despachado: false, enRuta: false, entregado: false, items: null, placa: null, chofer: null, despachador: null };
       }
       viajesMap[num].eventos.push(e);
       if (e.placa_vehiculo) viajesMap[num].placa = e.placa_vehiculo;
       if (e.chofer_nombre) viajesMap[num].chofer = e.chofer_nombre;
+      if (e.despachador) viajesMap[num].despachador = e.despachador;
       if (e.tipo === 'DESPACHO_INICIADO') { viajesMap[num].despachado = true; if (e.items) viajesMap[num].items = e.items; }
       if (e.tipo === 'RECEPCION_CHOFER')  { viajesMap[num].enRuta = true; }
       if (e.tipo === 'ENTREGA_REALIZADA') { viajesMap[num].entregado = true; }
+    });
+
+    // En pedidos CANTERA no hay chofer de reparto: el responsable es el
+    // despachador de planta (viene a nivel de pedido en el payload).
+    Object.values(viajesMap).forEach((v: any) => {
+      if (!v.despachador) v.despachador = this.trackingData?.despachador || null;
     });
 
     this._cachedViajes = Object.values(viajesMap).sort((a: any, b: any) => a.numero - b.numero);
@@ -367,10 +456,9 @@ export class RastreoComponent implements OnInit, OnDestroy {
     return this.viajesAgrupados.some(v => v.despachado || v.entregado);
   }
 
-  get hasPhotos(): boolean {
-    const eventos = this.eventosFiltrados;
-    if (!eventos || eventos.length === 0) return false;
-    return eventos.some((e: any) => e.foto || (e.fotos && e.fotos.length > 0));
+  /** Indica si la función devolvió una posición GPS en vivo del chofer. */
+  get gpsDisponible(): boolean {
+    return !!(this.trackingData?.gps_actual?.latitud && this.trackingData?.gps_actual?.longitud);
   }
 
   abrirEvidencia(url: string) { if (url) window.open(url, '_blank'); }
@@ -436,7 +524,7 @@ export class RastreoComponent implements OnInit, OnDestroy {
     const labels: Record<typeof state, string> = {
       moving:    '▶ En movimiento',
       stopped:   `⏸ Lento/detenido · ${Math.round(edadMin)}m`,
-      no_signal: `📡 Sin señal · ${Math.round(edadMin)}m`
+      no_signal: edadMin > 0 ? `📡 Sin señal · ${Math.round(edadMin)}m` : '📡 Sin señal'
     };
     const clsMap: Record<typeof state, string> = {
       moving:    'sigo-truck-moving',

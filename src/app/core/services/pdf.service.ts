@@ -1,6 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import { SupabaseService } from './supabase.service';
 import { Pedidos, PedidosItems, ConfiguracionEmpresa } from '../models/app.models';
+import { getTipoDocumento } from '../../shared/utils/documento-identidad';
 
 declare let pdfMake: any;
 
@@ -102,6 +103,7 @@ export class PdfService {
       const obsFinal = pedido.observaciones || '';
       const vendedor = pedido.usuarios?.nombre_completo || pedido.usuarios?.correo || '';
       const tieneIgv = Number(pedido.igv) > 0;
+      const preciosConIgv = pedido.precios_con_igv === true;
 
       // ── Header ─────────────────────────────────────────────────────────────
       const headerFn = () => {
@@ -222,7 +224,7 @@ export class PdfService {
       const colCondiciones: any[] = [
         { text: 'CONDICIONES COMERCIALES', fontSize: 8, bold: true, color: colorEmpresa, margin: [0, 0, 0, 6] },
         { text: [{ text: '• Lugar de entrega: ', bold: true, fontSize: 7.5 }, { text: textoEntrega, fontSize: 7.5 }], margin: [0, 0, 0, 3] },
-        { text: [{ text: '• Impuestos: ', bold: true, fontSize: 7.5 }, { text: tieneIgv ? 'Los precios incluyen IGV (18%)' : 'Los precios NO incluyen IGV', fontSize: 7.5 }], margin: [0, 0, 0, 3] },
+        { text: [{ text: '• Impuestos: ', bold: true, fontSize: 7.5 }, { text: preciosConIgv ? 'Los precios incluyen IGV (18%)' : 'Los precios NO incluyen IGV', fontSize: 7.5 }], margin: [0, 0, 0, 3] },
       ];
 
       if (isCotizacion && pedido.dias_validez_oferta) {
@@ -295,6 +297,11 @@ export class PdfService {
       const cTel = pedido.clientes?.telefono;
       const cCor = pedido.clientes?.correo;
 
+      // Etiqueta del documento según su tipo (DNI | RUC | CE).
+      // Si el documento no tiene un formato reconocido, se muestra como "Documento".
+      const tipoDocCliente = getTipoDocumento(cDoc);
+      const etiquetaDoc = tipoDocCliente ? `${tipoDocCliente}: ` : 'Documento: ';
+
       const cajaCliente: any = {
         margin: [0, 0, 0, 16],
         table: {
@@ -306,7 +313,7 @@ export class PdfService {
                 stack: [
                   { text: 'SEÑOR(ES):', fontSize: 7, color: '#9ca3af', margin: [0, 0, 0, 3] },
                   { text: cNombre, bold: true, fontSize: 11, color: '#111827', margin: [0, 0, 0, 4] },
-                  { text: [{ text: 'RUC / DNI: ', bold: true, fontSize: 8.5 }, { text: cDoc, fontSize: 8.5 }], margin: [0, 0, 0, 2] },
+                  { text: [{ text: etiquetaDoc, bold: true, fontSize: 8.5 }, { text: cDoc, fontSize: 8.5 }], margin: [0, 0, 0, 2] },
                   ...(cDir ? [{ text: [{ text: 'Dirección: ', bold: true, fontSize: 8 }, { text: cDir, fontSize: 8 }], margin: [0, 2, 0, 0] }] : [])
                 ]
               },

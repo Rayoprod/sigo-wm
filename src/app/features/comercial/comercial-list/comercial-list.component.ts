@@ -200,6 +200,7 @@ export class ComercialListComponent implements OnInit {
       case 'PENDIENTE': return 'warning';
       case 'APROBADA': return 'info';
       case 'COMPLETADA': return 'success';
+      case 'RECHAZADA': return 'danger';
       case 'ANULADA': return 'danger';
       default: return 'secondary';
     }
@@ -217,6 +218,48 @@ export class ComercialListComponent implements OnInit {
     
     const today = new Date();
     return today > validUntil;
+  }
+
+  // Botones explícitos Aprobar / Rechazar para cotizaciones pendientes.
+  // (Además del dropdown de estado, para que la acción sea visible.)
+  aprobarCotizacion(pedido: any) {
+    if (this.isCotizacionVencida(pedido)) {
+      this.messageService.add({
+        severity: 'warn',
+        summary: 'Cotización vencida',
+        detail: 'Esta cotización superó su validez. Edítala para renovar la fecha o regístrala nuevamente.'
+      });
+      return;
+    }
+    // Reutiliza el flujo existente de conversión a Orden de Venta.
+    this.onEstadoChange({ value: 'APROBADA' }, pedido);
+  }
+
+  rechazarCotizacion(pedido: any) {
+    this.confirmationService.confirm({
+      message: `¿Estás seguro de rechazar la cotización <b>${pedido.folio}</b>?`,
+      header: 'Rechazar Cotización',
+      icon: 'pi pi-times-circle text-red-500',
+      acceptLabel: 'Sí, Rechazar',
+      rejectLabel: 'Cancelar',
+      acceptButtonStyleClass: 'p-button-danger',
+      accept: async () => {
+        try {
+          await this.actualizarEstadoYStock(pedido, 'RECHAZADA', 'COTIZACION', false, false);
+          this.messageService.add({
+            severity: 'success',
+            summary: 'Cotización rechazada',
+            detail: `La cotización ${pedido.folio} fue marcada como rechazada.`
+          });
+        } catch (e: any) {
+          this.messageService.add({
+            severity: 'error',
+            summary: 'Error',
+            detail: 'No se pudo rechazar la cotización: ' + e.message
+          });
+        }
+      }
+    });
   }
 
   async generarPDF(pedido: any) {

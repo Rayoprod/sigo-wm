@@ -33,7 +33,11 @@
             "styles": [
               "src/styles.scss"
             ],
-            "scripts": []
+            "scripts": [],
+            "allowedCommonJsDependencies": [
+              "leaflet",
+              "qrcode"
+            ]
           },
           "configurations": {
             "production": {
@@ -50,7 +54,12 @@
                 }
               ],
               "outputHashing": "all",
-              "serviceWorker": "ngsw-config.json"
+              "serviceWorker": "ngsw-config.json",
+              "optimization": {
+                "styles": {
+                  "inlineCritical": false
+                }
+              }
             },
             "development": {
               "optimization": false,

@@ -51,7 +51,7 @@
                         (onSelect)="onClienteSelect($event)"
                         [dropdown]="true"
                         appendTo="body"
-                        placeholder="Escribe el nombre o RUC/DNI..."
+                        placeholder="Escribe el nombre, RUC/DNI o CE..."
                         styleClass="w-full">
                         <ng-template let-cliente pTemplate="item">
                             <div class="flex flex-column w-full overflow-hidden" style="max-width: 85vw;">
@@ -75,7 +75,7 @@
             <!-- MODO: NUEVO -->
             <div class="grid p-fluid formgrid" *ngIf="modoCliente === 'nuevo'">
                 <div class="col-12 md:col-5 field mb-4">
-                    <label class="text-sm font-bold text-900">RUC / DNI <span class="text-red-500">*</span></label>
+                    <label class="text-sm font-bold text-900">RUC / DNI / CE <span class="text-red-500">*</span></label>
                     <div class="p-inputgroup">
                         <input pInputText type="text" [(ngModel)]="clienteActual.documento_identidad" (keyup.enter)="buscarDocApiPeru()" placeholder="Número" />
                         <button type="button" pButton icon="pi pi-search" (click)="buscarDocApiPeru()" [loading]="isSearchingDoc" pTooltip="Validar SUNAT/RENIEC" class="p-button-primary"></button>
@@ -155,35 +155,52 @@
                         <input pInputText type="text" [(ngModel)]="direccion_entrega_detalle" placeholder="Ej: Km 4.5 Panamericana Sur..." class="w-full" />
                     </div>
 
-                    <!-- Mini mapa para marcar el punto exacto de entrega -->
-                    <div class="border-round-xl border-1 border-blue-200 overflow-hidden">
-                        <div class="bg-blue-50 px-3 py-2 flex align-items-center justify-content-between">
-                            <span class="text-blue-700 font-bold text-sm">
-                                <i class="pi pi-map-marker mr-2"></i>Punto de Entrega en Mapa (Opcional)
+                    <!-- Selección de punto de entrega en el mapa -->
+                    <div class="border-round-xl border-1 overflow-hidden" [ngClass]="lat_destino ? 'border-green-300' : 'border-blue-200'">
+                        <div class="px-3 py-2 flex align-items-center justify-content-between"
+                             [ngClass]="lat_destino ? 'bg-green-50' : 'bg-blue-50'">
+                            <span class="font-bold text-sm flex align-items-center gap-2"
+                                  [ngClass]="lat_destino ? 'text-green-700' : 'text-blue-700'">
+                                <i class="pi" [ngClass]="lat_destino ? 'pi-map-marker' : 'pi-map'"></i>
+                                {{ lat_destino ? 'Punto de entrega seleccionado' : 'Punto de Entrega en Mapa (Opcional)' }}
                             </span>
-                            <button *ngIf="lat_destino" pButton
-                                    icon="pi pi-times" label="Limpiar"
-                                    class="p-button-text p-button-sm text-xs p-0"
-                                    style="height:auto"
+                            <button *ngIf="lat_destino" pButton icon="pi pi-times" label="Limpiar"
+                                    class="p-button-text p-button-sm text-xs p-0" style="height:auto"
                                     (click)="limpiarPuntoDestinoForm()">
                             </button>
                         </div>
-                        <div class="p-2 surface-0">
-                            <div class="flex justify-content-end mb-2 px-1">
-                                <button pButton icon="pi pi-map-marker" label="Centrar en mi ubicación" (click)="centrarEnMiUbicacion()" class="p-button-sm p-button-outlined p-button-info text-xs py-1"></button>
+                        <div class="p-3 surface-0">
+                            <!-- Estado vacío: invita a abrir el mapa -->
+                            <div *ngIf="!lat_destino" class="flex flex-column align-items-center text-center gap-3 py-2">
+                                <div class="flex align-items-center justify-content-center border-circle bg-blue-50 text-primary" style="width: 56px; height: 56px;">
+                                    <i class="pi pi-map-marker" style="font-size: 1.6rem;"></i>
+                                </div>
+                                <div>
+                                    <div class="font-semibold text-900 mb-1">Ubica el punto exacto de entrega</div>
+                                    <div class="text-xs text-500 line-height-3" style="max-width: 300px;">
+                                        El chofer verá la posición exacta en su app de entregas. Es opcional.
+                                    </div>
+                                </div>
+                                <button pButton icon="pi pi-map" label="Seleccionar en el mapa"
+                                        class="p-button-info font-bold border-round-lg"
+                                        (click)="abrirMapaGrande()"></button>
                             </div>
-                            
-                            <div id="mapa-destino-form"
-                                 style="height: 220px; border-radius: 10px; border: 1.5px solid #bfdbfe; cursor: crosshair;">
-                            </div>
-                            <div class="mt-2">
-                                <span *ngIf="!lat_destino" class="text-400 text-xs">
-                                    <i class="pi pi-info-circle mr-1"></i>Haz clic en el mapa para marcar el punto de entrega
-                                </span>
-                                <span *ngIf="lat_destino" class="text-xs text-green-600 font-semibold flex align-items-center gap-1">
-                                    <i class="pi pi-check-circle"></i>
-                                    Punto marcado: {{ lat_destino | number:'1.4-4' }}, {{ lng_destino | number:'1.4-4' }}
-                                </span>
+
+                            <!-- Estado seleccionado: datos + acciones -->
+                            <div *ngIf="lat_destino" class="flex flex-column gap-2">
+                                <div class="flex align-items-center gap-2 flex-wrap bg-green-50 border-round-lg p-2">
+                                    <i class="pi pi-check-circle text-green-600"></i>
+                                    <span class="font-mono text-sm font-bold text-green-700">
+                                        {{ lat_destino | number:'1.5-5' }}, {{ lng_destino | number:'1.5-5' }}
+                                    </span>
+                                </div>
+                                <div *ngIf="direccionPunto" class="text-sm text-600 line-height-3 flex align-items-start gap-2">
+                                    <i class="pi pi-map text-primary mt-1"></i>
+                                    <span>{{ direccionPunto }}</span>
+                                </div>
+                                <button pButton icon="pi pi-map" label="Cambiar punto"
+                                        class="p-button-outlined p-button-info font-bold border-round-lg w-full"
+                                        (click)="abrirMapaGrande()"></button>
                             </div>
                         </div>
                     </div>
@@ -339,3 +356,92 @@
         </div>
     </div>
 </div>
+
+<!-- Modal grande: Selección de punto de entrega en el mapa -->
+<p-dialog
+    [(visible)]="displayMapaModal"
+    [modal]="true"
+    [showHeader]="false"
+    [style]="{ width: 'min(1080px, 96vw)' }"
+    [contentStyle]="{ padding: 0, overflow: 'hidden' }"
+    [draggable]="false"
+    [resizable]="false"
+    [dismissableMask]="true"
+    [closeOnEscape]="true"
+    styleClass="mapa-modal-dialog"
+    (onHide)="cerrarMapaGrande()">
+    
+    <div class="mapa-modal-body flex flex-column" style="height: min(700px, 88vh);">
+        
+        <!-- Barra superior: título + búsqueda + ubicación -->
+        <div class="flex flex-wrap align-items-center gap-2 p-3 surface-0 border-bottom-1 surface-border" style="flex: 0 0 auto;">
+            <span class="font-bold text-lg text-primary flex align-items-center gap-2 white-space-nowrap">
+                <i class="pi pi-map-marker"></i> Ubicar punto de entrega
+            </span>
+            <div class="p-inputgroup flex-1" style="max-width: 480px; min-width: 180px;">
+                <input pInputText type="text" [(ngModel)]="busquedaQuery"
+                       (input)="onBuscarLugar()" (keyup.enter)="onBuscarLugar()"
+                       placeholder="Buscar dirección, urbanización o referencia..." class="w-full" />
+                <button pButton icon="pi pi-search" (click)="onBuscarLugar()" [loading]="buscandoLugar"></button>
+            </div>
+            <button pButton icon="pi pi-crosshair" label="Mi ubicación" [loading]="locating"
+                    class="p-button-outlined p-button-secondary white-space-nowrap"
+                    (click)="usarMiUbicacionEnMapa()"></button>
+            <button pButton icon="pi pi-times" class="p-button-rounded p-button-text p-button-secondary"
+                    (click)="cerrarMapaGrande()"></button>
+        </div>
+
+        <!-- Resultados de búsqueda -->
+        <div *ngIf="resultadosBusqueda.length" class="mapa-busqueda-resultados surface-card border-bottom-1 surface-border" style="flex: 0 0 auto; max-height: 200px; overflow-y: auto; z-index: 900;">
+            <button type="button" *ngFor="let r of resultadosBusqueda"
+                    class="w-full text-left flex align-items-start gap-2 p-3 border-bottom-1 surface-border"
+                    (click)="seleccionarResultadoBusqueda(r)">
+                <i class="pi pi-map-marker mt-1 text-primary"></i>
+                <span class="text-sm line-height-2">{{ r.display_name }}</span>
+            </button>
+        </div>
+
+        <!-- Mapa interactivo -->
+        <div class="flex-1 position-relative" style="flex: 1 1 auto; min-height: 0;">
+            <div id="mapa-destino-modal" style="width: 100%; height: 100%;"></div>
+
+            <!-- Pista superior -->
+            <div class="position-absolute top-0 left-0 right-0 flex justify-content-center p-3" style="z-index: 500; pointer-events: none;">
+                <span class="surface-card shadow-3 px-3 py-2 border-round-lg text-sm text-600 flex align-items-center gap-2">
+                    <i class="pi pi-hand-pointer text-primary"></i>
+                    <ng-container *ngIf="!coordsTemp">Haz clic en el mapa para colocar el pin de entrega</ng-container>
+                    <ng-container *ngIf="coordsTemp">Arrastra el pin para ajustar el punto exacto</ng-container>
+                </span>
+            </div>
+        </div>
+
+        <!-- Pie fijo: estado + acciones (siempre visible, no tapa el mapa) -->
+        <div class="surface-0 border-top-1 surface-border p-3" style="flex: 0 0 auto;">
+            <div class="flex flex-wrap align-items-center justify-content-between gap-2">
+                <div class="flex-1 min-w-0">
+                    <div *ngIf="!coordsTemp" class="text-sm text-500">
+                        <i class="pi pi-info-circle mr-1"></i> Sin punto seleccionado. Haz clic en el mapa o busca una dirección.
+                    </div>
+                    <ng-container *ngIf="coordsTemp">
+                        <div class="flex align-items-center gap-2 flex-wrap">
+                            <span class="bg-green-50 text-green-700 font-bold text-xs px-2 py-1 border-round">
+                                <i class="pi pi-check-circle mr-1"></i>Punto seleccionado
+                            </span>
+                            <span class="font-mono text-sm font-semibold">{{ coordsTemp.lat | number:'1.5-5' }}, {{ coordsTemp.lng | number:'1.5-5' }}</span>
+                        </div>
+                        <div *ngIf="direccionTemp" class="text-xs text-500 mt-1 flex align-items-start gap-1">
+                            <i class="pi pi-map"></i> <span class="line-height-2">{{ direccionTemp }}</span>
+                        </div>
+                    </ng-container>
+                </div>
+                <div class="flex align-items-center gap-2">
+                    <button pButton label="Cancelar" icon="pi pi-times"
+                            class="p-button-text p-button-secondary" (click)="cerrarMapaGrande()"></button>
+                    <button pButton label="Confirmar punto" icon="pi pi-check"
+                            class="p-button-primary font-bold" [disabled]="!coordsTemp"
+                            (click)="confirmarPuntoMapa()"></button>
+                </div>
+            </div>
+        </div>
+    </div>
+</p-dialog>

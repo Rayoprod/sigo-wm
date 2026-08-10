@@ -1,1 +1,39 @@
 /* Archivo SCSS para comercial-form */
+
+/* ─── Selección de punto de entrega en el mapa (ventas / cotizaciones) ─── */
+
+/* Pin personalizado de Leaflet (divIcon) */
+.mapa-pin-wrapper {
+  background: transparent;
+  border: none;
+}
+.mapa-pin {
+  display: block;
+  filter: drop-shadow(0 3px 6px rgba(0, 0, 0, 0.35));
+}
+
+/* Resultados de búsqueda de direcciones dentro del modal */
+.mapa-busqueda-resultados {
+  border-radius: 0;
+}
+.mapa-busqueda-resultados button {
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+.mapa-busqueda-resultados button:hover {
+  background: var(--surface-hover);
+}
+
+/* Modal del mapa: redondeo y contenido sin desbordes */
+html body .mapa-modal-dialog .p-dialog-content {
+  border-radius: 12px;
+}
+
+/* En pantallas pequeñas el mapa ocupa casi toda la altura */
+@media (max-width: 640px) {
+  .mapa-modal-body {
+    height: 88vh !important;
+  }
+}
