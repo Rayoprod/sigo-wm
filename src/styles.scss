@@ -356,7 +356,19 @@ body.dark-mode {
 
 .topbar-glass {
   background: rgba(255, 255, 255, 0.85) !important;
-  backdrop-filter: blur(10px);
+  @supports ((backdrop-filter: blur(10px)) or (-webkit-backdrop-filter: blur(10px))) {
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+  }
+}
+
+/* Overlay de navegación: el desenfoque solo se aplica si el navegador lo soporta */
+.app-loading-overlay {
+  background: rgba(255, 255, 255, 0.7);
+  @supports ((backdrop-filter: blur(4px)) or (-webkit-backdrop-filter: blur(4px))) {
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+  }
 }
 
 /* ─── GPS Live Marker (Leaflet divIcon - global scope requerido) ─── */

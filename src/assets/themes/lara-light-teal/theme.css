@@ -6544,3 +6544,12 @@
     color: #ffffff;
   }
 }
+
+/* Cross-browser backdrop-filter: Safari requiere -webkit-; @supports evita
+   aplicarlo en navegadores sin soporte (WebView Android antiguos, etc.) */
+@supports ((backdrop-filter: blur(10px)) or (-webkit-backdrop-filter: blur(10px))) {
+  .p-toast-message {
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+  }
+}

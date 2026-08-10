@@ -1432,7 +1432,9 @@ export class LogisticaComponent implements OnInit, OnDestroy {
   }
 
   abrirMapa(lat: number, lng: number) {
-    window.open(`http://maps.google.com/?q=${lat},${lng}`, '_blank');
+    // geo: es el estándar universal: en Android abre Google Maps y en iOS Apple Maps.
+    // Evita el esquema http:// que algunos navegadores o bloqueadores de popups rechazan.
+    window.open(`geo:${lat},${lng}`, '_blank');
   }
 
   abrirFoto(url: string) {
