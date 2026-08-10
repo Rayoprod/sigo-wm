@@ -45,3 +45,11 @@ Thumbs.db
 .env
 .vercel
 .env*
+
+# Seguridad: nunca trackear scripts temporales con credenciales ni claves privadas
+/scratch
+/tmp_*.cjs
+*.pem
+*.key
+service-account*.json
+credentials*.json
