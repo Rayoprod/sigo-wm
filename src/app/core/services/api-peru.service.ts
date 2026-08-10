@@ -1,12 +1,10 @@
 import { Injectable } from '@angular/core';
-import { environment } from '../../../environments/environment';
 import { CE_SIN_AUTOCOMPLETAR, getTipoDocumento } from '../../shared/utils/documento-identidad';
 
 @Injectable({
   providedIn: 'root'
 })
 export class ApiPeruService {
-  private token = environment.apiPeruToken;
 
   async buscarDocumento(documento: string) {
     const doc = documento.trim();
@@ -18,16 +16,12 @@ export class ApiPeruService {
       throw new Error(CE_SIN_AUTOCOMPLETAR);
     }
 
-    const tipo = tipoDoc === 'DNI' ? 'dni' : 'ruc';
-    const url = `https://apiperu.dev/api/${tipo}/${doc}`;
-
     try {
-      const respuesta = await fetch(url, {
+      const respuesta = await fetch(`/api/consulta-documento?documento=${encodeURIComponent(doc)}`, {
         method: 'GET',
         headers: { 
           'Accept': 'application/json',
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${this.token}` 
+          'Content-Type': 'application/json'
         }
       });
 

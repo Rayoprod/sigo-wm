@@ -1,11 +1,8 @@
 {
-  "/api-peru/v1": {
-    "target": "https://api.apis.net.pe/v2",
+  "/api": {
+    "target": "http://localhost:3000",
     "secure": false,
     "changeOrigin": true,
-    "logLevel": "debug",
-    "pathRewrite": {
-      "^/api-peru/v1": ""
-    }
+    "logLevel": "debug"
   }
 }
