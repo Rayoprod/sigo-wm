@@ -24,7 +24,7 @@ $text-dim: #94a3b8;
   padding: 0;
 }
 
-.rastreo-bg-gradient {
+.rastreo-cliente-bg-gradient {
   min-height: 100vh;
   width: 100%;
   background: $bg-main;
@@ -35,7 +35,7 @@ $text-dim: #94a3b8;
   overflow-y: auto;
 }
 
-.rastreo-container {
+.rastreo-cliente-container {
   width: 100%;
   max-width: 1024px; // Desktop optimized
   padding: 24px 16px;
@@ -566,7 +566,7 @@ $text-dim: #94a3b8;
 
 /* Responsive adjustments */
 @media(max-width: 480px) {
-  .rastreo-container {
+  .rastreo-cliente-container {
     padding: 16px 12px;
   }
   .glass-card {
@@ -657,7 +657,7 @@ $text-dim: #94a3b8;
   height: 400px;
 }
 
-.rastreo-map {
+.rastreo-cliente-map {
   width: 100%;
   height: 100%;
   z-index: 1;
@@ -807,41 +807,6 @@ $text-dim: #94a3b8;
     transform: rotate(45deg);
     font-size: 1.2rem;
   }
-}
-
-.truck-marker {
-  width: 44px;
-  height: 44px;
-  background-color: #3b82f6;
-  color: white;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  box-shadow: 0 0 0 4px rgba(255,255,255,0.8), 0 4px 12px rgba(59, 130, 246, 0.5);
-  border: 2px solid white;
-  position: relative;
-  
-  i {
-    font-size: 1.3rem;
-  }
-}
-
-.pulse-animation::after {
-  content: '';
-  position: absolute;
-  top: -8px;
-  left: -8px;
-  right: -8px;
-  bottom: -8px;
-  border: 2px solid #3b82f6;
-  border-radius: 50%;
-  animation: radar-pulse 2s cubic-bezier(0.455, 0.03, 0.515, 0.955) infinite;
-}
-
-@keyframes radar-pulse {
-  0% { transform: scale(0.8); opacity: 1; }
-  100% { transform: scale(1.5); opacity: 0; }
 }
 
 @media (max-width: 768px) {

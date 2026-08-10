@@ -4,15 +4,16 @@ import { ActivatedRoute } from '@angular/router';
 import { HttpClient, HttpClientModule } from '@angular/common/http';
 import * as L from 'leaflet';
 import { PeruDatePipe } from '../../shared/pipes/peru-date.pipe';
+import { buildLiveTruckIcon, LiveTruckState } from '../../shared/utils/live-truck-marker';
 
 @Component({
-  selector: 'app-rastreo',
+  selector: 'app-rastreo-cliente',
   standalone: true,
   imports: [CommonModule, HttpClientModule, PeruDatePipe],
-  templateUrl: './rastreo.component.html',
-  styleUrls: ['./rastreo.component.scss']
+  templateUrl: './rastreo-cliente.component.html',
+  styleUrls: ['./rastreo-cliente.component.scss']
 })
-export class RastreoComponent implements OnInit, OnDestroy {
+export class RastreoClienteComponent implements OnInit, OnDestroy {
   token: string = '';
   loading: boolean = true;
   error: string = '';
@@ -26,7 +27,7 @@ export class RastreoComponent implements OnInit, OnDestroy {
   private markerDestino: L.Marker | null = null;
   /** Evita resetear el zoom cuando el usuario ha hecho zoom manual. */
   private fitBoundsDone = false;
-  
+
   etaInfo: {
     eta: string;
     etaDia: string;
@@ -82,7 +83,7 @@ export class RastreoComponent implements OnInit, OnDestroy {
   }
 
   fetchData(isFirstLoad = true) {
-    const url = `/api/rastreo?token=${this.token}`;
+    const url = `/api/rastreo-cliente?token=${this.token}`;
     this.http.get(url).subscribe({
       next: (data: any) => {
         // Normalizar fechas para Safari (reemplazar espacio por T en timestamps SQL)
@@ -99,7 +100,7 @@ export class RastreoComponent implements OnInit, OnDestroy {
         // Evitar el parpadeo comparando el JSON stringificado (sin gps_actual para evitar re-renderizados bruscos de UI si solo cambia el GPS)
         const newStr = JSON.stringify({ ...data, gps_actual: null });
         const oldStr = JSON.stringify({ ...this.trackingData, gps_actual: null });
-        
+
         if (newStr !== oldStr) {
           // Usar Object.assign en lugar de reemplazar la referencia completa del objeto.
           // Si reasignamos this.trackingData = data, Angular detecta un nuevo objeto y destruye
@@ -160,7 +161,7 @@ export class RastreoComponent implements OnInit, OnDestroy {
   private initMap() {
     // CANTERA es recojo en planta: no hay ruta GPS ni mapa que mostrar.
     if (this.esCantera) return;
-    const mapElement = document.getElementById('rastreo-map');
+    const mapElement = document.getElementById('rastreo-cliente-map');
     if (!mapElement) return;
 
     const destino = this.getCoordenadasDestino();
@@ -168,7 +169,7 @@ export class RastreoComponent implements OnInit, OnDestroy {
     // Centro inicial: destino > última posición conocida > Lima (fallback)
     const centro = destino ?? ultimaPos ?? { lat: -12.046374, lng: -77.042793 };
 
-    this.map = L.map('rastreo-map', {
+    this.map = L.map('rastreo-cliente-map', {
       zoomControl: true,
       attributionControl: true,
       dragging: true,
@@ -176,7 +177,7 @@ export class RastreoComponent implements OnInit, OnDestroy {
       touchZoom: true
     }).setView([centro.lat, centro.lng], 13);
 
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', { 
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
       attribution: '© OpenStreetMap contributors',
       maxZoom: 19
     }).addTo(this.map);
@@ -223,7 +224,7 @@ export class RastreoComponent implements OnInit, OnDestroy {
     } else if (ultimaPos) {
       camionPos = ultimaPos;
     }
-    this.markerCamion = L.marker([camionPos.lat, camionPos.lng], { icon: this.buildLiveTruckIcon(estadoInicial, edadInicial) }).addTo(this.map);
+    this.markerCamion = L.marker([camionPos.lat, camionPos.lng], { icon: this.buildClientTruckIcon(estadoInicial, edadInicial) }).addTo(this.map);
 
     this.updateMapAndETA();
     setTimeout(() => this.map?.invalidateSize(), 500);
@@ -291,7 +292,7 @@ export class RastreoComponent implements OnInit, OnDestroy {
 
     // Mover marcador y actualizar ícono según estado
     this.markerCamion.setLatLng([latC, lngC]);
-    this.markerCamion.setIcon(this.buildLiveTruckIcon(markerState, edadMin));
+    this.markerCamion.setIcon(this.buildClientTruckIcon(markerState, edadMin));
 
     // Ajustar vista para que se vean camión y destino — SOLO en la primera carga
     // para no resetear el zoom si el usuario ha hecho zoom manual.
@@ -354,13 +355,13 @@ export class RastreoComponent implements OnInit, OnDestroy {
   private getDistanceFromLatLonInKm(lat1: number, lon1: number, lat2: number, lon2: number) {
     const R = 6371; // Radius of the earth in km
     const dLat = this.deg2rad(lat2 - lat1);
-    const dLon = this.deg2rad(lon2 - lon1); 
-    const a = 
+    const dLon = this.deg2rad(lon2 - lon1);
+    const a =
       Math.sin(dLat/2) * Math.sin(dLat/2) +
-      Math.cos(this.deg2rad(lat1)) * Math.cos(this.deg2rad(lat2)) * 
-      Math.sin(dLon/2) * Math.sin(dLon/2); 
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a)); 
-    return R * c; 
+      Math.cos(this.deg2rad(lat1)) * Math.cos(this.deg2rad(lat2)) *
+      Math.sin(dLon/2) * Math.sin(dLon/2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    return R * c;
   }
 
   private deg2rad(deg: number) { return deg * (Math.PI/180); }
@@ -468,80 +469,13 @@ export class RastreoComponent implements OnInit, OnDestroy {
   // ─── Helpers de ícono de camión en vivo (compartidos con logistica) ───────────
 
   /**
-   * Inyecta los estilos del marcador de camión una sola vez en <head>.
-   * El CSS ID es compartido con logistica.component.ts para no duplicarlo.
+   * Ícono de camión con textos pensados para el cliente final.
+   * La lógica compartida (CSS + construcción del ícono) vive en shared/utils/live-truck-marker.ts.
    */
-  private injectLiveMarkerStyles(): void {
-    if (document.getElementById('sigo-live-truck-styles')) return;
-    const style = document.createElement('style');
-    style.id = 'sigo-live-truck-styles';
-    style.textContent = `
-      .sigo-truck-wrap { display:flex; flex-direction:column; align-items:center; gap:2px; }
-      .sigo-truck-circle {
-        width:42px; height:42px; border-radius:50%;
-        border:3px solid rgba(255,255,255,0.95);
-        display:flex; align-items:center; justify-content:center;
-        font-size:20px; position:relative; cursor:pointer;
-        transition: background 0.4s ease;
-      }
-      .sigo-truck-badge {
-        font-size:9px; font-weight:700; color:white;
-        padding:2px 6px; border-radius:6px;
-        white-space:nowrap; letter-spacing:0.4px;
-        box-shadow:0 1px 4px rgba(0,0,0,0.3);
-      }
-      .sigo-truck-moving .sigo-truck-circle {
-        background:#2563eb;
-        animation: sigoTruckPulse 2s ease-in-out infinite;
-      }
-      .sigo-truck-moving .sigo-truck-badge  { background:#1d4ed8; }
-      .sigo-truck-stopped .sigo-truck-circle {
-        background:#f59e0b;
-        box-shadow:0 3px 14px rgba(245,158,11,0.5);
-      }
-      .sigo-truck-stopped .sigo-truck-badge  { background:#d97706; }
-      .sigo-truck-nosignal .sigo-truck-circle {
-        background:#64748b;
-        box-shadow:0 3px 14px rgba(100,116,139,0.35);
-        opacity:0.85;
-      }
-      .sigo-truck-nosignal .sigo-truck-badge { background:#475569; }
-      @keyframes sigoTruckPulse {
-        0%,100% { box-shadow:0 3px 14px rgba(37,99,235,0.55), 0 0 0 0   rgba(37,99,235,0.35); }
-        60%     { box-shadow:0 3px 14px rgba(37,99,235,0.55), 0 0 0 14px rgba(37,99,235,0);   }
-      }
-    `;
-    document.head.appendChild(style);
-  }
-
-  /**
-   * Crea el ícono Leaflet del camión en vivo con apariencia diferenciada según estado.
-   * @param state   'moving' | 'stopped' | 'no_signal'
-   * @param edadMin Minutos desde el último punto GPS
-   */
-  private buildLiveTruckIcon(state: 'moving' | 'stopped' | 'no_signal', edadMin: number): L.DivIcon {
-    this.injectLiveMarkerStyles();
-    const labels: Record<typeof state, string> = {
-      moving:    '▶ En movimiento',
+  private buildClientTruckIcon(state: LiveTruckState, edadMin: number): L.DivIcon {
+    return buildLiveTruckIcon(state, edadMin, {
       stopped:   `⏸ Lento/detenido · ${Math.round(edadMin)}m`,
       no_signal: edadMin > 0 ? `📡 Sin señal · ${Math.round(edadMin)}m` : '📡 Sin señal'
-    };
-    const clsMap: Record<typeof state, string> = {
-      moving:    'sigo-truck-moving',
-      stopped:   'sigo-truck-stopped',
-      no_signal: 'sigo-truck-nosignal'
-    };
-    const html = `<div class="sigo-truck-wrap ${clsMap[state]}">
-      <div class="sigo-truck-circle">🚛</div>
-      <div class="sigo-truck-badge">${labels[state]}</div>
-    </div>`;
-    return L.divIcon({
-      className: '',
-      html,
-      iconSize:    [88, 60],
-      iconAnchor:  [44, 21],
-      popupAnchor: [0, -24]
     });
   }
 }
-

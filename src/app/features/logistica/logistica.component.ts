@@ -22,6 +22,7 @@ import { DividerModule } from 'primeng/divider';
 import { QRCodeModule } from 'angularx-qrcode';
 import * as pako from 'pako';
 import { PeruDatePipe } from '../../shared/pipes/peru-date.pipe';
+import { buildLiveTruckIcon } from '../../shared/utils/live-truck-marker';
 
 @Component({
   selector: 'app-logistica',
@@ -655,6 +656,72 @@ export class LogisticaComponent implements OnInit, OnDestroy {
     }
   }
 
+  // ─── Caché local (offline-first) para el modal de ruta ─────────────────────
+  // Guarda la última instantánea conocida de la auditoría para que la información
+  // NO dependa de que el chofer (o el despachador) tenga internet: si una consulta
+  // falla o el modal se reabre sin conexión, se reconstruye la vista con lo último
+  // obtenido en lugar de mostrar "Mapa Vacío" / "Sin Viajes".
+
+  private cacheKeyRuta(): string {
+    return 'wm_ruta_cache_' + (this.selectedPedidoParaRuta?.id || '');
+  }
+
+  private guardarCacheRuta() {
+    if (!this.selectedPedidoParaRuta) return;
+    try {
+      const snapshot = {
+        puntosRuta: this.puntosRuta,
+        entregasRuta: this.entregasRuta,
+        viajesAuditoria: this.viajesAuditoria.map(v => ({
+          numero_viaje_secuencial: v.numero_viaje_secuencial,
+          despacho: v.despacho || null,
+          chofer: v.chofer || null,
+          mapaColor: v.mapaColor || null,
+          mapaPuntos: v.mapaPuntos || [],
+          gpsPuntos: v.gpsPuntos || [],
+          eventosTimeline: v.eventosTimeline || []
+        })),
+        historialTracking: this.historialTracking,
+        guardadoEn: Date.now()
+      };
+      localStorage.setItem(this.cacheKeyRuta(), JSON.stringify(snapshot));
+    } catch (e) {
+      // Cuota llena u otro error: el caché es opcional, nunca bloquear el flujo.
+      console.warn('[Logistica] No se pudo guardar el caché de la ruta:', e);
+    }
+  }
+
+  private cargarCacheRuta(): boolean {
+    if (!this.selectedPedidoParaRuta) return false;
+    try {
+      const raw = localStorage.getItem(this.cacheKeyRuta());
+      if (!raw) return false;
+      const snap = JSON.parse(raw);
+      if (!snap || !Array.isArray(snap.viajesAuditoria) || snap.viajesAuditoria.length === 0) return false;
+
+      this.puntosRuta = Array.isArray(snap.puntosRuta) ? snap.puntosRuta : [];
+      this.entregasRuta = Array.isArray(snap.entregasRuta) ? snap.entregasRuta : [];
+      this.viajesAuditoria = snap.viajesAuditoria;
+
+      // JSON convierte las fechas en strings; normalizar para que el ordenamiento
+      // y el cálculo de ETA funcionen (necesitan objetos Date reales).
+      this.historialTracking = (snap.historialTracking || []).map((h: any) => ({
+        ...h,
+        timestamp: h.timestamp ? new Date(h.timestamp) : h.timestamp
+      }));
+      this.viajesAuditoria.forEach(v => {
+        if (v?.gpsPuntos) {
+          v.gpsPuntos.forEach((p: any) => { if (p?.timestamp) p.timestamp = new Date(p.timestamp); });
+        }
+      });
+
+      return true;
+    } catch (e) {
+      console.warn('[Logistica] No se pudo restaurar el caché de la ruta:', e);
+      return false;
+    }
+  }
+
   async abrirRutaChofer(pedido: any) {
     this.selectedPedidoParaRuta = pedido;
     this.displayRutaModal = true;
@@ -664,6 +731,16 @@ export class LogisticaComponent implements OnInit, OnDestroy {
     this.viajesAuditoria = [];
     this.expandedViajeMap = {};
     this.mapFocus = null;
+
+    // OFFLINE-FIRST: restaurar el último estado conocido de este pedido desde el
+    // caché local para que el mapa y el historial nunca aparezcan vacíos mientras
+    // se carga, ni si la red del despachador o del chofer está caída.
+    this.cargarCacheRuta();
+    this.viajesAuditoria.forEach((v, idx) => {
+      if (this.expandedViajeMap[v.numero_viaje_secuencial] === undefined) {
+        this.expandedViajeMap[v.numero_viaje_secuencial] = (idx === 0);
+      }
+    });
 
     // PREVENCIÓN DE FUGAS DE MEMORIA: Limpiar subscripciones e intervalos previos si los hubiese
     if (this.rutaRealtimeChannel) {
@@ -734,9 +811,20 @@ export class LogisticaComponent implements OnInit, OnDestroy {
   async refrescarDatosRuta() {
     if (!this.selectedPedidoParaRuta) return;
 
+    // ────────────────────────────────────────────────────────────────────────
+    // OFFLINE-FIRST: cada consulta maneja su propio error. Si una fuente falla
+    // (red intermitente del despachador o del chofer), se conserva el último
+    // estado conocido en memoria y en el caché local en lugar de tratarla como
+    // "no hay datos". Antes, un error de red devolvía `data: null` y eso borraba
+    // el icono del camión en vivo y el historial de viajes del modal.
+    // ────────────────────────────────────────────────────────────────────────
+    let despachosData: any[] | null = null;
+    let gpsData: any[] | null = null;
+    let entregasData: any[] | null = null;
+
     try {
       // 1. Obtener datos del Despacho (Salidas desde la Planta)
-      const { data: despachosData } = await this.supabase
+      const rDespachos = await this.supabase
         .from('despachos_viajes_cabecera')
         .select(`
           *,
@@ -754,46 +842,105 @@ export class LogisticaComponent implements OnInit, OnDestroy {
         .eq('pedido_id', this.selectedPedidoParaRuta.id)
         .order('numero_viaje_secuencial', { ascending: true });
 
+      if (rDespachos.error) {
+        console.warn('[Logistica] Error al obtener despachos (se conservan los últimos conocidos):', rDespachos.error);
+      } else {
+        despachosData = rDespachos.data;
+      }
+
       // 2. Obtener puntos GPS del chofer (consultar TODOS los del pedido, porque offline pueden no tener sesion_id)
-      const { data: gpsData } = await this.supabase
+      const rGps = await this.supabase
           .from('rutas_gps')
           .select('*')
           .eq('pedido_id', this.selectedPedidoParaRuta.id)
           .order('timestamp', { ascending: true });
-        
-      if (gpsData) {
-        this.puntosRuta = gpsData.filter(p => p.latitud && p.longitud && p.latitud !== 0 && p.longitud !== 0);
+
+      if (rGps.error) {
+        console.warn('[Logistica] Error al obtener GPS (se conserva la última ruta conocida):', rGps.error);
+      } else {
+        gpsData = rGps.data;
+        // Solo reemplazar la ruta si la consulta tuvo éxito (no en errores de red)
+        this.puntosRuta = (gpsData || []).filter(p => p.latitud && p.longitud && p.latitud !== 0 && p.longitud !== 0);
       }
 
       // 3. Obtener entregas del chofer (Llegadas al cliente)
-      const { data: entregasData } = await this.supabase
+      const rEntregas = await this.supabase
         .from('viajes_entregas')
         .select('*, chofer:usuarios(nombre_completo)')
         .eq('pedido_id', this.selectedPedidoParaRuta.id)
         .order('created_at', { ascending: true });
 
-      if (entregasData) {
-        this.entregasRuta = entregasData.filter(e => e.latitud && e.longitud && e.latitud !== 0 && e.longitud !== 0);
+      if (rEntregas.error) {
+        console.warn('[Logistica] Error al obtener entregas (se conservan las últimas conocidas):', rEntregas.error);
+      } else {
+        entregasData = rEntregas.data;
+        this.entregasRuta = (entregasData || []).filter(e => e.latitud && e.longitud && e.latitud !== 0 && e.longitud !== 0);
       }
+    } catch (e: any) {
+      // Error inesperado (p. ej. red caída): NO borrar nada. Seguimos mostrando
+      // el mapa, el camión en vivo y el historial con lo último conocido.
+      console.warn('[Logistica] Error al refrescar datos de ruta (se reintentará):', e);
+    }
 
+    // Si no se pudo obtener NINGUNA fuente, no hay nada nuevo que consolidar:
+    // mantener el estado actual (memoria + caché) y seguir actualizando el
+    // marcador vivo y el ETA con la última posición conocida.
+    if (despachosData === null && gpsData === null && entregasData === null) {
+      setTimeout(() => {
+        this.initBaseMap();
+        this.renderMap(!this.mapInitialBoundsDone);
+      }, 300);
+      this.calcularETAActual();
+      return;
+    }
+
+    try {
       // 4. Consolidar para Auditoría visual (Tarjetas)
       const consolidadosMap = new Map<number, any>();
-      
-      // Registrar despachos
-      (despachosData || []).forEach(d => {
-        const num = d.numero_viaje_secuencial || 1;
-        consolidadosMap.set(num, { numero_viaje_secuencial: num, despacho: d, chofer: null });
-      });
-      
-      // Registrar entregas
-      (entregasData || []).forEach(c => {
-        const num = c.numero_viaje_secuencial || 1;
-        if (consolidadosMap.has(num)) {
-          consolidadosMap.get(num).chofer = c;
-        } else {
-          consolidadosMap.set(num, { numero_viaje_secuencial: num, despacho: null, chofer: c });
-        }
-      });
+
+      // Registrar despachos (solo si la consulta fue exitosa; si falló, reutilizar
+      // los despachos en memoria para no perder el historial ni el estado EN RUTA
+      // que mantiene vivo el marcador del camión).
+      if (despachosData !== null) {
+        (despachosData || []).forEach(d => {
+          const num = d.numero_viaje_secuencial || 1;
+          consolidadosMap.set(num, { numero_viaje_secuencial: num, despacho: d, chofer: null });
+        });
+      } else {
+        this.viajesAuditoria.forEach(v => {
+          if (v?.despacho) {
+            consolidadosMap.set(v.numero_viaje_secuencial, {
+              numero_viaje_secuencial: v.numero_viaje_secuencial,
+              despacho: v.despacho,
+              chofer: v.chofer || null
+            });
+          }
+        });
+      }
+
+      // Registrar entregas (solo si la consulta fue exitosa; si falló, conservar
+      // las entregas en memoria para no perder el historial).
+      if (entregasData !== null) {
+        (entregasData || []).forEach(c => {
+          const num = c.numero_viaje_secuencial || 1;
+          if (consolidadosMap.has(num)) {
+            consolidadosMap.get(num).chofer = c;
+          } else {
+            consolidadosMap.set(num, { numero_viaje_secuencial: num, despacho: null, chofer: c });
+          }
+        });
+      } else {
+        this.viajesAuditoria.forEach(v => {
+          if (v?.chofer) {
+            const num = v.numero_viaje_secuencial;
+            if (consolidadosMap.has(num)) {
+              consolidadosMap.get(num).chofer = v.chofer;
+            } else {
+              consolidadosMap.set(num, { numero_viaje_secuencial: num, despacho: null, chofer: v.chofer });
+            }
+          }
+        });
+      }
 
       // Incorporar viajes que solo tengan puntos GPS pero ningún despacho ni entrega aún en la nube (flujo en progreso)
       (this.puntosRuta || []).forEach(p => {
@@ -945,6 +1092,10 @@ export class LogisticaComponent implements OnInit, OnDestroy {
           }
         });
       }
+
+      // Guardar instantánea local (offline-first): permite reconstruir el mapa y
+      // el historial aunque la red del despachador o del chofer esté caída.
+      this.guardarCacheRuta();
 
       // Abrir el primer viaje expandido si aún no hay ninguno abierto
       this.viajesAuditoria.forEach((v, idx) => {
@@ -1291,7 +1442,7 @@ export class LogisticaComponent implements OnInit, OnDestroy {
         markerState = 'moving';
       }
 
-      const icon = this.buildLiveTruckIcon(markerState, edadMin);
+      const icon = buildLiveTruckIcon(markerState, edadMin);
       const popupText = markerState === 'moving'
         ? '🚛 Chofer en movimiento'
         : markerState === 'stopped'
@@ -1453,89 +1604,6 @@ export class LogisticaComponent implements OnInit, OnDestroy {
     return this.mapFocus?.type === 'punto'
       && (this.mapFocus as any).lat === lat
       && (this.mapFocus as any).lng === lng;
-  }
-
-  // ─── Helpers de ícono de camión en vivo ──────────────────────────────────
-
-  /**
-   * Inyecta los estilos CSS del marcador de camión en vivo (una sola vez en <head>).
-   * Se usa en lugar del SCSS del componente para que los estilos alcancen
-   * los elementos creados dinámicamente por Leaflet fuera del shadow DOM.
-   */
-  private injectLiveMarkerStyles(): void {
-    if (document.getElementById('sigo-live-truck-styles')) return;
-    const style = document.createElement('style');
-    style.id = 'sigo-live-truck-styles';
-    style.textContent = `
-      .sigo-truck-wrap { display:flex; flex-direction:column; align-items:center; gap:2px; }
-      .sigo-truck-circle {
-        width:42px; height:42px; border-radius:50%;
-        border:3px solid rgba(255,255,255,0.95);
-        display:flex; align-items:center; justify-content:center;
-        font-size:20px; position:relative; cursor:pointer;
-        transition: background 0.4s ease;
-      }
-      .sigo-truck-badge {
-        font-size:9px; font-weight:700; color:white;
-        padding:2px 6px; border-radius:6px;
-        white-space:nowrap; letter-spacing:0.4px;
-        box-shadow:0 1px 4px rgba(0,0,0,0.3);
-      }
-      /* En movimiento — azul pulsante */
-      .sigo-truck-moving .sigo-truck-circle {
-        background:#2563eb;
-        animation: sigoTruckPulse 2s ease-in-out infinite;
-      }
-      .sigo-truck-moving .sigo-truck-badge  { background:#1d4ed8; }
-      /* Detenido — ámbar */
-      .sigo-truck-stopped .sigo-truck-circle {
-        background:#f59e0b;
-        box-shadow:0 3px 14px rgba(245,158,11,0.5);
-      }
-      .sigo-truck-stopped .sigo-truck-badge  { background:#d97706; }
-      /* Sin señal — gris pizarra */
-      .sigo-truck-nosignal .sigo-truck-circle {
-        background:#64748b;
-        box-shadow:0 3px 14px rgba(100,116,139,0.35);
-        opacity:0.85;
-      }
-      .sigo-truck-nosignal .sigo-truck-badge { background:#475569; }
-      @keyframes sigoTruckPulse {
-        0%,100% { box-shadow:0 3px 14px rgba(37,99,235,0.55), 0 0 0 0   rgba(37,99,235,0.35); }
-        60%     { box-shadow:0 3px 14px rgba(37,99,235,0.55), 0 0 0 14px rgba(37,99,235,0);   }
-      }
-    `;
-    document.head.appendChild(style);
-  }
-
-  /**
-   * Crea el ícono Leaflet del camión en vivo con apariencia diferenciada según estado.
-   * @param state   'moving' | 'stopped' | 'no_signal'
-   * @param edadMin Minutos desde el último punto GPS (para el badge)
-   */
-  private buildLiveTruckIcon(state: 'moving' | 'stopped' | 'no_signal', edadMin: number): L.DivIcon {
-    this.injectLiveMarkerStyles();
-    const labels: Record<typeof state, string> = {
-      moving:    '▶ En movimiento',
-      stopped:   `⏸ Detenido · ${Math.round(edadMin)}m`,
-      no_signal: `📡 Sin señal · ${Math.round(edadMin)}m`
-    };
-    const clsMap: Record<typeof state, string> = {
-      moving:    'sigo-truck-moving',
-      stopped:   'sigo-truck-stopped',
-      no_signal: 'sigo-truck-nosignal'
-    };
-    const html = `<div class="sigo-truck-wrap ${clsMap[state]}">
-      <div class="sigo-truck-circle">🚛</div>
-      <div class="sigo-truck-badge">${labels[state]}</div>
-    </div>`;
-    return L.divIcon({
-      className: '',
-      html,
-      iconSize:     [88, 60],
-      iconAnchor:   [44, 21],
-      popupAnchor:  [0, -24]
-    });
   }
 
   // ──────────────────────────────────────────────────────────────────────────

@@ -7,8 +7,8 @@ import { authGuard } from './core/guards/auth.guard';
 export const routes: Routes = [
   { path: 'login', component: LoginComponent, canActivate: [authGuard] },
   {
-    path: 'rastreo/:token',
-    loadComponent: () => import('./features/rastreo/rastreo.component').then(m => m.RastreoComponent)
+    path: 'rastreo-cliente/:token',
+    loadComponent: () => import('./features/rastreo-cliente/rastreo-cliente.component').then(m => m.RastreoClienteComponent)
   },
   {
     path: '',

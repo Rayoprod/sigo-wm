@@ -281,7 +281,7 @@ export class ComercialListComponent implements OnInit {
   }
 
   compartirWhatsApp(pedido: any) {
-    const trackingUrl = `https://sigo-wm.vercel.app/rastreo/${pedido.tracking_token || pedido.folio}`;
+    const trackingUrl = `https://sigo-wm.vercel.app/rastreo-cliente/${pedido.tracking_token || pedido.folio}`;
     const text = `Hola, somos W&M. Tu pedido ${pedido.folio} está en curso. Sigue la ruta en vivo aquí: ${trackingUrl}`;
     const url = `https://wa.me/?text=${encodeURIComponent(text)}`;
     window.open(url, '_blank');

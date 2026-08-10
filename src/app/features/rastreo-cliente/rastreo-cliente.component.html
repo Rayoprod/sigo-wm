@@ -1,5 +1,5 @@
-<div class="rastreo-bg-gradient">
-  <div class="rastreo-container">
+<div class="rastreo-cliente-bg-gradient">
+  <div class="rastreo-cliente-container">
     
     <!-- LOADER STATE -->
     <div *ngIf="loading" class="loader-glass-card">
@@ -54,7 +54,7 @@
         <!-- LIVE GPS TRACKING & ETA CARD - Solo visible cuando hay viaje activo EN RUTA -->
         <section *ngIf="isDispatched && !esCantera" class="live-tracking-section">
           <div class="map-container">
-            <div id="rastreo-map" class="rastreo-map"></div>
+            <div id="rastreo-cliente-map" class="rastreo-cliente-map"></div>
             
             <!-- Aviso mientras no llega señal GPS del chofer -->
             <div class="gps-waiting-note" *ngIf="!gpsDisponible">
