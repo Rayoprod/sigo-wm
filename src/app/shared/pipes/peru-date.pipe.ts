@@ -48,6 +48,9 @@ export class PeruDatePipe implements PipeTransform {
     format: string = 'dd/MM/yyyy HH:mm'
   ): string | null {
     if (value == null) return null;
+    if (typeof value === 'string') {
+      value = value.replace(' ', 'T');
+    }
     return this.datePipe.transform(value, format, PERU_TIMEZONE) ?? null;
   }
 }

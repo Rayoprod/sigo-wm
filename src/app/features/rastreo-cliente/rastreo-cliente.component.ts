@@ -87,13 +87,13 @@ export class RastreoClienteComponent implements OnInit, OnDestroy {
     this.http.get(url).subscribe({
       next: (data: any) => {
         // Normalizar fechas para Safari (reemplazar espacio por T en timestamps SQL)
-        if (data.fecha_pedido) data.fecha_pedido = data.fecha_pedido.replace(' ', 'T');
-        if (data.eventos) {
+        if (typeof data.fecha_pedido === 'string') data.fecha_pedido = data.fecha_pedido.replace(' ', 'T');
+        if (Array.isArray(data.eventos)) {
           data.eventos.forEach((evento: any) => {
-            if (evento.timestamp) evento.timestamp = evento.timestamp.replace(' ', 'T');
+            if (typeof evento?.timestamp === 'string') evento.timestamp = evento.timestamp.replace(' ', 'T');
           });
         }
-        if (data.gps_actual && data.gps_actual.timestamp) {
+        if (typeof data.gps_actual?.timestamp === 'string') {
             data.gps_actual.timestamp = data.gps_actual.timestamp.replace(' ', 'T');
         }
 

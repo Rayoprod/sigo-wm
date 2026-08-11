@@ -1450,12 +1450,21 @@ export class LogisticaComponent implements OnInit, OnDestroy {
       : this.puntosRuta;
 
     if (viajeActivoVivo && !pedidoTerminado && gpsVivo.length > 0) {
+      const parseTs = (ts: any): number => {
+        if (!ts) return 0;
+        if (typeof ts === 'string') ts = ts.replace(' ', 'T');
+        const t = new Date(ts).getTime();
+        return Number.isNaN(t) ? 0 : t;
+      };
+
       const sorted = [...gpsVivo].sort(
-        (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+        (a, b) => parseTs(b.timestamp) - parseTs(a.timestamp)
       );
       const ultimo  = sorted[0];
-      const edadMs  = Date.now() - new Date(ultimo.timestamp).getTime();
+      const ultimoTs = parseTs(ultimo?.timestamp);
+      const edadMs  = ultimoTs > 0 ? Date.now() - ultimoTs : 999999;
       const edadMin = edadMs / 60000;
+      const safeEdadMin = Number.isFinite(edadMin) && edadMin >= 0 ? Math.round(edadMin) : 0;
 
         const lv: L.LatLngTuple = [ultimo.latitud, ultimo.longitud];
 
@@ -1466,7 +1475,8 @@ export class LogisticaComponent implements OnInit, OnDestroy {
       } else if (sorted.length >= 2) {
         const prev = sorted[1];
         const d = this.haversineKm(prev.latitud, prev.longitud, ultimo.latitud, ultimo.longitud);
-        const t = (new Date(ultimo.timestamp).getTime() - new Date(prev.timestamp).getTime()) / 3_600_000;
+        const prevTs = parseTs(prev?.timestamp);
+        const t = (ultimoTs > 0 && prevTs > 0) ? (ultimoTs - prevTs) / 3_600_000 : 0;
         const vel = t > 0 ? d / t : 0;
         markerState = vel < 3 ? 'stopped' : 'moving';
       } else {
@@ -1477,8 +1487,8 @@ export class LogisticaComponent implements OnInit, OnDestroy {
       const popupText = markerState === 'moving'
         ? '🚛 Chofer en movimiento'
         : markerState === 'stopped'
-        ? `⏸ Chofer detenido · ${Math.round(edadMin)} min sin desplazamiento`
-        : `📡 Sin señal GPS · última posición hace ${Math.round(edadMin)} min`;
+        ? `⏸ Chofer detenido · ${safeEdadMin} min sin desplazamiento`
+        : `📡 Sin señal GPS · última posición hace ${safeEdadMin} min`;
 
       if (this.liveMarker) {
         this.liveMarker.setLatLng(lv);

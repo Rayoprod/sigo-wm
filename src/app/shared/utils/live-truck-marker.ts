@@ -74,10 +74,12 @@ export function buildLiveTruckIcon(
 ): L.DivIcon {
   injectLiveMarkerStyles();
 
+  const safeEdad = Number.isFinite(edadMin) && edadMin >= 0 ? Math.round(edadMin) : 0;
+
   const defaultLabels: Record<LiveTruckState, string> = {
     moving:    '▶ En movimiento',
-    stopped:   `⏸ Detenido · ${Math.round(edadMin)}m`,
-    no_signal: `📡 Sin señal · ${Math.round(edadMin)}m`
+    stopped:   `⏸ Detenido · ${safeEdad}m`,
+    no_signal: `📡 Sin señal · ${safeEdad}m`
   };
 
   const clsMap: Record<LiveTruckState, string> = {

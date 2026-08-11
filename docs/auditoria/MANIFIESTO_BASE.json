@@ -1,5 +1,5 @@
 {
-    "generado": "2026-08-11T18:17:37Z",
+    "generado": "2026-08-11T18:24:26Z",
     "archivos": [
         {
             "path": "sigo-wm/api/chat.ts",
@@ -273,9 +273,9 @@
         },
         {
             "path": "sigo-wm/src/app/features/logistica/logistica.component.ts",
-            "sha256": "6b9c0e04864ada208e9624cac7d8bd7ed77c878cb3a880034efe85439c54096b",
-            "lineas": 1829,
-            "mtime": "2026-08-11T08:07:05Z"
+            "sha256": "10621d9886f3888942cfdc0bdbbe1b75bda582b89e03a1f61829322a6d2d7881",
+            "lineas": 1839,
+            "mtime": "2026-08-11T13:24:09Z"
         },
         {
             "path": "sigo-wm/src/app/features/rastreo-cliente/rastreo-cliente.component.html",
@@ -291,9 +291,9 @@
         },
         {
             "path": "sigo-wm/src/app/features/rastreo-cliente/rastreo-cliente.component.ts",
-            "sha256": "6243c227203b8d68dd7c477b939f94599daf32e6b9b20dc1efe495584ef43c46",
+            "sha256": "d672924c0e387416246bc85e301364ef95795df3c09417f65973c8a5cf51b171",
             "lineas": 481,
-            "mtime": "2026-08-10T14:30:38Z"
+            "mtime": "2026-08-11T13:24:03Z"
         },
         {
             "path": "sigo-wm/src/app/features/reportes/reportes.component.html",
@@ -363,9 +363,9 @@
         },
         {
             "path": "sigo-wm/src/app/shared/pipes/peru-date.pipe.ts",
-            "sha256": "a149bc1c11e62c15a1627c112b3d721f82a826010cefe7bdebac58e224100980",
-            "lineas": 53,
-            "mtime": "2026-08-08T10:27:48Z"
+            "sha256": "919b72ade4d569c8f4d1475776409fb160d3c6623e364c4f6aa6caac4dfb422d",
+            "lineas": 56,
+            "mtime": "2026-08-11T13:23:53Z"
         },
         {
             "path": "sigo-wm/src/app/shared/utils/documento-identidad.ts",
@@ -375,9 +375,9 @@
         },
         {
             "path": "sigo-wm/src/app/shared/utils/live-truck-marker.ts",
-            "sha256": "73f974b5be93774248b125507d20fd6c6ad8d82979ae49578bafc3cb341dd484",
-            "lineas": 102,
-            "mtime": "2026-08-10T14:30:20Z"
+            "sha256": "46b29adf1e91afbbabe174b11f337d731689aefc93957f383c9086d125198606",
+            "lineas": 104,
+            "mtime": "2026-08-11T13:23:58Z"
         },
         {
             "path": "sigo-wm/src/assets/themes/lara-dark-teal/theme.css",
@@ -543,9 +543,9 @@
         },
         {
             "path": "sigo_wm_mobile/lib/features/chofer/services/background_gps_service.dart",
-            "sha256": "3f0d1f00a267643b8c758debbbf7b348c84b0cdcc99d281ad64a60ab9a784053",
+            "sha256": "a87bd3588c2920d9a0c9b5e0a4841298f5b0fd59efbe749f2e7be0fd2a66d6df",
             "lineas": 677,
-            "mtime": "2026-08-11T05:20:23Z"
+            "mtime": "2026-08-11T13:23:48Z"
         },
         {
             "path": "sigo_wm_mobile/lib/features/chofer/services/chofer_local_service.dart",
@@ -573,15 +573,15 @@
         },
         {
             "path": "sigo_wm_mobile/lib/features/chofer/services/rutas_local_service.dart",
-            "sha256": "02080c20e019872978711e900c843600fa7aa19756819b2823824b89b16bd30e",
-            "lineas": 149,
-            "mtime": "2026-07-18T18:04:45Z"
+            "sha256": "6786f094155af2ca47d77f03e8200d983251aefbebe9a0e8270e8cf9effc4831",
+            "lineas": 186,
+            "mtime": "2026-08-11T13:23:39Z"
         },
         {
             "path": "sigo_wm_mobile/lib/features/chofer/services/sesiones_local_service.dart",
-            "sha256": "28c497a1637e8ea9b0feefb82f74541bf1ce631963992be9ef8dfc2566838052",
-            "lineas": 272,
-            "mtime": "2026-08-11T02:47:28Z"
+            "sha256": "4187174518a29e13a9ea7975a4a11fdb8a339a68aaa18cb8fcdbdd4f57faa5d7",
+            "lineas": 280,
+            "mtime": "2026-08-11T13:23:33Z"
         },
         {
             "path": "sigo_wm_mobile/lib/features/despachos/models/viaje_offline.dart",
