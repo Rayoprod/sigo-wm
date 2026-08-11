@@ -340,9 +340,15 @@ export class LogisticaComponent implements OnInit, OnDestroy {
       lng: null,
       fotosFiles: [],
       items: (this.itemsDelPedidoMap[pedido.id] || []).map((item: any) => {
-        // La base de datos ya suma todo en cantidad_despachada mediante el trigger, 
-        // no debemos volver a restar lo que está 'en tránsito'
-        const restante = Number(item.cantidad) - Number(item.cantidad_despachada || 0);
+        // La base de datos ya suma todo en cantidad_despachada mediante el trigger,
+        // no debemos volver a restar lo que está 'en tránsito'.
+        // Redondeamos a 3 decimales (misma precisión de cantidades que usa la app
+        // Flutter) para evitar residuos de punto flotante del tipo
+        // 3 - 2.9999999999999996 = 4.440892098500626e-16, que creaban un
+        // "pendiente de envío" fantasma y bloqueaban el botón de despacho.
+        const cantidadTotal = this.round3(Number(item.cantidad) || 0);
+        const despachado = this.round3(Number(item.cantidad_despachada) || 0);
+        const restante = this.round3(cantidadTotal - despachado);
         return {
           id: item.id,
           descripcion: item.productos?.descripcion || item.descripcion_manual,
@@ -355,6 +361,11 @@ export class LogisticaComponent implements OnInit, OnDestroy {
 
     // Solicitar GPS automáticamente al abrir el modal
     this.capturarGPS();
+  }
+
+  /** Redondea a 3 decimales (misma precisión de cantidades que usa la app Flutter). */
+  private round3(valor: number): number {
+    return Math.round((valor + Number.EPSILON) * 1000) / 1000;
   }
 
   capturarGPS() {
@@ -480,7 +491,7 @@ export class LogisticaComponent implements OnInit, OnDestroy {
         pi: d?.pedido_item_id || '',
         cv: Number(d?.cantidad_viaje) || 0,
         desc: d?.pedidos_items?.productos?.descripcion || d?.pedidos_items?.descripcion_manual || d?.descripcion || 'Material',
-        um: d?.pedidos_items?.productos?.unidad_medida || d?.pedidos_items?.unidad_medida_manual || d?.unidad_medida || 'UN'
+        um: d?.pedidos_items?.productos?.unidad_medida || d?.pedidos_items?.unidad_medida_manual || d?.unidad_medida || 'UND'
       }))
     };
 
@@ -583,6 +594,15 @@ export class LogisticaComponent implements OnInit, OnDestroy {
           secIntent = Number(maxViajeData2[0].numero_viaje_secuencial) + 1;
         }
 
+        // CANTERA (recojo en planta): la app móvil crea estos viajes directamente
+        // como ENTREGADO y con lugar_entrega='CANTERA'. Replicamos la misma regla
+        // de dominio en la web para evitar divergencias (antes se creaban como
+        // 'ASIGNADO' y sin lugar_entrega, rompiendo el tracking en rastreo-cliente
+        // y dejando viajes huérfanos que nunca pasaban por recepción/entrega).
+        const esCantera =
+          this.selectedPedido!.tipo_entrega === 'CANTERA' ||
+          this.selectedPedido!.lugar_entrega === 'CANTERA';
+
         const res = await this.supabase
           .from('despachos_viajes_cabecera')
           .insert({
@@ -590,7 +610,8 @@ export class LogisticaComponent implements OnInit, OnDestroy {
             despachador_id: user?.id,
             placa_vehiculo: this.viajeForm.placa?.trim().toUpperCase(),
             numero_viaje_secuencial: secIntent,
-            estado_viaje: 'ASIGNADO',
+            estado_viaje: esCantera ? 'ENTREGADO' : 'ASIGNADO',
+            lugar_entrega: this.selectedPedido!.lugar_entrega || null,
             latitud: this.viajeForm.lat,
             longitud: this.viajeForm.lng,
             fotos_urls: fotosUrls
@@ -612,11 +633,21 @@ export class LogisticaComponent implements OnInit, OnDestroy {
       // 3. Insertar Detalles
       const detallesAInsertar = this.viajeForm.items
         .filter(i => i.cantidad_viaje > 0)
-        .map(i => ({
-          viaje_id: cabeceraData.id,
-          pedido_item_id: i.id,
-          cantidad_viaje: i.cantidad_viaje
-        }));
+        .map(i => {
+          // Clamp defensivo al pendiente real del ítem: evita insertar un
+          // sobrante de punto flotante (p.ej. 0.0000000000000004) que excedería
+          // la cantidad pedida y bloquearía el siguiente despacho.
+          const cantidad = Math.max(0, Math.min(
+            this.round3(Number(i.cantidad_viaje) || 0),
+            i.maxCantidad || 0
+          ));
+          return {
+            viaje_id: cabeceraData.id,
+            pedido_item_id: i.id,
+            cantidad_viaje: cantidad
+          };
+        })
+        .filter(d => d.cantidad_viaje > 0);
 
       if (detallesAInsertar.length > 0) {
         const { error: detalleError } = await this.supabase
