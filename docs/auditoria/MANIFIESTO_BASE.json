@@ -1,5 +1,5 @@
 {
-    "generado": "2026-08-11T18:33:36Z",
+    "generado": "2026-08-11T18:42:14Z",
     "archivos": [
         {
             "path": "sigo-wm/api/chat.ts",
@@ -21,9 +21,9 @@
         },
         {
             "path": "sigo-wm/api/reset-password.ts",
-            "sha256": "9f33fa909496e5a520ab7bde2e4dff4639f49153fc20c3a862ed3f81be0f5c07",
-            "lineas": 64,
-            "mtime": "2026-08-01T21:28:58Z"
+            "sha256": "218ac290fcbd7cb112f99d877ccafef369228f6c49305bc94e7c0da6f5329ad6",
+            "lineas": 96,
+            "mtime": "2026-08-11T13:40:24Z"
         },
         {
             "path": "sigo-wm/src/app/app.component.html",
@@ -219,9 +219,9 @@
         },
         {
             "path": "sigo-wm/src/app/features/configuracion/configuracion.component.ts",
-            "sha256": "bc6f336c5a20b8bec149564ee6095bae98452d9e44653261665eaf03d3b5ac8d",
-            "lineas": 374,
-            "mtime": "2026-08-08T17:20:53Z"
+            "sha256": "aa44fda34b7363f70a763256a29b314c9bf1157a5692420745a146193e948880",
+            "lineas": 379,
+            "mtime": "2026-08-11T13:40:33Z"
         },
         {
             "path": "sigo-wm/src/app/features/dashboard/dashboard.component.html",
@@ -291,9 +291,9 @@
         },
         {
             "path": "sigo-wm/src/app/features/rastreo-cliente/rastreo-cliente.component.ts",
-            "sha256": "d672924c0e387416246bc85e301364ef95795df3c09417f65973c8a5cf51b171",
-            "lineas": 481,
-            "mtime": "2026-08-11T13:24:03Z"
+            "sha256": "6ae583d28d24fd737a5099215f4b4dd9be155aa508b2ffe0386e87db4ec9bc66",
+            "lineas": 482,
+            "mtime": "2026-08-11T13:40:40Z"
         },
         {
             "path": "sigo-wm/src/app/features/reportes/reportes.component.html",
@@ -543,9 +543,9 @@
         },
         {
             "path": "sigo_wm_mobile/lib/features/chofer/services/background_gps_service.dart",
-            "sha256": "a87bd3588c2920d9a0c9b5e0a4841298f5b0fd59efbe749f2e7be0fd2a66d6df",
-            "lineas": 677,
-            "mtime": "2026-08-11T13:23:48Z"
+            "sha256": "1b49fe170f09796cc295d66ba78bf6a63e4e958e88892953db3b58436b9d7fc3",
+            "lineas": 675,
+            "mtime": "2026-08-11T13:40:55Z"
         },
         {
             "path": "sigo_wm_mobile/lib/features/chofer/services/chofer_local_service.dart",

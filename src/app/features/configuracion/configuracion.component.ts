@@ -200,9 +200,14 @@ export class ConfiguracionComponent implements OnInit {
       if (this.isEditingUser && this.usuarioEditId) {
         // Si ingresó contraseña, actualizarla usando el nuevo endpoint seguro
         if (this.nuevoUsuario.password) {
+          const session = this.authService.session();
+          const token = session?.access_token || '';
           const resetRes = await fetch('/api/reset-password', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${token}`
+            },
             body: JSON.stringify({
               userId: this.usuarioEditId,
               newPassword: this.nuevoUsuario.password

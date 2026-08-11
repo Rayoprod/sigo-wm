@@ -473,9 +473,10 @@ export class RastreoClienteComponent implements OnInit, OnDestroy {
    * La lógica compartida (CSS + construcción del ícono) vive en shared/utils/live-truck-marker.ts.
    */
   private buildClientTruckIcon(state: LiveTruckState, edadMin: number): L.DivIcon {
+    const safeEdad = Number.isFinite(edadMin) && edadMin >= 0 ? Math.round(edadMin) : 0;
     return buildLiveTruckIcon(state, edadMin, {
-      stopped:   `⏸ Lento/detenido · ${Math.round(edadMin)}m`,
-      no_signal: edadMin > 0 ? `📡 Sin señal · ${Math.round(edadMin)}m` : '📡 Sin señal'
+      stopped:   `⏸ Lento/detenido · ${safeEdad}m`,
+      no_signal: safeEdad > 0 ? `📡 Sin señal · ${safeEdad}m` : '📡 Sin señal'
     });
   }
 }
