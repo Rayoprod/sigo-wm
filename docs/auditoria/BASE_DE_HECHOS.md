@@ -1,7 +1,7 @@
 # 🛡️ BASE DE HECHOS PERSISTENTE Y ANTI-CONFABULACIÓN
 ## Ecosistema Sigo-WM (`sigo-wm` · `sigo_wm_mobile`)
 **Versión del Manifiesto:** `2026.08.11`  
-**Última Actualización:** 2026-08-11 13:16:30 UTC  
+**Última Actualización:** 2026-08-11 13:30:00 UTC  
 **Estado de Validación:** 🟢 TOTALMENTE VERIFICADO (Builds Angular/Flutter Clean · 24/24 Tests Passed)
 
 ---
