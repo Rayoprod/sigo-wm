@@ -1,7 +1,7 @@
 # 🛡️ BASE DE HECHOS PERSISTENTE Y ANTI-CONFABULACIÓN
 ## Ecosistema Sigo-WM (`sigo-wm` · `sigo_wm_mobile`)
 **Versión del Manifiesto:** `2026.08.11`  
-**Última Actualización:** 2026-08-11 13:30:00 UTC  
+**Última Actualización:** 2026-08-11 23:04:00 UTC  
 **Estado de Validación:** 🟢 TOTALMENTE VERIFICADO (Builds Angular/Flutter Clean · 24/24 Tests Passed)
 
 ---
@@ -49,6 +49,27 @@ El archivo binario estructurado `MANIFIESTO_BASE.json` contiene la huella digita
 4. **Trampa #4 — Archivos de Migración SQL Desplazados Fuera del Control de Versiones**:
    - **Error detectado:** La migración del RPC `ajustar_stock_atomico` residía en una subcarpeta accidental `Users/rwrb/developer/sigo-wm/supabase/migrations/`.
    - **Solución aplicada:** Se reubicó en `sigo-wm/supabase/migrations/20250201000000_ajustar_stock_atomico.sql` y se eliminó la carpeta sobrante.
+
+5. **Trampa #5 — Pérdida Silenciosa de Sesiones GPS Creadas Offline**:
+   - **Error detectado:** En `SesionesLocalService.cerrarSesion()` (`sesiones_local_service.dart` L104), se intentaba actualizar Supabase mediante `update({...}).eq('id', sesionId)`. Si la sesión fue creada en modo offline, la fila NO existía en Supabase aún, por lo que `update` afectaba 0 filas sin lanzar excepción y la app marcaba `sincronizado = 1` localmente, dejando la sesión huérfana y no sincronizada permanentemente en la nube.
+   - **Solución aplicada:** Se reemplazó `update` por `upsert` con la estructura de la sesión almacenada en SQLite local (`getSesion(sesionId)`).
+
+6. **Trampa #6 — Parseo de Timestamps SQL con Espacios en Safari / WebKit**:
+   - **Error detectado:** En `logistica.component.ts`, `rastreo-cliente.component.ts` y `peru-date.pipe.ts`, las fechas de SQL (`YYYY-MM-DD HH:mm:ss`) sin la letra `'T'` provocaban `Invalid Date` / `NaN` en Safari y navegadores basados en WebKit (iOS/macOS).
+   - **Solución aplicada:** Se centralizó la normalización en `PeruDatePipe` y componentes sustituyendo espacios por `'T'` (`replace(' ', 'T')`) y verificando `Number.isFinite` / `typeof === 'string'`.
+
+7. **Trampa #7 — Reset de Contraseña no Autenticado en Serverless Function `/api/reset-password`**:
+   - **Error detectado:** El handler Vercel `POST /api/reset-password` aceptaba `userId` y `newPassword` y llamaba a `supabaseAdmin.auth.admin.updateUserById` sin validar el token JWT de la solicitud ni verificar el rol `admin` o `superadmin`.
+   - **Solución aplicada:** Se agregó validación con `supabase.auth.getUser(token)` y consulta de rol a `public.usuarios` para restringir el uso de esta API exclusivamente a administradores autenticados. En Angular (`configuracion.component.ts`), se inyectó el header `Authorization: Bearer <token>`.
+
+8. **Trampa #8 — Omisión de `dias_credito` y `fecha_vencimiento` en Guardado de Ventas a Crédito**:
+   - **Error detectado:** En `comercial-form.component.ts` (L645-649) se calculaba `fecha_vencimiento` en memoria cuando `estado_pago === 'PARCIAL'`, pero no se pasaba `dias_credito` ni `fecha_vencimiento` en el objeto `pedidoData` persistido en Supabase.
+   - **Solución aplicada:** Se agregaron los campos `dias_credito` y `fecha_vencimiento` al objeto `pedidoData` en `comercial-form.component.ts`.
+
+9. **Trampa #9 — Filtro Incompleto de Entregas Offline en `ChoferLocalService` al Operar Sin Red**:
+   - **Error detectado:** En `ChoferLocalService.getPedidosActivos()` (`chofer_local_service.dart` L166 y L202), la lista de viajes completados para filtrar pedidos activos offline llamaba a `EntregasLocalService().getEntregasPendientes()` en lugar de `getAllEntregasLocales()`.
+   - **Causa raíz:** `getEntregasPendientes()` sólo busca registros con `sincronizado = 0`. Al perder la conexión a internet, las entregas que ya habían sido sincronizadas previamente (`sincronizado = 1`) no ingresaban al set `viajesEntregados`, haciendo que los viajes finalizados reaparecieran como pedidos activos en la pantalla del chofer.
+   - **Solución aplicada:** Se sustituyó `getEntregasPendientes()` por `getAllEntregasLocales()` en ambos bloques de fallback offline de `getPedidosActivos()`.
 
 ---
 
@@ -111,25 +132,35 @@ Los siguientes componentes fueron exhaustivamente auditados y se confirma su **v
 
 ## 🛠️ SECCIÓN 4: CORRECCIONES APLICADAS EN ESTA EJECUCIÓN
 
-1. **`sigo-wm/supabase/migrations/20250201000000_ajustar_stock_atomico.sql`**:
-   - **Problema:** Ubicación accidental fuera de la ruta de migraciones versionadas.
-   - **Cambio:** Mover a `sigo-wm/supabase/migrations/20250201000000_ajustar_stock_atomico.sql` y eliminar la carpeta `Users/`.
-   - **Verificación:** `npx tsc --noEmit` limpio, migración presente en la estructura del proyecto.
+1. **`sigo-wm/api/reset-password.ts` & `configuracion.component.ts`**:
+   - **Problema:** Vulnerabilidad crítica de seguridad por reset de contraseña no autenticado y sin verificación de rol administrador.
+   - **Cambio:** Agregada verificación de token JWT con `supabase.auth.getUser()` y verificación del rol `admin`/`superadmin` en la base de datos `public.usuarios` antes de invocar la API Admin de Supabase. Inyectado el header `Authorization: Bearer <access_token>` en `configuracion.component.ts`.
+   - **Verificación:** `npx tsc --noEmit` limpio, commit `c8e2c4b`.
 
-2. **`sigo_wm_mobile/lib/features/chofer/services/entregas_local_service.dart`**:
-   - **Problema:** Cambios de resiliencia y sync offline no commiteados en el repositorio de Git.
-   - **Cambio:** Commit realizado en la rama `main` (`commit a1bf443`).
+2. **`sigo-wm/src/app/features/rastreo-cliente/rastreo-cliente.component.ts`**:
+   - **Problema:** Formateo de etiquetas de tooltips podia generar cadenas `NaNm` si `edadMin` no era un número finito antes de enviarlo a `buildLiveTruckIcon`.
+   - **Cambio:** Cálculo defensivo con `Number.isFinite` y asignación previa a `safeEdad`.
+   - **Verificación:** `npx tsc --noEmit` limpio, commit `c8e2c4b`.
+
+3. **`sigo_wm_mobile/lib/features/chofer/services/background_gps_service.dart`**:
+   - **Problema:** Verificación estrecha de red `ConnectivityResult.mobile` o `wifi` no detectaba conexiones activas via Ethernet, VPN o Bluetooth en dispositivos móviles o emuladores.
+   - **Cambio:** Reemplazado por `!connectivity.every((element) => element == ConnectivityResult.none)`.
+   - **Verificación:** `flutter analyze` 0 issues, `flutter test` 24/24 passed, commit `4520f5a`.
+
+4. **`sigo-wm/src/app/features/comercial/comercial-form/comercial-form.component.ts`**:
+   - **Problema:** Omisión de `dias_credito` y `fecha_vencimiento` en la estructura `pedidoData`, impidiendo guardar plazos de crédito en Supabase al crear o editar una venta parcial.
+   - **Cambio:** Inclusión explícita de `dias_credito` y `fecha_vencimiento` en el objeto `pedidoData`.
+   - **Verificación:** `npx tsc --noEmit` limpio, 0 errores.
+
+5. **`sigo_wm_mobile/lib/features/chofer/services/chofer_local_service.dart`**:
+   - **Problema:** En el fallback offline de `getPedidosActivos()`, el filtro de viajes entregados usaba `getEntregasPendientes()` en lugar de `getAllEntregasLocales()`. Las entregas con `sincronizado = 1` no se excluían, reapareciendo en la lista del chofer al quedar offline.
+   - **Cambio:** Sustituido `getEntregasPendientes()` por `getAllEntregasLocales()` en L166 y L202.
    - **Verificación:** `flutter analyze` 0 issues, `flutter test` 24/24 passed.
 
-3. **`sigo_wm_mobile/lib/core/providers/network_provider.dart`**:
-   - **Problema:** `_hasDataPending()` no consultaba `eventos_pedidos_offline`, lo que podía provocar que el indicador de datos pendientes no se activara al haber eventos de pedidos guardados offline.
-   - **Cambio:** Agregada subconsulta `EXISTS(SELECT 1 FROM eventos_pedidos_offline WHERE sincronizado = 0) AS eventos_pedidos`.
-   - **Verificación:** `flutter analyze` 0 issues, `flutter test` 24/24 passed.
-
-4. **`docs/auditoria/BASE_DE_HECHOS.md`**:
-   - **Problema:** Declaraciones de versiones desactualizadas.
-   - **Cambio:** Actualización de versiones a Angular 17.3.12, PrimeNG 17.18.15, Flutter 3.44.2, Dart 3.12.2.
-   - **Verificación:** Coherencia contra `package.json` y `flutter --version`.
+6. **`tools/generar_manifesto.sh`**:
+   - **Problema:** El script de generación de manifiesto sólo copiaba `MANIFIESTO_BASE.json` a las subcarpetas audit de `sigo-wm` y `sigo_wm_mobile`, dejando `BASE_DE_HECHOS.md` desincronizado.
+   - **Cambio:** Añadida lógica automatizada de copia de `BASE_DE_HECHOS.md` a `sigo-wm/docs/auditoria/` y `sigo_wm_mobile/docs/auditoria/`.
+   - **Verificación:** Ejecución de `tools/generar_manifesto.sh` exitosa, archivos sincronizados.
 
 ---
 
@@ -155,6 +186,7 @@ Queda estrictamente **PROHIBIDO** para cualquier agente de AI o auditor humano e
   - `chat.ts`: Handler de IA con DeepSeek API / Supabase Vector.
   - `consulta-documento.ts`: Integración con API Perú (RUC/DNI).
   - `rastreo-cliente.ts`: Generación de token JWT y streaming de ubicación GPS de camiones.
+  - `reset-password.ts`: Endpoint seguro para actualización de credenciales (requiere JWT + Rol Admin).
 - **Seguridad y Secretos:**
   - `.env` / `.env.local` contienen `SUPABASE_DB_PASSWORD`, `APIPERU_TOKEN`, `VERCEL_OIDC_TOKEN`. *(Protegidos en `.gitignore`).*
 

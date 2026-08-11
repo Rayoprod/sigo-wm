@@ -664,6 +664,8 @@ export class ComercialFormComponent implements OnInit {
           lat_destino: this.lugar_entrega === 'OBRA' ? this.lat_destino : null,
           lng_destino: this.lugar_entrega === 'OBRA' ? this.lng_destino : null,
           dias_validez_oferta: this.tipo_documento === 'COTIZACION' ? this.dias_validez_oferta : null,
+          dias_credito: this.tipo_documento === 'ORDEN_VENTA' ? this.dias_credito : null,
+          fecha_vencimiento: fecha_vencimiento,
           subtotal: this.subtotal,
           descuento_global: this.descuento_global || 0,
           igv: this.igv,

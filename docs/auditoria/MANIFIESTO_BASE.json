@@ -1,5 +1,5 @@
 {
-    "generado": "2026-08-11T18:43:21Z",
+    "generado": "2026-08-11T23:18:27Z",
     "archivos": [
         {
             "path": "sigo-wm/api/chat.ts",
@@ -165,9 +165,9 @@
         },
         {
             "path": "sigo-wm/src/app/features/comercial/comercial-form/comercial-form.component.ts",
-            "sha256": "0e6b4e4e33536a54136219a185990b69e07e953b3f70ee17144f8239199bc0c4",
-            "lineas": 761,
-            "mtime": "2026-08-09T22:46:34Z"
+            "sha256": "f4f868efe08a8a0589c0c8193ef381e3391cec2ae72b4619cf3fc2e00ad5dc36",
+            "lineas": 763,
+            "mtime": "2026-08-11T18:03:21Z"
         },
         {
             "path": "sigo-wm/src/app/features/comercial/comercial-form/tabla-carrito/tabla-carrito.component.html",
@@ -549,9 +549,9 @@
         },
         {
             "path": "sigo_wm_mobile/lib/features/chofer/services/chofer_local_service.dart",
-            "sha256": "7b17f68e9516f2bd36e700edfc220ddf0bdcd33cb10684f551d42d9de487e73a",
+            "sha256": "9c82cd77363b6c6defb74be6ec193f5f678a3ce732796b5da1cbb852c6cc0480",
             "lineas": 242,
-            "mtime": "2026-08-11T02:56:38Z"
+            "mtime": "2026-08-11T18:17:49Z"
         },
         {
             "path": "sigo_wm_mobile/lib/features/chofer/services/entregas_local_service.dart",
