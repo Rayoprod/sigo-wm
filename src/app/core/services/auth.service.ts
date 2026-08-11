@@ -1,4 +1,4 @@
-import { Injectable, signal, computed } from '@angular/core';
+import { Injectable, signal, computed, DestroyRef, inject } from '@angular/core';
 import { SupabaseService } from './supabase.service';
 import { Session } from '@supabase/supabase-js';
 import { Router } from '@angular/router';
@@ -18,9 +18,13 @@ export interface AppUser {
 })
 export class AuthService {
   private readonly supabase = this.supabaseService.client;
-  
+  private readonly destroyRef = inject(DestroyRef);
+
   currentUser = signal<AppUser | null>(null);
   session = signal<Session | null>(null);
+
+  /** Handle del intervalo keep-alive (LOW: se limpia al destruir el servicio). */
+  private keepAliveInterval: ReturnType<typeof setInterval> | null = null;
 
   /**
    * Computed signal con los roles efectivos del usuario actual.
@@ -92,7 +96,7 @@ export class AuthService {
    */
   private startKeepAlive() {
     const INTERVALO_MS = 45 * 60 * 1000; // 45 minutos
-    setInterval(async () => {
+    this.keepAliveInterval = setInterval(async () => {
       const { data: { session } } = await this.supabase.auth.getSession();
       if (session) {
         const { error } = await this.supabase.auth.refreshSession();
@@ -103,6 +107,15 @@ export class AuthService {
         }
       }
     }, INTERVALO_MS);
+
+    // Limpiar el intervalo cuando el servicio se destruye para evitar fugas
+    // de timers (setInterval no se limpia solo al re-crear el servicio).
+    this.destroyRef.onDestroy(() => {
+      if (this.keepAliveInterval !== null) {
+        clearInterval(this.keepAliveInterval);
+        this.keepAliveInterval = null;
+      }
+    });
   }
 
 

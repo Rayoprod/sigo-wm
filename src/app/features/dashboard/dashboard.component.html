@@ -75,11 +75,12 @@
         <div class="col-12 mt-4" *ngIf="predictiveInsights.length > 0">
             <div class="surface-card shadow-2 p-4 border-round-xl border-1 border-purple-200" style="background: linear-gradient(135deg, var(--surface-card) 0%, rgba(139,92,246,0.05) 100%); position: relative; overflow: hidden;">
                 <div class="absolute top-0 left-0 w-full h-full pointer-events-none" style="background: radial-gradient(circle at 100% 0%, rgba(139,92,246,0.15) 0%, transparent 40%);"></div>
-                <h5 class="mt-0 mb-3 text-900 font-bold flex align-items-center">
+                <h5 class="mt-0 mb-1 text-900 font-bold flex align-items-center">
                     <i class="pi pi-sparkles text-purple-500 mr-2 text-xl"></i>
-                    Analista Predictivo (IA)
+                    Analista de Negocio (IA)
                     <span class="ml-3 text-xs bg-purple-100 text-purple-700 px-2 py-1 border-round font-medium">BETA</span>
                 </h5>
+                <p class="text-sm text-500 mt-0 mb-3">Insights basados en tus últimos 30 días de ventas, logística y cobranza.</p>
                 <div class="flex flex-column gap-3">
                     <div *ngFor="let insight of predictiveInsights" class="flex align-items-start p-3 border-round surface-ground border-1 surface-border">
                         <i class="pi pi-bolt text-purple-500 mr-3 mt-1 text-lg"></i>
@@ -91,115 +92,44 @@
 
         <!-- Gráficos -->
         <div class="col-12 lg:col-8 mt-4">
-            <div class="surface-card shadow-2 p-4 border-round-xl h-full">
-                <h5 class="mt-0 mb-3 text-900 font-bold flex justify-content-between align-items-center">
-                    <span><i class="pi pi-chart-line mr-2 text-blue-500"></i>Proyección de Ventas (ML)</span>
-                    <span class="text-sm font-normal text-500">Regresión Lineal a 3 días</span>
+            <div class="surface-card shadow-2 p-4 border-round-xl h-full overflow-hidden">
+                <h5 class="mt-0 mb-1 text-900 font-bold">
+                    <i class="pi pi-users mr-2 text-blue-500"></i>Top Clientes por Ingresos (30 días)
                 </h5>
-                <div *ngIf="ventasChartData">
-                    <p-chart type="line" [data]="ventasChartData" [options]="ventasChartOptions" height="300px"></p-chart>
-                </div>
-                <div *ngIf="!ventasChartData" class="flex align-items-center justify-content-center h-15rem">
+                <p class="text-sm text-500 mt-0 mb-3">Análisis ABC · ¿Quién genera el dinero de tu negocio?</p>
+                <div *ngIf="cargandoGraficos" class="flex align-items-center justify-content-center h-15rem">
                     <i class="pi pi-spin pi-spinner text-3xl text-blue-500"></i>
+                </div>
+                <div *ngIf="!cargandoGraficos && topClientesChartData" class="w-full">
+                    <p-chart type="bar" [data]="topClientesChartData" [options]="topClientesChartOptions" height="320px" class="w-full"></p-chart>
+                </div>
+                <div *ngIf="!cargandoGraficos && !topClientesChartData" class="flex align-items-center justify-content-center h-15rem">
+                    <span class="text-500 text-sm"><i class="pi pi-info-circle mr-2"></i>Sin ventas registradas en los últimos 30 días.</span>
                 </div>
             </div>
         </div>
 
         <div class="col-12 lg:col-4 mt-4">
-            <div class="surface-card shadow-2 p-4 border-round-xl h-full">
+            <div class="surface-card shadow-2 p-4 border-round-xl h-full overflow-hidden">
                 <h5 class="mt-0 mb-3 text-900 font-bold">
-                    <i class="pi pi-stopwatch mr-2 text-orange-500"></i>Tiempos de Ciclo Logístico
+                    <i class="pi pi-calendar mr-2 text-purple-500"></i>Ventas por Día de la Semana
                 </h5>
-                <p class="text-sm text-500 mb-3">Tiempo promedio en horas por chofer.</p>
-                <div *ngIf="logisticaChartData" class="flex justify-content-center">
-                    <p-chart type="bar" [data]="logisticaChartData" [options]="logisticaChartOptions" height="300px" class="w-full"></p-chart>
+                <p class="text-sm text-500 mb-3">¿Qué días vendes más? (últimos 30 días)</p>
+                <div *ngIf="cargandoGraficos" class="flex align-items-center justify-content-center h-15rem">
+                    <i class="pi pi-spin pi-spinner text-3xl text-purple-500"></i>
                 </div>
-                <div *ngIf="!logisticaChartData" class="flex align-items-center justify-content-center h-15rem">
-                    <i class="pi pi-spin pi-spinner text-3xl text-orange-500"></i>
+                <div *ngIf="!cargandoGraficos && ventasDiaSemanaChartData" class="w-full">
+                    <p-chart type="bar" [data]="ventasDiaSemanaChartData" [options]="ventasDiaSemanaChartOptions" height="300px" class="w-full"></p-chart>
+                </div>
+                <div *ngIf="!cargandoGraficos && !ventasDiaSemanaChartData" class="flex align-items-center justify-content-center h-15rem">
+                    <span class="text-500 text-sm"><i class="pi pi-info-circle mr-2"></i>Sin ventas registradas en los últimos 30 días.</span>
                 </div>
             </div>
         </div>
 
-        <!-- Actividad Reciente -->
-        <div class="col-12 lg:col-6 mt-4">
-            <div class="surface-card shadow-2 p-4 border-round-xl h-full">
-                <h5 class="mt-0 mb-3 text-900 font-bold">Últimas Órdenes</h5>
-                <div *ngIf="actividadReciente.length === 0"
-                     class="flex align-items-center justify-content-center border-round border-dashed border-2 surface-border h-10rem">
-                    <span class="text-500">Sin órdenes registradas.</span>
-                </div>
-                <p-table *ngIf="actividadReciente.length > 0"
-                         [value]="actividadReciente"
-                         [tableStyle]="{'min-width': '100%'}"
-                         styleClass="p-datatable-sm">
-                    <ng-template pTemplate="header">
-                        <tr>
-                            <th>Folio</th>
-                            <th>Cliente</th>
-                            <th>Estado</th>
-                            <th class="text-right">Total</th>
-                        </tr>
-                    </ng-template>
-                    <ng-template pTemplate="body" let-pedido>
-                        <tr>
-                            <td class="font-bold text-primary">{{pedido.folio}}</td>
-                            <td class="text-color">{{pedido.clientes?.nombre_razon_social || 'Consumidor Final'}}</td>
-                            <td>
-                                <span class="px-2 py-1 border-round text-xs font-bold"
-                                      [ngClass]="{
-                                        'bg-orange-soft text-orange-500': pedido.estado === 'PENDIENTE',
-                                        'bg-green-soft text-green-500': pedido.estado === 'APROBADA' || pedido.estado === 'COMPLETADA',
-                                        'bg-red-soft text-red-500': pedido.estado === 'RECHAZADA',
-                                        'surface-200 text-500': pedido.estado === 'ANULADA'
-                                      }">
-                                    {{pedido.estado}}
-                                </span>
-                            </td>
-                            <td class="font-bold text-green-600 text-right">{{pedido.total | currency:'PEN':'symbol':'1.2-2'}}</td>
-                        </tr>
-                    </ng-template>
-                </p-table>
-            </div>
-        </div>
 
-        <!-- Deudas próximas a vencer -->
-        <div class="col-12 lg:col-6 mt-4">
-            <div class="surface-card shadow-2 p-4 border-round-xl h-full">
-                <h5 class="mt-0 mb-3 text-900 font-bold text-red-600">
-                    <i class="pi pi-clock mr-2"></i>Deudas Próximas a Vencer
-                </h5>
-                <div *ngIf="deudasProximas.length === 0"
-                     class="flex align-items-center justify-content-center border-round border-dashed border-2 surface-border h-10rem">
-                    <span class="text-500"><i class="pi pi-check-circle mr-2 text-green-500"></i>Sin deudas pendientes.</span>
-                </div>
-                <p-table *ngIf="deudasProximas.length > 0"
-                         [value]="deudasProximas"
-                         [tableStyle]="{'min-width': '100%'}"
-                         styleClass="p-datatable-sm p-datatable-striped">
-                    <ng-template pTemplate="header">
-                        <tr>
-                            <th>Folio</th>
-                            <th>Cliente</th>
-                            <th>Vencimiento</th>
-                            <th class="text-right">Saldo</th>
-                        </tr>
-                    </ng-template>
-                    <ng-template pTemplate="body" let-deuda>
-                        <tr>
-                            <td class="font-bold text-primary">{{deuda.folio}}</td>
-                            <td class="text-sm text-color">{{deuda.clientes?.nombre_razon_social || 'Consumidor Final'}}</td>
-                            <td>
-                                <span class="font-bold text-red-500" *ngIf="deuda.fecha_vencimiento">
-                                    {{deuda.fecha_vencimiento | peruDate:'dd/MM/yyyy'}}
-                                </span>
-                                <span class="text-color-secondary italic" *ngIf="!deuda.fecha_vencimiento">Sin fecha</span>
-                            </td>
-                            <td class="font-bold text-red-600 text-right">{{deuda.saldo_pendiente | currency:'PEN':'symbol':'1.2-2'}}</td>
-                        </tr>
-                    </ng-template>
-                </p-table>
-            </div>
-        </div>
+
+
 
     </ng-container>
 

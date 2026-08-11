@@ -3,7 +3,7 @@
    ---------------------------------------------------- */
 .premium-sidebar {
   transition: background-color 0.3s ease, border-color 0.3s ease;
-  position: relative;
+  position: sticky; /* era relative: pisaba la clase 'sticky' de PrimeFlex y la sidebar no se fijaba */
   overflow: hidden;
 
   /* Subtle gradient overlay to make it look less flat */

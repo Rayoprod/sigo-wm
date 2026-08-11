@@ -29,6 +29,21 @@ html, body {
 }
 
 /* ==========================================================================
+   Charts (p-chart / Chart.js) — prevención de overflow horizontal en móvil
+   ========================================================================== */
+/* p-chart es un custom element (display: inline por defecto). Si el contenedor
+   no tiene un ancho acotado (p. ej. dentro de un flex con justify-content:center),
+   Chart.js mide mal el padre y el canvas puede crecer más que la pantalla,
+   generando scroll horizontal: la columna se pega a la izquierda y queda espacio
+   muerto a la derecha. Forzamos display block + ancho 100% para que el canvas
+   siempre se ajuste al ancho de su tarjeta. */
+p-chart {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+}
+
+/* ==========================================================================
    UI / UX Premium Overrides (Global)
    ========================================================================== */
 

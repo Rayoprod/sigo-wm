@@ -33,6 +33,7 @@ export class ChatBotComponent implements OnInit, OnDestroy {
   recognition: any;
 
   @ViewChild('chatScroll') private chatScrollContainer!: ElementRef;
+  @ViewChild('chatTextarea') chatTextarea?: ElementRef<HTMLTextAreaElement>;
 
   private realtimeChannel: any;
 
@@ -84,6 +85,7 @@ export class ChatBotComponent implements OnInit, OnDestroy {
         } else {
             this.chatInput = interimTranscript;
         }
+        this.autoResizeTextarea();
         this.cdr.detectChanges();
       };
 
@@ -155,32 +157,25 @@ export class ChatBotComponent implements OnInit, OnDestroy {
           }, 
           (payload: any) => {
             const newMsg = payload.new;
-            
-            // Si es un mensaje del usuario, verificar si hicimos inserción optimista
-            if (newMsg.role === 'user') {
-              const tempIndex = this.chatMessages.findIndex(m => m.role === 'user' && m.text === newMsg.content && m.id?.startsWith('temp-'));
-              if (tempIndex !== -1) {
-                // Reemplazar el ID temporal con el real de la BD
-                this.chatMessages[tempIndex].id = newMsg.id;
-                return; // Evitamos duplicar
-              }
+            const rol = newMsg.role === 'assistant' ? 'ai' : 'user';
+
+            // Si el mensaje ya se mostró (inserción optimista desde el fetch),
+            // solo reemplazamos el ID temporal por el real de la BD.
+            const tempIndex = this.chatMessages.findIndex(
+              m => m.id?.startsWith('temp-') && m.role === rol && m.text === newMsg.content
+            );
+            if (tempIndex !== -1) {
+              this.chatMessages[tempIndex].id = newMsg.id;
+            } else if (!this.chatMessages.some((m: any) => m.id === newMsg.id)) {
+              // Evitar duplicados por seguridad
+              this.chatMessages.push({ id: newMsg.id, role: rol, text: newMsg.content });
             }
 
-            // Evitar duplicados por seguridad
-            if (!this.chatMessages.find((m: any) => m.id === newMsg.id)) {
-              this.chatMessages.push({
-                id: newMsg.id,
-                role: newMsg.role === 'assistant' ? 'ai' : 'user',
-                text: newMsg.content
-              });
-              
-              if (newMsg.role === 'assistant') {
-                 this.isChatLoading = false;
-              }
-              
-              this.cdr.detectChanges();
-              this.scrollToBottom();
+            if (newMsg.role === 'assistant') {
+              this.isChatLoading = false;
             }
+            this.cdr.detectChanges();
+            this.scrollToBottom();
           }
         )
         .subscribe();
@@ -235,6 +230,22 @@ export class ChatBotComponent implements OnInit, OnDestroy {
     }, 100);
   }
 
+  handleChatKeydown(event: Event): void {
+    // Enter (sin Shift) envía el mensaje; Shift+Enter inserta un salto de línea.
+    const e = event as KeyboardEvent;
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      this.enviarMensajeIA();
+    }
+  }
+
+  autoResizeTextarea(): void {
+    const ta = this.chatTextarea?.nativeElement;
+    if (!ta) return;
+    ta.style.height = 'auto';
+    ta.style.height = Math.min(ta.scrollHeight, 120) + 'px';
+  }
+
   async enviarMensajeIA(mensajePredefinido?: string) {
     const userMessage = (mensajePredefinido || this.chatInput).trim();
     if (!userMessage || this.isChatLoading) return;
@@ -243,6 +254,9 @@ export class ChatBotComponent implements OnInit, OnDestroy {
     this.chatMessages.push({ id: 'temp-' + Date.now(), role: 'user', text: userMessage });
     
     this.chatInput = '';
+    // Resetear la altura del textarea tras enviar
+    const ta = this.chatTextarea?.nativeElement;
+    if (ta) ta.style.height = 'auto';
     this.isChatLoading = true;
     this.cdr.detectChanges();
     this.scrollToBottom();
@@ -269,7 +283,12 @@ export class ChatBotComponent implements OnInit, OnDestroy {
         throw new Error(data.error || 'Error de conexión con la IA');
       }
 
-      // No hacemos push manual porque Realtime insertará la respuesta.
+      // Mostramos la respuesta de inmediato (el Realtime solo sincroniza IDs,
+      // así el mensaje aparece aunque Realtime falle o tarde en llegar).
+      const respuestaIA = data.response;
+      if (respuestaIA && !this.chatMessages.some(m => m.role === 'ai' && m.text === respuestaIA)) {
+        this.chatMessages.push({ id: 'temp-ai-' + Date.now(), role: 'ai', text: respuestaIA });
+      }
     } catch (e: any) {
       console.error(e);
       this.chatMessages.push({ role: 'ai', text: `⚠️ Error: ${e.message}. Intenta nuevamente.` });

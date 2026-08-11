@@ -1,18 +1,15 @@
 import { Component, OnInit, OnDestroy, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { RouterModule } from '@angular/router';
-import { TableModule } from 'primeng/table';
 import { ChartModule } from 'primeng/chart';
 import { Subscription } from 'rxjs';
 import { SupabaseService } from '../../core/services/supabase.service';
 import { AuthService } from '../../core/services/auth.service';
 import { ThemeService } from '../../core/services/theme.service';
-import { PeruDatePipe } from '../../shared/pipes/peru-date.pipe';
 
 @Component({
   selector: 'app-dashboard',
   standalone: true,
-  imports: [CommonModule, RouterModule, TableModule, ChartModule, PeruDatePipe],
+  imports: [CommonModule, ChartModule],
   templateUrl: './dashboard.component.html',
   styleUrl: './dashboard.component.scss'
 })
@@ -27,27 +24,26 @@ export class DashboardComponent implements OnInit, OnDestroy {
   totalVentas = 0;
   montoVentas = 0;
   montoDeuda = 0;
-  actividadReciente: any[] = [];
-  deudasProximas: any[] = [];
 
   // Datos para gráficos
-  ventasChartData: any;
-  ventasChartOptions: any;
-  logisticaChartData: any;
-  logisticaChartOptions: any;
+  topClientesChartData: any;
+  topClientesChartOptions: any;
+  ventasDiaSemanaChartData: any;
+  ventasDiaSemanaChartOptions: any;
+  cargandoGraficos = false;
+  totalMesVentas = 0;
 
-  // Analista Predictivo (Insights)
+  // Analista de Negocio (Insights)
   predictiveInsights: string[] = [];
 
   async ngOnInit() {
     this.canViewDashboard = this.auth.hasRole('admin', 'vendedor');
-      
+
     if (!this.canViewDashboard) return;
 
     await Promise.all([
       this.loadClientesCount(),
       this.loadVentasStats(),
-      this.loadActividadReciente(),
       this.loadDeudaStatus(),
       this.loadGraficosData()
     ]);
@@ -89,253 +85,262 @@ export class DashboardComponent implements OnInit, OnDestroy {
     const { data } = await this.supabase
       .from('pedidos')
       .select(`
-        id, folio, total, fecha_vencimiento, estado_pago,
-        clientes (nombre_razon_social),
+        total, estado_pago,
         pagos (monto_pagado)
       `)
       .eq('tipo_documento', 'ORDEN_VENTA')
       .neq('estado', 'ANULADA')
-      .in('estado_pago', ['PENDIENTE', 'PARCIAL'])
-      .order('fecha_vencimiento', { ascending: true });
+      .in('estado_pago', ['PENDIENTE', 'PARCIAL']);
 
-    if (data) {
-      let totalDeudaAcc = 0;
-      const deudasDetalladas = data.map((p: any) => {
-        const totalPagado = p.pagos ? p.pagos.reduce((acc: number, pago: any) => acc + Number(pago.monto_pagado || 0), 0) : 0;
-        const saldo_pendiente = Number(p.total || 0) - totalPagado;
-        if (saldo_pendiente > 0) totalDeudaAcc += saldo_pendiente;
-        return { ...p, saldo_pendiente };
-      }).filter((d: any) => d.saldo_pendiente > 0);
-
-      this.montoDeuda = totalDeudaAcc;
-      this.deudasProximas = deudasDetalladas.slice(0, 5);
-    }
-  }
-
-  async loadActividadReciente() {
-    const { data } = await this.supabase
-      .from('pedidos')
-      .select('folio, estado, total, created_at, clientes(nombre_razon_social)')
-      .order('created_at', { ascending: false })
-      .limit(5);
-
-    if (data) this.actividadReciente = data;
+    let totalDeudaAcc = 0;
+    (data || []).forEach((p: any) => {
+      const totalPagado = p.pagos ? p.pagos.reduce((acc: number, pago: any) => acc + Number(pago.monto_pagado || 0), 0) : 0;
+      const saldo = Number(p.total || 0) - totalPagado;
+      if (saldo > 0) totalDeudaAcc += saldo;
+    });
+    this.montoDeuda = totalDeudaAcc;
   }
 
   initChartOptions() {
     const documentStyle = getComputedStyle(document.documentElement);
-    const textColor = documentStyle.getPropertyValue('--text-color');
     const textColorSecondary = documentStyle.getPropertyValue('--text-color-secondary');
     const surfaceBorder = documentStyle.getPropertyValue('--surface-border');
 
-    this.ventasChartOptions = {
+    this.topClientesChartOptions = {
       maintainAspectRatio: false,
       aspectRatio: 0.6,
+      indexAxis: 'y',
       plugins: {
-        legend: { labels: { color: textColor } },
-        tooltip: { mode: 'index', intersect: false }
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            label: (ctx: any) => {
+              const valor = Number(ctx.raw || 0);
+              const pct = this.totalMesVentas > 0 ? ((valor / this.totalMesVentas) * 100).toFixed(0) : '0';
+              return ` S/ ${valor.toLocaleString('es-PE')} · ${pct}% del mes`;
+            }
+          }
+        }
       },
       scales: {
-        x: { ticks: { color: textColorSecondary }, grid: { color: surfaceBorder, drawBorder: false } },
-        y: { ticks: { color: textColorSecondary }, grid: { color: surfaceBorder, drawBorder: false } }
+        x: { ticks: { color: textColorSecondary, callback: (v: any) => this.fmtCompacto(Number(v)) }, grid: { color: surfaceBorder, drawBorder: false } },
+        y: { ticks: { color: textColorSecondary }, grid: { display: false } }
       }
     };
 
-    this.logisticaChartOptions = {
+    this.ventasDiaSemanaChartOptions = {
       maintainAspectRatio: false,
       aspectRatio: 0.6,
       plugins: {
-        legend: { labels: { usePointStyle: true, color: textColor } },
-        tooltip: { mode: 'index', intersect: false }
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            label: (ctx: any) => {
+              const valor = Number(ctx.raw || 0);
+              const pct = this.totalMesVentas > 0 ? ((valor / this.totalMesVentas) * 100).toFixed(0) : '0';
+              return ` S/ ${valor.toLocaleString('es-PE')} · ${pct}% del mes`;
+            }
+          }
+        }
       },
       scales: {
-        x: { stacked: true, ticks: { color: textColorSecondary }, grid: { color: surfaceBorder, drawBorder: false } },
-        y: { stacked: true, ticks: { color: textColorSecondary }, grid: { color: surfaceBorder, drawBorder: false } }
+        x: { ticks: { color: textColorSecondary }, grid: { display: false } },
+        y: {
+          ticks: { color: textColorSecondary, callback: (v: any) => this.fmtCompacto(Number(v)) },
+          grid: { color: surfaceBorder, drawBorder: false }
+        }
       }
     };
-  }
-
-  // ALGORITMO DE REGRESIÓN LINEAL (Mínimos Cuadrados)
-  calculateLinearRegression(yData: number[]): { slope: number, intercept: number } {
-    const n = yData.length;
-    let sumX = 0, sumY = 0, sumXY = 0, sumXX = 0;
-    for (let i = 0; i < n; i++) {
-      sumX += i;
-      sumY += yData[i];
-      sumXY += i * yData[i];
-      sumXX += i * i;
-    }
-    const slope = (n * sumXY - sumX * sumY) / (n * sumXX - sumX * sumX);
-    const intercept = (sumY - slope * sumX) / n;
-    return { slope, intercept };
   }
 
   async loadGraficosData() {
-    // Gráfico 1: Ventas últimos 7 días
-    const past7Days = new Date();
-    past7Days.setDate(past7Days.getDate() - 6);
-    past7Days.setHours(0, 0, 0, 0);
+    this.cargandoGraficos = true;
+    try {
+      await Promise.all([
+        this.cargarAnalisisVentas(),
+        this.cargarVentasPorDiaSemana()
+      ]);
+    } catch (e) {
+      console.error('Error cargando gráficos', e);
+    } finally {
+      this.cargandoGraficos = false;
+    }
+  }
 
-    const { data: ventasRecientes } = await this.supabase
+  /** Top 10 clientes por ingresos (últimos 30 días) con análisis ABC. */
+  private async cargarAnalisisVentas() {
+    const hace30dias = new Date();
+    hace30dias.setDate(hace30dias.getDate() - 29);
+    hace30dias.setHours(0, 0, 0, 0);
+
+    const { data: ventas } = await this.supabase
+      .from('pedidos')
+      .select('total, clientes(nombre_razon_social)')
+      .eq('tipo_documento', 'ORDEN_VENTA')
+      .neq('estado', 'ANULADA')
+      .gte('created_at', hace30dias.toISOString());
+
+    const clienteMap = new Map<string, number>();
+    let totalMonto = 0;
+    let totalPedidos = 0;
+
+    (ventas || []).forEach((v: any) => {
+      const nombre = v.clientes?.nombre_razon_social || 'Consumidor Final';
+      const monto = Number(v.total || 0);
+      clienteMap.set(nombre, (clienteMap.get(nombre) || 0) + monto);
+      totalMonto += monto;
+      totalPedidos++;
+    });
+
+    this.totalMesVentas = totalMonto;
+
+    const top = Array.from(clienteMap.entries())
+      .map(([nombre, monto]) => ({ nombre, monto }))
+      .sort((a, b) => b.monto - a.monto)
+      .slice(0, 10);
+
+    if (top.length === 0) {
+      this.topClientesChartData = null;
+      this.generarInsights();
+      return;
+    }
+
+    const pctAcumulado: number[] = [];
+    let acumulado = 0;
+    top.forEach((c) => {
+      acumulado += c.monto;
+      pctAcumulado.push(totalMonto > 0 ? (acumulado / totalMonto) * 100 : 0);
+    });
+
+    const documentStyle = getComputedStyle(document.documentElement);
+    const colorAzul = documentStyle.getPropertyValue('--blue-500') || '#3B82F6';
+    const colorMorado = documentStyle.getPropertyValue('--purple-500') || '#8B5CF6';
+    const colorRojo = documentStyle.getPropertyValue('--red-400') || '#F87171';
+
+    const backgroundColor = top.map((_, i) => {
+      const pct = pctAcumulado[i];
+      if (pct <= 80) return colorAzul;   // A
+      if (pct <= 95) return colorMorado; // B
+      return colorRojo;                  // C
+    });
+
+    this.topClientesChartData = {
+      labels: top.map(c => c.nombre),
+      datasets: [
+        {
+          label: 'Ingresos (S/)',
+          data: top.map(c => Math.round(c.monto)),
+          backgroundColor,
+          borderRadius: 6,
+          maxBarThickness: 18
+        }
+      ]
+    };
+
+    // ── Cálculos para los insights ──
+    this.generarInsights();
+  }
+
+  /** Distribución de ventas (S/) por día de la semana, últimos 30 días. */
+  private async cargarVentasPorDiaSemana() {
+    const hace30dias = new Date();
+    hace30dias.setDate(hace30dias.getDate() - 29);
+    hace30dias.setHours(0, 0, 0, 0);
+
+    const { data: ventas } = await this.supabase
       .from('pedidos')
       .select('total, created_at')
       .eq('tipo_documento', 'ORDEN_VENTA')
       .neq('estado', 'ANULADA')
-      .gte('created_at', past7Days.toISOString())
-      .order('created_at', { ascending: true });
+      .gte('created_at', hace30dias.toISOString());
 
-    const labels7Days: string[] = [];
-    const ventasPorDia = Array(7).fill(0);
+    // [Dom, Lun, Mar, Mié, Jue, Vie, Sáb]
+    const ventasPorDiaSemana = [0, 0, 0, 0, 0, 0, 0];
 
-    for (let i = 0; i < 7; i++) {
-      const d = new Date(past7Days);
-      d.setDate(d.getDate() + i);
-      labels7Days.push(d.toLocaleDateString('es-PE', { weekday: 'short', day: 'numeric' }));
-    }
-
-    if (ventasRecientes) {
-      ventasRecientes.forEach((v: any) => {
-        const fechaVenta = new Date(v.created_at);
-        fechaVenta.setHours(fechaVenta.getHours() - 5); // UTC-5 Perú
-        const today = new Date();
-        const diffTime = today.getTime() - fechaVenta.getTime();
-        const diffDays = Math.floor(diffTime / (1000 * 3600 * 24));
-        const arrayIndex = 6 - diffDays;
-        if (arrayIndex >= 0 && arrayIndex < 7) {
-          ventasPorDia[arrayIndex] += Number(v.total || 0);
-        }
-      });
-    }
-
-    const documentStyle = getComputedStyle(document.documentElement);
-    
-    // ML: Predicción de Ventas (Próximos 3 días) usando Regresión Lineal
-    const { slope, intercept } = this.calculateLinearRegression(ventasPorDia);
-    const predictedData = [...ventasPorDia];
-    const trendlineData: number[] = [];
-    
-    for (let i = 0; i < 7; i++) {
-      trendlineData.push(slope * i + intercept > 0 ? slope * i + intercept : 0);
-    }
-    
-    for (let i = 7; i < 10; i++) {
-      const predDate = new Date();
-      predDate.setDate(predDate.getDate() + (i - 6));
-      labels7Days.push(predDate.toLocaleDateString('es-PE', { weekday: 'short', day: 'numeric' }) + ' (Pred)');
-      const predValue = slope * i + intercept > 0 ? slope * i + intercept : 0;
-      predictedData.push(predValue); // El array histórico ahora incluye proyecciones vacías? No, un array distinto
-      ventasPorDia.push(null as any); // Dejar en blanco los días futuros para la línea real
-    }
-    
-    // Llenamos la trendline completa
-    const fullTrendline: number[] = [];
-    for(let i=0; i<10; i++){
-       fullTrendline.push(Math.max(0, slope * i + intercept));
-    }
-
-    this.ventasChartData = {
-      labels: labels7Days,
-      datasets: [
-        {
-          label: 'Ventas Reales (S/)',
-          data: ventasPorDia,
-          fill: true,
-          borderColor: documentStyle.getPropertyValue('--blue-500'),
-          backgroundColor: 'rgba(59,130,246,0.1)',
-          tension: 0.4
-        },
-        {
-          label: 'Proyección IA (Tendencia)',
-          data: fullTrendline,
-          fill: false,
-          borderDash: [5, 5],
-          borderColor: documentStyle.getPropertyValue('--purple-500'),
-          tension: 0.4,
-          pointRadius: 0
-        }
-      ]
-    };
-
-    // Gráfico 2 Nuevo: Tiempos de Ciclo Logístico (Cuellos de Botella)
-    const { data: despachosData } = await this.supabase
-      .from('despachos_viajes_cabecera')
-      .select('created_at, fecha_recepcion_chofer, usuarios!despachos_viajes_cabecera_chofer_id_fkey(nombre_completo)')
-      .not('fecha_recepcion_chofer', 'is', null)
-      .order('created_at', { ascending: false })
-      .limit(20);
-
-    const choferesMap = new Map<string, { totalPrep: number, totalEntrega: number, count: number }>();
-    let avgAlmacenOverall = 0;
-    
-    if (despachosData) {
-      despachosData.forEach((d: any) => {
-        const choferName = d.usuarios?.nombre_completo?.split(' ')[0] || 'Desconocido';
-        const created = new Date(d.created_at).getTime();
-        const accepted = new Date(d.fecha_recepcion_chofer).getTime();
-        const prepTimeHours = (accepted - created) / (1000 * 60 * 60); // Horas en almacén
-        
-        // Simular tiempo de entrega real (usualmente se cruza con viajes_entregas, aquí simulamos por limitación de join rápido)
-        const simDeliveryHours = prepTimeHours * 1.5; 
-
-        if (!choferesMap.has(choferName)) choferesMap.set(choferName, { totalPrep: 0, totalEntrega: 0, count: 0 });
-        const obj = choferesMap.get(choferName)!;
-        obj.totalPrep += prepTimeHours;
-        obj.totalEntrega += simDeliveryHours;
-        obj.count++;
-      });
-    }
-
-    const labelsChoferes: string[] = [];
-    const dataAlmacen: number[] = [];
-    const dataRuta: number[] = [];
-    
-    choferesMap.forEach((v, k) => {
-      labelsChoferes.push(k);
-      dataAlmacen.push(Number((v.totalPrep / v.count).toFixed(1)));
-      dataRuta.push(Number((v.totalEntrega / v.count).toFixed(1)));
-      avgAlmacenOverall += (v.totalPrep / v.count);
+    (ventas || []).forEach((v: any) => {
+      if (!v.created_at) return;
+      const fecha = new Date(v.created_at);
+      // La BD guarda fechas en UTC; el día real en Perú (UTC-5) puede caer
+      // un día antes. Convertimos a hora local de Perú antes de leer el día.
+      const diaLocal = new Date(fecha.getTime() - 5 * 60 * 60 * 1000).getUTCDay();
+      ventasPorDiaSemana[diaLocal] += Number(v.total || 0);
     });
-    
-    if(choferesMap.size > 0) avgAlmacenOverall /= choferesMap.size;
 
-    this.logisticaChartData = {
-      labels: labelsChoferes,
+    if (!ventasPorDiaSemana.some(v => v > 0)) {
+      this.ventasDiaSemanaChartData = null;
+      return;
+    }
+
+    this.ventasDiaSemanaChartData = {
+      labels: ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'],
       datasets: [
         {
-          label: 'Tiempo en Almacén (Horas)',
-          backgroundColor: documentStyle.getPropertyValue('--orange-400'),
-          data: dataAlmacen
-        },
-        {
-          label: 'Tiempo en Ruta (Horas)',
-          backgroundColor: documentStyle.getPropertyValue('--green-400'),
-          data: dataRuta
+          label: 'Ventas (S/)',
+          data: ventasPorDiaSemana.map(v => Math.round(v)),
+          backgroundColor: 'rgba(139,92,246,0.8)',
+          borderRadius: 6,
+          maxBarThickness: 32
         }
       ]
     };
+  }
 
-    // GENERAR INSIGHTS PREDICTIVOS (Heurística)
+  private generarInsights() {
     this.predictiveInsights = [];
-    
-    // Insight de Ventas
-    if (slope > 0) {
-      this.predictiveInsights.push(`📈 **Tendencia Alcista:** El modelo proyecta un crecimiento de ventas de aproximadamente ${Number(slope).toFixed(2)} PEN diarios si se mantiene el ritmo.`);
-    } else if (slope < 0) {
-      this.predictiveInsights.push(`⚠️ **Riesgo de Caída:** Se detecta una tendencia a la baja en ventas. Es recomendable impulsar campañas o contactar clientes frecuentes.`);
+    const days = 30;
+
+    const montoPromedioDia = this.montoVentas / days;
+    const pctDeuda = this.montoVentas > 0 ? (this.montoDeuda / this.montoVentas) * 100 : 0;
+    const ticketPromedio = this.totalVentas > 0 ? this.montoVentas / this.totalVentas : 0;
+
+    // 1. Proyección de ventas
+    if (montoPromedioDia > 0) {
+      this.predictiveInsights.push(`📈 <b>Ritmo de Ventas:</b> facturas <b>S/ ${this.fmtCompacto(montoPromedioDia)}</b> al día en promedio, unos <b>S/ ${this.fmtCompacto(montoPromedioDia * 30)}</b> proyectados para los próximos 30 días si se mantiene el ritmo.`);
     } else {
-      this.predictiveInsights.push(`📊 **Ventas Estables:** El volumen de ventas se mantiene plano a nivel semanal.`);
+      this.predictiveInsights.push(`📊 <b>Sin ventas registradas</b> en los últimos ${days} días.`);
     }
 
-    // Insight Logístico
-    if (avgAlmacenOverall > 4) {
-      this.predictiveInsights.push(`🚨 **Cuello de Botella:** Los despachos están tardando más de 4 horas promedio en almacén antes de que el chofer los reciba.`);
-    } else if (avgAlmacenOverall > 0) {
-      this.predictiveInsights.push(`⚡ **Logística Saludable:** El tiempo de despacho interno es eficiente (${avgAlmacenOverall.toFixed(1)}h promedio).`);
+    // 2. Ticket promedio
+    if (ticketPromedio > 0) {
+      this.predictiveInsights.push(`🧾 <b>Ticket promedio:</b> S/ ${this.fmtCompacto(ticketPromedio)} por orden.`);
     }
 
-    // Insight Financiero
-    if (this.montoDeuda > (this.montoVentas * 0.3)) {
-      this.predictiveInsights.push(`💰 **Alerta de Liquidez:** Tu deuda por cobrar supera el 30% de tus ingresos totales. Urge gestión de cobranza.`);
+    // 3. Concentración de clientes
+    const clientesTop = this.topClientesChartData?.labels?.length || 0;
+    if (clientesTop > 0) {
+      const top3 = this.topClientesChartData.datasets[0].data.slice(0, 3);
+      const pctTop3 = this.totalMesVentas > 0
+        ? ((top3.reduce((a: number, b: number) => a + b, 0) / this.totalMesVentas) * 100).toFixed(0)
+        : '0';
+      this.predictiveInsights.push(`👥 <b>Concentración:</b> tus ${clientesTop} mejores clientes generan el <b>${pctTop3}%</b> de los ingresos del mes.`);
     }
+
+    // 4. Mejor día de la semana
+    const diasSemana = this.ventasDiaSemanaChartData?.labels || [];
+    const valores = this.ventasDiaSemanaChartData?.datasets?.[0]?.data || [];
+    if (valores.length === 7 && valores.some((v: number) => v > 0)) {
+      const mejorIndice = valores.indexOf(Math.max(...valores));
+      const mejorDia = diasSemana[mejorIndice];
+      const pct = this.totalMesVentas > 0
+        ? ((valores[mejorIndice] / this.totalMesVentas) * 100).toFixed(0)
+        : '0';
+      this.predictiveInsights.push(`🗓️ <b>Momento ideal:</b> los <b>${mejorDia}s</b> concentran el ${pct}% de tus ventas. Agenda visitas o campañas ese día.`);
+    }
+
+    // 5. Cobranza
+    if (pctDeuda > 30) {
+      this.predictiveInsights.push(`💰 <b>Alerta de Liquidez:</b> tu deuda por cobrar equivale al <b>${pctDeuda.toFixed(0)}%</b> de tus ingresos totales. Urge gestión de cobranza.`);
+    } else if (pctDeuda > 0) {
+      this.predictiveInsights.push(`💳 <b>Cobranza Saludable:</b> tu deuda por cobrar es solo el <b>${pctDeuda.toFixed(0)}%</b> de tus ingresos.`);
+    } else {
+      this.predictiveInsights.push(`✅ <b>Sin deudas pendientes.</b>`);
+    }
+  }
+
+  /** Formatea números grandes de forma compacta: 12500 → "12.5k", 1500000 → "1.5M". */
+  private fmtCompacto(num: number): string {
+    if (Math.abs(num) >= 1000000) return (num / 1000000).toFixed(1).replace('.0', '') + 'M';
+    if (Math.abs(num) >= 1000) return (num / 1000).toFixed(1).replace('.0', '') + 'k';
+    return num.toLocaleString('es-PE');
   }
 }

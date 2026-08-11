@@ -13,39 +13,25 @@ export class InventarioService {
   async registrarMovimientoManual(productoId: string, tipo: string, cantidad: number, motivo: string) {
     if (!productoId || cantidad <= 0) throw new Error("Datos inválidos para el movimiento.");
 
-    // 1. Obtener producto actual
-    const { data: prod, error: errProd } = await this.supabase
-      .from('productos')
-      .select('stock_actual')
-      .eq('id', productoId)
-      .single();
+    // Validar sesión antes de cualquier escritura para no grabar usuario_id nulo
+    const usuario = this.auth.currentUser();
+    if (!usuario) {
+      throw new Error('No se pudo identificar al usuario actual. Inicia sesión nuevamente.');
+    }
 
-    if (errProd) throw errProd;
+    // Ajuste atómico vía RPC: el UPDATE de stock y el INSERT del movimiento
+    // ocurren en una sola transacción con bloqueo de fila. Se preserva el
+    // comportamiento actual: los ajustes manuales pueden dejar stock negativo.
+    const { error } = await this.supabase.rpc('ajustar_stock_atomico', {
+      p_producto_id: productoId,
+      p_tipo_movimiento: tipo,
+      p_cantidad: cantidad,
+      p_motivo: motivo,
+      p_usuario_id: usuario.id,
+      p_validar_negativo: false
+    });
 
-    const stockActual = Number(prod.stock_actual) || 0;
-    const cantNum = Number(cantidad);
-    const nuevoStock = tipo === 'ENTRADA' ? stockActual + cantNum : stockActual - cantNum;
-
-    // 2. Insertar movimiento
-    const { error: errMov } = await this.supabase
-      .from('movimientos_inventario')
-      .insert({
-        producto_id: productoId,
-        tipo_movimiento: tipo,
-        cantidad: cantNum,
-        motivo: motivo,
-        usuario_id: this.auth.currentUser()?.id
-      });
-
-    if (errMov) throw errMov;
-
-    // 3. Actualizar stock en catálogo
-    const { error: errUpd } = await this.supabase
-      .from('productos')
-      .update({ stock_actual: nuevoStock })
-      .eq('id', productoId);
-
-    if (errUpd) throw errUpd;
+    if (error) throw error;
   }
 
   /*Descuenta automáticamente el inventario al aprobar una Orden de Venta
@@ -61,46 +47,29 @@ export class InventarioService {
     if (errItems) throw errItems;
     if (!items || items.length === 0) return; // Nada que descontar si eran manuales sin ID
 
-    // Procesar cada ítem
+    // Validar sesión antes de cualquier escritura para no grabar usuario_id nulo
+    const usuario = this.auth.currentUser();
+    if (!usuario) {
+      throw new Error('No se pudo identificar al usuario actual. Inicia sesión nuevamente.');
+    }
+
+    // Procesar cada ítem con la función RPC atómica.
+    // Antes se hacía SELECT → INSERT → UPDATE desde el cliente: entre el
+    // SELECT y el UPDATE, otra venta aprobada al mismo tiempo sobre el mismo
+    // producto leía el mismo stock y ambas sobrescribían stock_actual. Ahora
+    // el descuento y el registro del movimiento se ejecutan en una sola
+    // transacción con bloqueo de fila, y la validación de stock negativo es real.
     for (const item of items) {
-      const pId = item.producto_id;
-      const cantA_descontar = Number(item.cantidad);
+      const { error } = await this.supabase.rpc('ajustar_stock_atomico', {
+        p_producto_id: item.producto_id,
+        p_tipo_movimiento: 'VENTA_AUTOMATICA',
+        p_cantidad: Number(item.cantidad),
+        p_motivo: `Venta Aprobada: ${folioPedido}`,
+        p_usuario_id: usuario.id,
+        p_validar_negativo: true
+      });
 
-      // Obtener stock
-      const { data: prod } = await this.supabase
-        .from('productos')
-        .select('stock_actual')
-        .eq('id', pId)
-        .single();
-
-      if (prod) {
-        const stockActual = Number(prod.stock_actual) || 0;
-        const nuevoStock = stockActual - cantA_descontar;
-
-        // Validar que no quede stock negativo antes de descontar.
-        // Sin esta validación, dos ventas aprobadas al mismo tiempo sobre
-        // el mismo producto podrían dejar stock_actual en negativo.
-        if (nuevoStock < 0) {
-          throw new Error(
-            `Stock insuficiente para el producto (ID: ${pId}). ` +
-            `Disponible: ${stockActual}, requerido: ${cantA_descontar}.`
-          );
-        }
-
-        // Registrar salida
-        await this.supabase.from('movimientos_inventario').insert({
-          producto_id: pId,
-          tipo_movimiento: 'VENTA_AUTOMATICA',
-          cantidad: cantA_descontar,
-          motivo: `Venta Aprobada: ${folioPedido}`,
-          usuario_id: this.auth.currentUser()?.id
-        });
-
-        // Descontar
-        await this.supabase.from('productos')
-          .update({ stock_actual: nuevoStock })
-          .eq('id', pId);
-      }
+      if (error) throw error;
     }
   }
 
@@ -115,33 +84,25 @@ export class InventarioService {
     if (errItems) throw errItems;
     if (!items || items.length === 0) return;
 
+    // Validar sesión antes de cualquier escritura para no grabar usuario_id nulo
+    const usuario = this.auth.currentUser();
+    if (!usuario) {
+      throw new Error('No se pudo identificar al usuario actual. Inicia sesión nuevamente.');
+    }
+
+    // Reponer con la función RPC atómica (mismo criterio que el descuento):
+    // UPDATE de stock + INSERT del movimiento en una sola transacción.
     for (const item of items) {
-      const pId = item.producto_id;
-      const cantA_reponer = Number(item.cantidad);
+      const { error } = await this.supabase.rpc('ajustar_stock_atomico', {
+        p_producto_id: item.producto_id,
+        p_tipo_movimiento: 'ENTRADA',
+        p_cantidad: Number(item.cantidad),
+        p_motivo: `${prefijoMotivo} de Venta: ${folioPedido}`,
+        p_usuario_id: usuario.id,
+        p_validar_negativo: false
+      });
 
-      const { data: prod } = await this.supabase
-        .from('productos')
-        .select('stock_actual')
-        .eq('id', pId)
-        .single();
-
-      if (prod) {
-        const nuevoStock = (Number(prod.stock_actual) || 0) + cantA_reponer;
-
-        // Registrar entrada por reversión
-        await this.supabase.from('movimientos_inventario').insert({
-          producto_id: pId,
-          tipo_movimiento: 'ENTRADA',
-          cantidad: cantA_reponer,
-          motivo: `${prefijoMotivo} de Venta: ${folioPedido}`,
-          usuario_id: this.auth.currentUser()?.id
-        });
-
-        // Reponer stock
-        await this.supabase.from('productos')
-          .update({ stock_actual: nuevoStock })
-          .eq('id', pId);
-      }
+      if (error) throw error;
     }
   }
 }

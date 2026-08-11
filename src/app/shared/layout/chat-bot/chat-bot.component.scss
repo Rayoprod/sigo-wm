@@ -58,3 +58,72 @@
         -webkit-overflow-scrolling: touch;
     }
 }
+
+/* ==========================================================================
+   Formato del contenido HTML que devuelve Monito.
+   PrimeFlex resetea listas y espaciados por defecto, por eso las respuestas
+   "se veían todo junto". Aquí restauramos la estructura dentro de la burbuja.
+   ========================================================================== */
+::ng-deep .chat-bubble {
+    overflow-wrap: anywhere; /* evita desbordes con palabras o folios largos */
+
+    /* Listas: devolver viñetas y sangría */
+    ul, ol {
+        margin: 0.4rem 0;
+        padding-left: 1.4rem;
+    }
+    ul { list-style: disc; }
+    ol { list-style: decimal; }
+
+    li {
+        margin: 0.15rem 0;
+        line-height: 1.55;
+    }
+
+    li::marker {
+        color: var(--primary-color);
+    }
+
+    /* Párrafos y saltos */
+    p {
+        margin: 0.35rem 0;
+    }
+
+    b, strong {
+        font-weight: 700;
+    }
+
+    /* Separador visual para secciones */
+    hr {
+        border: none;
+        border-top: 1px dashed var(--surface-border);
+        margin: 0.75rem 0;
+    }
+
+    /* Encabezados por si la IA los usa */
+    h1, h2, h3, h4, h5, h6 {
+        margin: 0.5rem 0 0.25rem;
+        font-weight: 700;
+        line-height: 1.3;
+    }
+    h1 { font-size: 1.15rem; }
+    h2 { font-size: 1.1rem; }
+    h3 { font-size: 1.05rem; }
+    h4, h5, h6 { font-size: 1rem; }
+
+    /* Código y citas */
+    code {
+        background: var(--surface-200);
+        padding: 0.1rem 0.3rem;
+        border-radius: 4px;
+        font-size: 0.85em;
+    }
+
+    blockquote {
+        border-left: 3px solid var(--primary-color);
+        margin: 0.5rem 0;
+        padding: 0.25rem 0.75rem;
+        background: var(--surface-100);
+        border-radius: 0 6px 6px 0;
+    }
+}

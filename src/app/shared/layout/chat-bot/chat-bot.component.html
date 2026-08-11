@@ -44,7 +44,10 @@
                 <h3 class="text-color m-0 mb-2 text-lg">Hola, soy Monito</h3>
                 <p class="text-color-secondary text-sm max-w-15rem">Estoy conectado a tu base de datos. Pregúntame lo que necesites saber.</p>
                 <div class="mt-4 flex flex-column gap-2 w-full">
+                    <p-chip label="Resumen del negocio" icon="pi pi-chart-line" styleClass="w-full surface-0 hover:surface-100 cursor-pointer transition-colors shadow-1 justify-content-center py-2" (click)="enviarMensajeIA('Dame un resumen completo del negocio')"></p-chip>
+                    <p-chip label="¿Cuánto vendí este mes?" icon="pi pi-money-bill" styleClass="w-full surface-0 hover:surface-100 cursor-pointer transition-colors shadow-1 justify-content-center py-2" (click)="enviarMensajeIA('¿Cuánto vendí este mes?')"></p-chip>
                     <p-chip label="¿Quiénes me deben dinero?" icon="pi pi-wallet" styleClass="w-full surface-0 hover:surface-100 cursor-pointer transition-colors shadow-1 justify-content-center py-2" (click)="enviarMensajeIA('¿Quiénes me deben dinero?')"></p-chip>
+                    <p-chip label="Tiempos de despacho" icon="pi pi-truck" styleClass="w-full surface-0 hover:surface-100 cursor-pointer transition-colors shadow-1 justify-content-center py-2" (click)="enviarMensajeIA('¿Cuánto tarda un despacho en promedio?')"></p-chip>
                     <p-chip label="Valor de mi inventario" icon="pi pi-box" styleClass="w-full surface-0 hover:surface-100 cursor-pointer transition-colors shadow-1 justify-content-center py-2" (click)="enviarMensajeIA('¿Cuál es el valor total inmovilizado en mi inventario?')"></p-chip>
                 </div>
             </div>
@@ -88,20 +91,32 @@
 
         <!-- Chat Input Box (Pegado al fondo) -->
         <div class="surface-card p-3 border-top-1 surface-border shadow-2 w-full mt-auto z-5">
-            <div class="p-inputgroup border-round-3xl overflow-hidden surface-ground border-1 surface-border hover:border-primary transition-colors transition-duration-200">
-                <input type="text" pInputText class="w-full p-2 text-md border-none focus:shadow-none text-color bg-transparent" [placeholder]="isRecording ? 'Escuchando...' : 'Pregúntale a la IA...'" [(ngModel)]="chatInput" (keyup.enter)="enviarMensajeIA()" [disabled]="isChatLoading" style="outline: none;">
+            <!-- NOTA: NO usar p-inputgroup para el chat. Su CSS fuerza border-radius:0
+                 y align-items:stretch en los botones internos, por eso se deformaban
+                 con la altura del textarea. Usamos flex propio con botones circulares
+                 de tamaño fijo anclados al fondo. -->
+            <div class="flex align-items-end gap-2 p-2 surface-ground border-1 surface-border border-round-3xl hover:border-primary transition-colors transition-duration-200">
+                <textarea #chatTextarea rows="1"
+                    class="flex-grow-1 p-2 text-md border-none focus:shadow-none text-color bg-transparent"
+                    style="resize: none; outline: none; min-height: 2.5rem; max-height: 7.5rem; overflow-y: auto; line-height: 1.5;"
+                    [placeholder]="isRecording ? 'Escuchando...' : 'Pregúntale a la IA...'"
+                    [(ngModel)]="chatInput"
+                    (input)="autoResizeTextarea()"
+                    (keydown.enter)="handleChatKeydown($event)"
+                    [disabled]="isChatLoading"></textarea>
                 
                 <button type="button" pButton [icon]="isRecording ? 'pi pi-stop-circle' : 'pi pi-microphone'" 
-                        [class]="isRecording ? 'p-button-danger px-3 border-none font-bold fadein' : 'p-button-secondary p-button-text px-3 border-none font-bold'" 
+                        [class]="isRecording ? 'p-button-rounded p-button-danger p-0 flex-shrink-0 fadein' : 'p-button-rounded p-button-text p-button-secondary p-0 flex-shrink-0'" 
+                        style="width: 2.5rem; height: 2.5rem;"
                         (click)="toggleRecording()" 
                         [disabled]="isChatLoading"
                         pTooltip="Dictar por voz" tooltipPosition="top">
                 </button>
 
-                <button type="button" pButton icon="pi pi-send" class="p-button-primary px-3 border-none font-bold" (click)="enviarMensajeIA()" [disabled]="isChatLoading || !chatInput.trim()">
+                <button type="button" pButton icon="pi pi-send" class="p-button-rounded p-button-primary p-0 flex-shrink-0" style="width: 2.5rem; height: 2.5rem;" (click)="enviarMensajeIA()" [disabled]="isChatLoading || !chatInput.trim()">
                 </button>
             </div>
-            <p class="text-center text-400 mt-2 m-0" style="font-size: 0.65rem;">Desarrollado con DeepSeek V4. Verifica la info.</p>
+            <p class="text-center text-400 mt-2 m-0" style="font-size: 0.65rem;">Enter envía · Shift+Enter salto de línea · Desarrollado con DeepSeek V4. Verifica la info.</p>
         </div>
     </div>
 </p-sidebar>
