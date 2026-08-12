@@ -660,6 +660,57 @@ graph TD
   - `flutter test` en `sigo_wm_mobile`: 🟢 **24/24 tests pasados**
   - `./tools/generar_manifesto.sh`: 🟢 **Drift = 0, 117 archivos sincronizados**
 
+---
+
+### 🗓️ Ejecución: 2026-08-12 17:35 (Auditoría Recurrente de Auto-Creación de Clientes por Documento, Redondeo de Pagos y Validación Decimal de Despachos)
+- **Área Auditada:** Formularios Comerciales (`sigo-wm/src/app/features/comercial/comercial-form/comercial-form.component.ts`), Gestión de Pagos y Cobros (`sigo-wm/src/app/features/comercial/comercial-list/comercial-list.component.ts`), Registro Móvil de Item de Despacho (`sigo_wm_mobile/lib/features/despachos/screens/registrar_item_despacho_screen.dart`) y Esquema DB Supabase PostgreSQL (`public.clientes`, constraint `clientes_documento_identidad_key`).
+- **Hallazgos y Correcciones Aplicadas:**
+  1. 🔴 **Vulnerabilidad a Error 23505 (Unique Constraint Violation) en Auto-creación de Cliente (`ComercialFormComponent`):**
+     - **Problema:** En `comercial-form.component.ts` (L622-638), al crear una cotización o venta en la web con un cliente cuyo `clienteId` era nulo (ingresado manualmente sin seleccionar del autocompletar), se ejecutaba `.insert(...)` directo sobre `public.clientes`. Si el `documento_identidad` ya existía en la base de datos, PostgreSQL lanzaba la excepción de clave duplicada `23505` (`clientes_documento_identidad_key`), impidiendo guardar la venta.
+     - **Fix:** Se inyectó una verificación previa por `documento_identidad` (`maybeSingle()`). Si el cliente ya existe en la base de datos, reasigna su `id` a `clienteId` y actualiza la referencia local; si no existe, ejecuta el `insert(...)`.
+     - **Archivos corregidos:**
+       - `sigo-wm/src/app/features/comercial/comercial-form/comercial-form.component.ts`
+  2. 🔴 **Falsos Negativos en Validación de Cobros por Residuos de Punto Flotante (`ComercialListComponent`):**
+     - **Problema:** En `comercial-list.component.ts` (L458, L470), la variable `saldoDeudor` y la validación `this.nuevoPago.monto > this.saldoDeudor` operaban sin redondeo estricto de centavos. Debido a imprecisiones de punto flotante en JavaScript (ej. `0.009999999999990905` al restar abonos), al pagar el último centavo la validación fallaba arrojando la alerta `"El monto a pagar debe ser mayor a 0 y no puede exceder el saldo deudor pendiente"`.
+     - **Fix:** Se aplicó redondeo a 2 decimales `Math.round(val * 100) / 100` a `saldoDeudor` y a las variables de validación en `openCobro()` y `registrarAbono()`.
+     - **Archivos corregidos:**
+       - `sigo-wm/src/app/features/comercial/comercial-list/comercial-list.component.ts`
+  3. 🟠 **Imprecisión en Validación de Cantidad a Despachar en Registro de Item Móvil (`RegistrarItemDespachoScreen`):**
+     - **Problema:** En `registrar_item_despacho_screen.dart` (L162), la comprobación `inputVal > widget.saldoDisponible` se realizaba en `double` crudo. Al restar despachos anteriores, `saldoDisponible` podía tomar imprecisiones (ej. `1.4999999999999998`), haciendo que `inputVal = 1.5` fuera rechazado erróneamente.
+     - **Fix:** Se redondeó la comparación a 3 decimales (`double.parse(...toStringAsFixed(3))`) alineándolo con la lógica de `RegistrarViajeScreen`.
+     - **Archivos corregidos:**
+       - `sigo_wm_mobile/lib/features/despachos/screens/registrar_item_despacho_screen.dart`
+- **Verificación Técnica Realizada:**
+  - Conexión DB Supabase: 🟢 **OK (`Postgres OK at 2026-08-12 22:39:48 UTC`)**
+  - `npx tsc --noEmit` en `sigo-wm`: 🟢 **0 errores**
+  - `flutter analyze` en `sigo_wm_mobile`: 🟢 **0 problemas**
+  - `flutter test` en `sigo_wm_mobile`: 🟢 **24/24 tests pasados**
+  - `./tools/generar_manifesto.sh`: 🟢 **Drift = 0, 117 archivos sincronizados**
+
+---
+
+### 🗓️ Ejecución: 2026-08-12 17:45 (Auditoría Recurrente de Serverless Function del Chatbot AI `api/chat.ts`, API de Consulta de Documentos, Servicio GPS Móvil Adaptativo y Estructura PostgreSQL)
+- **Área Auditada:** Serverless Function del Chatbot `api/chat.ts`, API Serverless de Consulta de Documentos `api/consulta-documento.ts`, Utilitario `documento-identidad.ts`, Servicio GPS Móvil Adaptativo (`sigo_wm_mobile/lib/features/chofer/services/background_gps_service.dart`) y Triggers / Políticas RLS en Supabase PostgreSQL (`information_schema.triggers`, `pg_policies`).
+- **Hallazgos y Correcciones Aplicadas:**
+  1. 🔴 **Protección contra Excepciones `SyntaxError` en Parseo de Argumentos de Herramientas del Chatbot (`api/chat.ts`):**
+     - **Problema:** En `api/chat.ts` (L544), `JSON.parse(toolCall.function.arguments)` se ejecutaba sin resguardo defensivo de `try/catch`. Si el modelo de IA (DeepSeek) devolvía argumentos de función malformados o truncados debido a límites de tokens o ruido en el prompt, `JSON.parse` lanzaba una excepción `SyntaxError` no capturada que abortaba inmediatamente la Serverless Function en Vercel retornando un error HTTP 500 al cliente web.
+     - **Fix:** Se inyectó un bloque `try/catch` defensivo alrededor de `JSON.parse(toolCall.function.arguments)` para capturar errores de sintaxis y asignar un objeto de argumentos vacío `{}` seguro, registrando el error en consola sin interrumpir la ejecución ni responder con 500.
+     - **Archivos corregidos:**
+       - `sigo-wm/api/chat.ts`
+  2. 🟢 **Auditoría de API Serverless `consulta-documento.ts`, Utilitario `documento-identidad.ts` e Integración con API Perú:**
+     - Verificado: Clasificación uniforme de documentos en `documento-identidad.ts` y `api/consulta-documento.ts` (DNI de 8 dígitos, RUC de 11 dígitos y CE con letra inicial). El rate limiting en memoria de 60 req/min por IP en `api/consulta-documento.ts` evita abusos y protecciones del proveedor externo. El token `APIPERU_TOKEN` está resguardado únicamente en backend de Vercel.
+  3. 🟢 **Auditoría de Servicio GPS Móvil Adaptativo (`BackgroundGpsService`):**
+     - Verificado: `BackgroundGpsService` implementa Quiet Mode (>30s sin movimiento), filtro de distancia adaptativo según velocidad (10m–150m), Watchdog en iOS con persistencia en `SharedPreferences` ante suspensiones del SO, y subida en lote batch (45s) resguardada en SQLite local.
+  4. 🟢 **Verificación Directa de Triggers y Políticas RLS en Supabase PostgreSQL:**
+     - Verificado mediante cliente Node.js `pg`: 20 triggers activos en `information_schema.triggers` (incluyendo `trigger_validar_sobre_despacho`, `trigger_sincronizar_pago_pedido`, `trg_ajustar_secuencial_gps`, `after_viaje_insert_reenlazar`, `trigger_actualizar_cantidad_despachada`, `trigger_reevaluar_estado_pedido`) y 30 políticas RLS de seguridad configuradas en el esquema `public`.
+- **Verificación Técnica Realizada:**
+  - Conexión DB Supabase: 🟢 **OK (`23 RPCs, 20 Triggers, 30 Políticas RLS verificadas`)**
+  - `npx tsc --noEmit` en `sigo-wm`: 🟢 **0 errores**
+  - `flutter analyze` en `sigo_wm_mobile`: 🟢 **0 problemas**
+  - `flutter test` en `sigo_wm_mobile`: 🟢 **24/24 tests pasados**
+  - `./tools/generar_manifesto.sh`: 🟢 **Drift = 0, 117 archivos sincronizados**
+
+
 
 
 

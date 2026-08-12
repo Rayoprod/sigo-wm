@@ -1,11 +1,11 @@
 {
-    "generado": "2026-08-12T20:23:15Z",
+    "generado": "2026-08-12T22:44:54Z",
     "archivos": [
         {
             "path": "sigo-wm/api/chat.ts",
-            "sha256": "4b8f8712deae6185d9bbf694ed6394110e1c21d279d33f00f27d8cc92a0bfe3c",
-            "lineas": 1008,
-            "mtime": "2026-08-12T00:55:51Z"
+            "sha256": "b337e87df5d8d5a75fff9361d11aa51a0edc3b805e9a4913f20bf0e090d721bf",
+            "lineas": 1016,
+            "mtime": "2026-08-12T17:42:39Z"
         },
         {
             "path": "sigo-wm/api/consulta-documento.ts",
@@ -165,9 +165,9 @@
         },
         {
             "path": "sigo-wm/src/app/features/comercial/comercial-form/comercial-form.component.ts",
-            "sha256": "c46addf54555fabb9ca67509c2f452a27af221013f7d7efdded67a5cbbddaa7e",
-            "lineas": 763,
-            "mtime": "2026-08-12T13:12:42Z"
+            "sha256": "5461a5c7ea7f877b4c93dbd10cb9e30854fc0437f935bb699bb16eb9c26bd5f2",
+            "lineas": 777,
+            "mtime": "2026-08-12T17:32:32Z"
         },
         {
             "path": "sigo-wm/src/app/features/comercial/comercial-form/tabla-carrito/tabla-carrito.component.html",
@@ -201,9 +201,9 @@
         },
         {
             "path": "sigo-wm/src/app/features/comercial/comercial-list/comercial-list.component.ts",
-            "sha256": "5c3ba736ac5e6de3266d5132558529868afbafd413185d7b31c7708161d44df4",
-            "lineas": 524,
-            "mtime": "2026-08-11T20:39:20Z"
+            "sha256": "0e212c4fd30a78af56f6128418bee52a9aa1e5234ee6cd582e9a16fe6cd878ad",
+            "lineas": 526,
+            "mtime": "2026-08-12T17:32:37Z"
         },
         {
             "path": "sigo-wm/src/app/features/configuracion/configuracion.component.html",
@@ -615,9 +615,9 @@
         },
         {
             "path": "sigo_wm_mobile/lib/features/despachos/screens/registrar_item_despacho_screen.dart",
-            "sha256": "68da56c382ddc60f622292f1da0787230c232b80a6af7c0c9a8a88fbfa0d9f74",
-            "lineas": 434,
-            "mtime": "2026-08-11T19:27:15Z"
+            "sha256": "672137ea19ccc09d7c106cfae09f62c075389c9d42ad61bcac51a96d58528bd2",
+            "lineas": 437,
+            "mtime": "2026-08-12T17:32:42Z"
         },
         {
             "path": "sigo_wm_mobile/lib/features/despachos/screens/registrar_viaje_screen.dart",

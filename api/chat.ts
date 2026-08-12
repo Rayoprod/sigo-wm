@@ -541,7 +541,15 @@ REGLAS ESTRICTAS DE RESPUESTA:
       const toolResults = await Promise.all(responseMessage.tool_calls.map(async (toolCall: any) => {
         let apiResponse: any = {};
         const functionName = toolCall.function.name;
-        const args = toolCall.function.arguments ? JSON.parse(toolCall.function.arguments) : {};
+        let args: any = {};
+        if (toolCall.function.arguments) {
+          try {
+            args = JSON.parse(toolCall.function.arguments);
+          } catch (eParse) {
+            console.error('Error parseando argumentos de la función:', functionName, eParse);
+            args = {};
+          }
+        }
 
         try {
           if (functionName === 'consultar_ventas') {

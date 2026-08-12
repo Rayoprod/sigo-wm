@@ -455,7 +455,7 @@ export class ComercialListComponent implements OnInit {
     
     this.historialPagos = pagos || [];
     const totalPagado = this.historialPagos.reduce((acc, p) => acc + Number(p.monto_pagado), 0);
-    this.saldoDeudor = Number(pedido.total) - totalPagado;
+    this.saldoDeudor = Math.round((Number(pedido.total) - totalPagado) * 100) / 100;
 
     this.nuevoPago = {
       monto: this.saldoDeudor > 0 ? this.saldoDeudor : 0,
@@ -467,8 +467,10 @@ export class ComercialListComponent implements OnInit {
   }
 
   async registrarAbono() {
-    if (this.nuevoPago.monto <= 0 || this.nuevoPago.monto > this.saldoDeudor) {
-      alert('El monto a pagar debe ser mayor a 0 y no puede exceder el saldo deudor pendiente (' + this.saldoDeudor + ').');
+    const montoRondeado = Math.round((this.nuevoPago.monto || 0) * 100) / 100;
+    const saldoRondeado = Math.round(this.saldoDeudor * 100) / 100;
+    if (montoRondeado <= 0 || montoRondeado > saldoRondeado) {
+      alert('El monto a pagar debe ser mayor a 0 y no puede exceder el saldo deudor pendiente (S/ ' + saldoRondeado.toFixed(2) + ').');
       return;
     }
 

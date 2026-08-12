@@ -621,21 +621,35 @@ export class ComercialFormComponent implements OnInit {
       // Auto-crear cliente si no existe en BD
       if (!clienteId) {
         if (!this.clienteActual.documento_identidad) { alert("Documento es obligatorio"); return; }
-        const { data: newClient, error: errClient } = await this.supabase
+        const docTrimmed = (this.clienteActual.documento_identidad || '').trim();
+
+        // Buscar primero por documento para reutilizar cliente existente y evitar error 23505 (unique constraint)
+        const { data: existingClient } = await this.supabase
           .from('clientes')
-          .insert({
-            documento_identidad: this.clienteActual.documento_identidad,
-            nombre_razon_social: this.clienteActual.nombre_razon_social,
-            direccion: this.clienteActual.direccion,
-            telefono: this.clienteActual.telefono,
-            correo: this.clienteActual.correo
-          })
           .select('id')
-          .single();
-        
-        if (errClient) throw errClient;
-        clienteId = newClient.id;
-        this.clienteActual.id = clienteId; // Actualizar localmente
+          .eq('documento_identidad', docTrimmed)
+          .maybeSingle();
+
+        if (existingClient?.id) {
+          clienteId = existingClient.id;
+          this.clienteActual.id = clienteId;
+        } else {
+          const { data: newClient, error: errClient } = await this.supabase
+            .from('clientes')
+            .insert({
+              documento_identidad: docTrimmed,
+              nombre_razon_social: (this.clienteActual.nombre_razon_social || '').trim(),
+              direccion: (this.clienteActual.direccion || '').trim(),
+              telefono: (this.clienteActual.telefono || '').trim(),
+              correo: (this.clienteActual.correo || '').trim()
+            })
+            .select('id')
+            .single();
+
+          if (errClient) throw errClient;
+          clienteId = newClient.id;
+          this.clienteActual.id = clienteId; // Actualizar localmente
+        }
       }
       // 1. Generar Folio (Manejado por DB Trigger)
       // El folio se generará automáticamente en Supabase si es nuevo.
