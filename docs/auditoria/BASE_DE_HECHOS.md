@@ -450,6 +450,52 @@ graph TD
   - `./tools/generar_manifesto.sh`: 🟢 **Drift = 0, 117 archivos sincronizados**
 
 ---
+
+### 🗓️ Ejecución: 2026-08-11 21:04 (Auditoría Recurrente de Logística Web, Registro de Despacho Móvil, Unidades Decimales y Validación de Excesos)
+- **Área Auditada:** Módulo de Logística Web (`sigo-wm/src/app/features/logistica/logistica.component.ts`, `logistica.component.html`), Registro Móvil de Despacho (`sigo_wm_mobile/lib/features/despachos/screens/registrar_viaje_screen.dart`, `pedido_detalle_despacho_screen.dart`), Servicios Locales de Despacho (`despachador_local_service.dart`, `viajes_local_service.dart`) y Esquema DB Supabase PostgreSQL (`public.despachos_viajes_cabecera`, `public.despachos_viajes_detalle`).
+- **Hallazgos y Correcciones Aplicadas:**
+  1. 🔴 **Imposibilidad de Ingresar Cantidades Decimales y Validación de Excesos en Registro de Despacho Web (`LogisticaComponent`):**
+     - **Problema:** En `logistica.component.html` (L287-299), el modal de registro de despacho usaba un `<div>` estático para la cantidad a despachar (`item.cantidad_viaje`) con botones `+` y `-` que incrementaban/decrementaban exclusivamente en números enteros (`+ 1`, `- 1`). Para productos comercializados en toneladas, metros cúbicos (`m3`) o kilogramos, resultaba imposible ingresar valores decimales (ej. 1.5, 0.750). Asimismo, en `logistica.component.ts` (L518), al hacer clic en "Confirmar Salida", si se ingresaba un valor mayor al saldo pendiente (`maxCantidad`), la app web no alertaba al usuario y sujetaba la cantidad silenciosamente.
+     - **Fix:** En `logistica.component.html`, se sustituyó el `<div>` estático por `<p-inputNumber>` con precisión de hasta 3 decimales (`minFractionDigits=0`, `maxFractionDigits=3`), permitiendo el ingreso táctil y por teclado manual. En `logistica.component.ts`, se hizo público `round3()` y se añadió validación explícita en `guardarViaje()` para notificar con `alert()` al usuario si la cantidad excede el saldo pendiente.
+     - **Archivos corregidos:**
+       - `sigo-wm/src/app/features/logistica/logistica.component.html`
+       - `sigo-wm/src/app/features/logistica/logistica.component.ts`
+  2. 🟢 **Auditoría de Registro Móvil de Despacho y Manejo de Saldos (`sigo_wm_mobile`):**
+     - Se verificó `RegistrarViajeScreen` y `PedidoDetalleDespachoScreen`.
+     - Verificado: Comparación de saldos con redondeo a 3 decimales (`toStringAsFixed(3)`), solicitud explícita de permisos de cámara y ubicación antes de instanciar `Geolocator` (previniendo SecurityException en Android), asignación determinista del `despachadorId` desde `AuthService` y conciliación atómica de viajes locales y en la nube.
+- **Verificación Técnica Realizada:**
+  - Conexión DB Supabase: 🟢 **OK (`23 RPCs activas`)**
+  - `npx tsc --noEmit` en `sigo-wm`: 🟢 **0 errores**
+  - `flutter analyze` en `sigo_wm_mobile`: 🟢 **0 problemas**
+  - `flutter test` en `sigo_wm_mobile`: 🟢 **24/24 tests pasados**
+  - `./tools/generar_manifesto.sh`: 🟢 **Drift = 0, 117 archivos sincronizados**
+
+### 🗓️ Ejecución: 2026-08-12 00:55 (Auditoría Recurrente de Serverless API Monito AI, Filtros de Cotización vs Orden de Venta, Sincronización DB Trigger y Autenticación Offline)
+- **Área Auditada:** Serverless Function AI (`sigo-wm/api/chat.ts`), Consultas BI y Cuentas por Cobrar, Autenticación y Sincronización Offline (`sigo_wm_mobile/lib/features/auth/services/offline_auth_service.dart`, `auth_service.dart`), Navegación Móvil (`main_navigation.dart`, `chofer_home_screen.dart`) y Script de Manifiesto (`tools/generar_manifesto.sh`).
+- **Hallazgos y Correcciones Aplicadas:**
+  1. 🔴 **Inclusión de Cotizaciones no Aprobadas en Ventas y Deudas por Cobrar en Monito AI (`api/chat.ts`):**
+     - **Cita Literal Exacta (`sigo-wm/api/chat.ts` L576, L596, L615, L764, L835):**
+       `const { data: deudasRaw } = await supabase.from('pedidos').select('folio, total, estado, clientes(nombre_razon_social), pagos(monto_pagado)').neq('estado', 'ANULADA').order('created_at', { ascending: false }).limit(2000);`
+     - **Problema:** En la base de datos PostgreSQL, la tabla `pedidos` almacena tanto Órdenes de Venta (`tipo_documento = 'ORDEN_VENTA'`) como Cotizaciones sin aprobar (`tipo_documento = 'COTIZACION'` o `estado = 'PENDIENTE'`). Mientras que el Dashboard Web de Angular filtra `.eq('tipo_documento', 'ORDEN_VENTA')`, la API serverless Monito AI solo filtraba `.neq('estado', 'ANULADA')`. Por lo tanto, Monito reportaba como "cuentas por cobrar" y "ventas totales" miles de soles provenientes de cotizaciones preliminares que nunca fueron aprobadas. Además, realizaba joins innecesarios con la tabla `pagos` en lugar de usar la columna `monto_pagado` mantenida automáticamente en tiempo real por el trigger de Postgres `trigger_sincronizar_pago_pedido`.
+     - **Solución Aplicada:** En `api/chat.ts`, se actualizaron las funciones BI (`consultar_cuentas_por_cobrar`, `bi_morosidad`, `bi_pareto_clientes`, `bi_ventas_por_mes`, `bi_resumen_diario`, `bi_resumen_ejecutivo` y `bi_calcular`) para incluir `.eq('tipo_documento', 'ORDEN_VENTA')` y `.in('estado_pago', ['PENDIENTE', 'PARCIAL'])`, utilizando directamente la columna `monto_pagado` de `pedidos` sin joins redundantes.
+     - **Archivos corregidos:**
+       - `sigo-wm/api/chat.ts`
+  2. 🟢 **Verificación de Resiliencia y Seguridad en Autenticación Offline y Roles (`sigo_wm_mobile`):**
+     - Se auditó `OfflineAuthService`, `AuthService`, `MainNavigation` y `ChoferHomeScreen`.
+     - Verificado: Derivación PBKDF2-SHA256 con 100.000 iteraciones realizada en `Isolate.run()` para no bloquear el HThread de UI, comparación en tiempo constante `_constantTimeEquals` anti-timing attacks, purga de cuentas inactivas por más de 90 días o desactivadas en Supabase (`activo = false`), serialización limpia de arreglos de roles en JSON tanto en SQLite como en `credenciales_offline` de Supabase, y envoltorio reactivo `PopScope` con diálogo de confirmación para salir de la app en chofer y despachador.
+  3. 🟢 **Optimización del Generador de Manifiesto (`tools/generar_manifesto.sh`):**
+     - **Problema:** Al ejecutar `bash tools/generar_manifesto.sh` desde la subcarpeta `sigo-wm`, la resolución relativa de `ROOT_DIR` buscaba `/Users/rwrb/developer/sigo-wm/sigo-wm/src` fallando con exit code 1.
+     - **Fix:** Se ajustó la detección dinámica de `ROOT_DIR` para evaluar la ruta raíz del ecosistema de forma robusta e idempotente independientemente del directorio de trabajo actual desde donde sea invocado.
+     - **Archivos corregidos:**
+       - `sigo-wm/tools/generar_manifesto.sh`
+- **Verificación Técnica Realizada:**
+  - Compilación Web (`npm run build` en `sigo-wm`): 🟢 **0 errores (Angular build OK)**
+  - Análisis Estático (`flutter analyze` en `sigo_wm_mobile`): 🟢 **0 problemas**
+  - Conexión DB Supabase (pg Pooler): 🟢 **23 RPCs verificadas**
+  - `./tools/generar_manifesto.sh`: 🟢 **Drift = 0, 117 archivos fuente sincronizados**
+
+---
 *Este documento es la Fuente de Verdad Inviolable para el desarrollo y mantenimiento del ecosistema SIGO-WM.*
+
 
 

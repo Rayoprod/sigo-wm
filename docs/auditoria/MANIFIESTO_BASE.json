@@ -1,11 +1,11 @@
 {
-    "generado": "2026-08-12T01:53:54Z",
+    "generado": "2026-08-12T05:58:04Z",
     "archivos": [
         {
             "path": "sigo-wm/api/chat.ts",
-            "sha256": "278124950fc5f04c0878b40aa3803e6ce7ca791d460b04b6b41299f74aa07973",
-            "lineas": 1004,
-            "mtime": "2026-08-11T00:05:16Z"
+            "sha256": "4b8f8712deae6185d9bbf694ed6394110e1c21d279d33f00f27d8cc92a0bfe3c",
+            "lineas": 1008,
+            "mtime": "2026-08-12T00:55:51Z"
         },
         {
             "path": "sigo-wm/api/consulta-documento.ts",
@@ -261,9 +261,9 @@
         },
         {
             "path": "sigo-wm/src/app/features/logistica/logistica.component.html",
-            "sha256": "34b255ffb9bd2993b98d888e4a81d9e46bd32fbd7ba02ae03d84803eb6bf1e5d",
-            "lineas": 773,
-            "mtime": "2026-08-09T04:31:47Z"
+            "sha256": "f7c67a97b82f777beec5b5a29541a2d94da0bb21b8622ee232e1c426d58b6f47",
+            "lineas": 778,
+            "mtime": "2026-08-11T21:04:02Z"
         },
         {
             "path": "sigo-wm/src/app/features/logistica/logistica.component.scss",
@@ -273,9 +273,9 @@
         },
         {
             "path": "sigo-wm/src/app/features/logistica/logistica.component.ts",
-            "sha256": "10621d9886f3888942cfdc0bdbbe1b75bda582b89e03a1f61829322a6d2d7881",
-            "lineas": 1839,
-            "mtime": "2026-08-11T13:24:09Z"
+            "sha256": "ca674f4b6b2d9991ceb6d281a749299165560c791da197a87c9c82bb14ecdf21",
+            "lineas": 1847,
+            "mtime": "2026-08-11T21:03:57Z"
         },
         {
             "path": "sigo-wm/src/app/features/rastreo-cliente/rastreo-cliente.component.html",

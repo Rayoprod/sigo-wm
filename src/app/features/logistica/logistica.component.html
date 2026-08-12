@@ -283,18 +283,23 @@
                             <div class="text-sm text-500 mt-1">Pendiente de envío: <b class="text-color">{{ item.maxCantidad }}</b> {{ item.unidad_medida }}</div>
                         </div>
                         
-                        <!-- Controles Numéricos Táctiles -->
-                        <div class="flex align-items-center gap-3 surface-50 p-2 border-round-3xl border-1 surface-border">
-                            <button pButton icon="pi pi-minus" class="p-button-rounded p-button-secondary p-button-text w-3rem h-3rem" 
-                                    (click)="item.cantidad_viaje = item.cantidad_viaje > 0 ? item.cantidad_viaje - 1 : 0" 
+                        <!-- Controles Numéricos Táctiles y Teclado -->
+                        <div class="flex align-items-center gap-2 surface-50 p-2 border-round-3xl border-1 surface-border">
+                            <button pButton icon="pi pi-minus" class="p-button-rounded p-button-secondary p-button-text w-2rem h-2rem" 
+                                    (click)="item.cantidad_viaje = round3(item.cantidad_viaje > 0 ? (item.cantidad_viaje - 1 < 0 ? 0 : item.cantidad_viaje - 1) : 0)" 
                                     [disabled]="item.cantidad_viaje <= 0"></button>
                             
-                            <div class="w-4rem text-center text-xl font-bold text-color">
-                                {{ item.cantidad_viaje || 0 }}
-                            </div>
+                            <p-inputNumber [(ngModel)]="item.cantidad_viaje"
+                                           [min]="0" 
+                                           [max]="item.maxCantidad" 
+                                           [minFractionDigits]="0" 
+                                           [maxFractionDigits]="3" 
+                                           styleClass="w-5rem" 
+                                           inputStyleClass="text-center font-bold text-lg p-inputtext-sm border-none bg-transparent surface-card shadow-none">
+                            </p-inputNumber>
                             
-                            <button pButton icon="pi pi-plus" class="p-button-rounded p-button-primary p-button-text w-3rem h-3rem" 
-                                    (click)="item.cantidad_viaje = item.cantidad_viaje < item.maxCantidad ? item.cantidad_viaje + 1 : item.maxCantidad"
+                            <button pButton icon="pi pi-plus" class="p-button-rounded p-button-primary p-button-text w-2rem h-2rem" 
+                                    (click)="item.cantidad_viaje = round3(item.cantidad_viaje < item.maxCantidad ? (item.cantidad_viaje + 1 > item.maxCantidad ? item.maxCantidad : item.cantidad_viaje + 1) : item.maxCantidad)"
                                     [disabled]="item.cantidad_viaje >= item.maxCantidad"></button>
                         </div>
                     </div>

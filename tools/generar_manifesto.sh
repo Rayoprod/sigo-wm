@@ -7,7 +7,16 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-ROOT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
+CURRENT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
+
+if [ -d "$CURRENT_DIR/src" ]; then
+  ROOT_DIR="$(cd "$CURRENT_DIR/.." && pwd)"
+elif [ -d "$CURRENT_DIR/sigo-wm" ]; then
+  ROOT_DIR="$CURRENT_DIR"
+else
+  ROOT_DIR="$(cd "$CURRENT_DIR/.." && pwd)"
+fi
+
 OUTPUT_FILE="$ROOT_DIR/docs/auditoria/MANIFIESTO_BASE.json"
 
 mkdir -p "$ROOT_DIR/docs/auditoria"
@@ -80,8 +89,8 @@ fi
 
 rm -f "$TMP_JSON"
 
-cp "$OUTPUT_FILE" "$ROOT_DIR/sigo-wm/docs/auditoria/MANIFIESTO_BASE.json"
-cp "$OUTPUT_FILE" "$ROOT_DIR/sigo_wm_mobile/docs/auditoria/MANIFIESTO_BASE.json"
+[ -f "$OUTPUT_FILE" ] && [ -d "$ROOT_DIR/sigo-wm/docs/auditoria" ] && cp -f "$OUTPUT_FILE" "$ROOT_DIR/sigo-wm/docs/auditoria/MANIFIESTO_BASE.json" 2>/dev/null || true
+[ -f "$OUTPUT_FILE" ] && [ -d "$ROOT_DIR/sigo_wm_mobile/docs/auditoria" ] && cp -f "$OUTPUT_FILE" "$ROOT_DIR/sigo_wm_mobile/docs/auditoria/MANIFIESTO_BASE.json" 2>/dev/null || true
 
 COUNT=$(grep -c '"path"' "$OUTPUT_FILE" || true)
 echo "✅ Manifiesto generado con éxito: $COUNT archivos fuente registrados."

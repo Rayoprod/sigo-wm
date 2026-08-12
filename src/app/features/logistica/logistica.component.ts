@@ -364,7 +364,7 @@ export class LogisticaComponent implements OnInit, OnDestroy {
   }
 
   /** Redondea a 3 decimales (misma precisión de cantidades que usa la app Flutter). */
-  private round3(valor: number): number {
+  round3(valor: number): number {
     return Math.round((valor + Number.EPSILON) * 1000) / 1000;
   }
 
@@ -521,6 +521,14 @@ export class LogisticaComponent implements OnInit, OnDestroy {
       alert("Debes indicar la cantidad a despachar de al menos un material.");
       return;
     }
+
+    for (const item of itemsAEnviar) {
+      if (this.round3(item.cantidad_viaje) > this.round3(item.maxCantidad)) {
+        alert(`La cantidad a despachar de "${item.descripcion}" (${item.cantidad_viaje}) excede la cantidad restante (${item.maxCantidad}).`);
+        return;
+      }
+    }
+
     this.isSavingViaje = true;
     
     try {

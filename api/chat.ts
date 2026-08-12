@@ -573,10 +573,10 @@ REGLAS ESTRICTAS DE RESPUESTA:
             const { data } = await supabase.from('productos').select('descripcion, stock_actual, stock_minimo, precio_unitario_base');
             apiResponse = data || [];
           } else if (functionName === 'consultar_cuentas_por_cobrar') {
-            const { data: deudasRaw } = await supabase.from('pedidos').select('folio, total, estado, clientes(nombre_razon_social), pagos(monto_pagado)').neq('estado', 'ANULADA').order('created_at', { ascending: false }).limit(2000);
+            const { data: deudasRaw } = await supabase.from('pedidos').select('folio, total, estado, clientes(nombre_razon_social), monto_pagado').eq('tipo_documento', 'ORDEN_VENTA').neq('estado', 'ANULADA').in('estado_pago', ['PENDIENTE', 'PARCIAL']).order('created_at', { ascending: false }).limit(2000);
             apiResponse = deudasRaw?.map((d: any) => {
-              const pagado = d.pagos?.reduce((sum: number, p: any) => sum + Number(p.monto_pagado), 0) || 0;
-              return { cliente: d.clientes?.nombre_razon_social || 'Desconocido', deuda: Number(d.total) - pagado, folio: d.folio };
+              const pagado = Number(d.monto_pagado || 0);
+              return { cliente: d.clientes?.nombre_razon_social || 'Desconocido', deuda: Number(d.total || 0) - pagado, folio: d.folio };
             }).filter(d => d.deuda > 0) || [];
           } else if (functionName === 'consultar_clientes') {
             const { data } = await supabase.from('clientes').select('nombre_razon_social, documento_identidad, correo, telefono');
@@ -593,12 +593,12 @@ REGLAS ESTRICTAS DE RESPUESTA:
             });
             apiResponse = Object.keys(flujoPorMes).map(k => ({ mes: k, ingresos: flujoPorMes[k] })).sort((a,b) => b.mes.localeCompare(a.mes));
           } else if (functionName === 'bi_morosidad') {
-            const { data: deudasRaw } = await supabase.from('pedidos').select('folio, total, estado, clientes(nombre_razon_social), pagos(monto_pagado), created_at').neq('estado', 'ANULADA').order('created_at', { ascending: false }).limit(2000);
+            const { data: deudasRaw } = await supabase.from('pedidos').select('folio, total, estado, clientes(nombre_razon_social), monto_pagado, created_at').eq('tipo_documento', 'ORDEN_VENTA').neq('estado', 'ANULADA').in('estado_pago', ['PENDIENTE', 'PARCIAL']).order('created_at', { ascending: false }).limit(2000);
             const morosidad = { '0_a_30_dias': 0, '31_a_60_dias': 0, 'mas_de_60_dias': 0, 'deuda_total': 0, detalle_critico: [] as any[] };
             const hoy = new Date().getTime();
             deudasRaw?.forEach((d: any) => {
-              const pagado = d.pagos?.reduce((sum: number, p: any) => sum + Number(p.monto_pagado), 0) || 0;
-              const deuda = Number(d.total) - pagado;
+              const pagado = Number(d.monto_pagado || 0);
+              const deuda = Number(d.total || 0) - pagado;
               if (deuda > 0) {
                 const dias = Math.floor((hoy - new Date(d.created_at).getTime()) / (1000 * 60 * 60 * 24));
                 morosidad.deuda_total += deuda;
@@ -612,7 +612,7 @@ REGLAS ESTRICTAS DE RESPUESTA:
             });
             apiResponse = morosidad;
           } else if (functionName === 'bi_pareto_clientes') {
-            const { data: ventasPareto } = await supabase.from('pedidos').select('total, estado, clientes(nombre_razon_social)').neq('estado', 'ANULADA').order('created_at', { ascending: false }).limit(2000);
+            const { data: ventasPareto } = await supabase.from('pedidos').select('total, estado, clientes(nombre_razon_social)').eq('tipo_documento', 'ORDEN_VENTA').neq('estado', 'ANULADA').order('created_at', { ascending: false }).limit(2000);
             const clientesTotales: any = {};
             ventasPareto?.forEach((v: any) => {
               const nom = v.clientes?.nombre_razon_social || 'Consumidor Final';
@@ -762,6 +762,7 @@ REGLAS ESTRICTAS DE RESPUESTA:
             const meses = Math.min(args.meses || 6, 24);
             const { data: ventas } = await supabase.from('pedidos')
               .select('total, created_at, estado')
+              .eq('tipo_documento', 'ORDEN_VENTA')
               .neq('estado', 'ANULADA')
               .order('created_at', { ascending: true })
               .limit(2000);
@@ -804,7 +805,7 @@ REGLAS ESTRICTAS DE RESPUESTA:
             hace7.setDate(hace7.getDate() - 6);
             hace7.setHours(0, 0, 0, 0);
             const { data: ventasHoy } = await supabase.from('pedidos')
-              .select('total').gte('created_at', hoyIni.toISOString()).neq('estado', 'ANULADA');
+              .select('total').eq('tipo_documento', 'ORDEN_VENTA').gte('created_at', hoyIni.toISOString()).neq('estado', 'ANULADA');
             const { data: pagosHoy } = await supabase.from('pagos')
               .select('monto_pagado').gte('created_at', hoyIni.toISOString());
             const { data: despachosHoy } = await supabase.from('despachos_viajes_cabecera')
@@ -812,7 +813,7 @@ REGLAS ESTRICTAS DE RESPUESTA:
             const { data: entregasHoy } = await supabase.from('viajes_entregas')
               .select('id').gte('created_at', hoyIni.toISOString());
             const { data: ventas7 } = await supabase.from('pedidos')
-              .select('total, created_at').gte('created_at', hace7.toISOString()).neq('estado', 'ANULADA');
+              .select('total, created_at').eq('tipo_documento', 'ORDEN_VENTA').gte('created_at', hace7.toISOString()).neq('estado', 'ANULADA');
             const porDia: any = {};
             (ventas7 || []).forEach((v: any) => {
               const dia = (v.created_at || '').substring(0, 10);
@@ -832,14 +833,14 @@ REGLAS ESTRICTAS DE RESPUESTA:
           } else if (functionName === 'bi_resumen_ejecutivo') {
             const { count: totalClientes } = await supabase.from('clientes').select('*', { count: 'exact', head: true });
             const { count: totalProductos } = await supabase.from('productos').select('*', { count: 'exact', head: true });
-            const { data: ventas } = await supabase.from('pedidos').select('total, estado').neq('estado', 'ANULADA').limit(2000);
+            const { data: ventas } = await supabase.from('pedidos').select('total, estado').eq('tipo_documento', 'ORDEN_VENTA').neq('estado', 'ANULADA').limit(2000);
             const totalFacturado = (ventas || []).reduce((s: number, v: any) => s + Number(v.total || 0), 0);
             const pedidos = (ventas || []).length;
             const { data: pagos } = await supabase.from('pagos').select('monto_pagado').limit(2000);
             const totalCobrado = (pagos || []).reduce((s: number, p: any) => s + Number(p.monto_pagado || 0), 0);
-            const { data: deudas } = await supabase.from('pedidos').select('total, estado, pagos(monto_pagado)').neq('estado', 'ANULADA').limit(2000);
+            const { data: deudas } = await supabase.from('pedidos').select('total, estado, monto_pagado').eq('tipo_documento', 'ORDEN_VENTA').neq('estado', 'ANULADA').in('estado_pago', ['PENDIENTE', 'PARCIAL']).limit(2000);
             const deudaTotal = (deudas || []).reduce((s: number, d: any) => {
-              const pagado = d.pagos?.reduce((x: number, p: any) => x + Number(p.monto_pagado), 0) || 0;
+              const pagado = Number(d.monto_pagado || 0);
               return s + Math.max(0, Number(d.total || 0) - pagado);
             }, 0);
             const { data: prods } = await supabase.from('productos').select('stock_actual, precio_unitario_base, stock_minimo');
@@ -924,6 +925,9 @@ REGLAS ESTRICTAS DE RESPUESTA:
               apiResponse = { error: `Columna '${columna}' no válida para ${tabla}. Válidas: ${colsNumericas[tabla].join(', ')} o usa count.` };
             } else {
               let query = supabase.from(tabla).select('*');
+              if (tabla === 'pedidos') {
+                query = query.eq('tipo_documento', 'ORDEN_VENTA').neq('estado', 'ANULADA');
+              }
               if (tablasConFecha.includes(tabla)) {
                 if (desde) query = query.gte('created_at', new Date(desde + 'T00:00:00').toISOString());
                 if (hasta) query = query.lte('created_at', new Date(hasta + 'T23:59:59').toISOString());
