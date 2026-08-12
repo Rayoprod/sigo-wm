@@ -9,7 +9,9 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 CURRENT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 
-if [ -d "$CURRENT_DIR/sigo-wm" ] && [ -d "$CURRENT_DIR/sigo_wm_mobile" ]; then
+if [ -d "$CURRENT_DIR/src" ] && [ -d "$CURRENT_DIR/../sigo_wm_mobile" ]; then
+  ROOT_DIR="$(cd "$CURRENT_DIR/.." && pwd)"
+elif [ -d "$CURRENT_DIR/sigo-wm" ] && [ -d "$CURRENT_DIR/sigo_wm_mobile" ]; then
   ROOT_DIR="$CURRENT_DIR"
 elif [ -d "$CURRENT_DIR/../sigo-wm" ] && [ -d "$CURRENT_DIR/../sigo_wm_mobile" ]; then
   ROOT_DIR="$(cd "$CURRENT_DIR/.." && pwd)"

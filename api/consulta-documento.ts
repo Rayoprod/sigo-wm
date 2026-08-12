@@ -4,6 +4,27 @@
  * (dashboard de Vercel y .env.local para `vercel dev`), nunca en el frontend.
  */
 
+// Rate limit simple en memoria (60 req/min por IP)
+const RATE_LIMIT_WINDOW_MS = 60_000;
+const RATE_LIMIT_MAX = 60;
+const hits = new Map<string, { count: number; resetAt: number }>();
+
+function rateLimited(ip: string): boolean {
+  const now = Date.now();
+  if (hits.size > 10_000) {
+    for (const [k, v] of hits) {
+      if (v.resetAt < now) hits.delete(k);
+    }
+  }
+  const record = hits.get(ip);
+  if (!record || record.resetAt < now) {
+    hits.set(ip, { count: 1, resetAt: now + RATE_LIMIT_WINDOW_MS });
+    return false;
+  }
+  record.count += 1;
+  return record.count > RATE_LIMIT_MAX;
+}
+
 export default async function handler(req: any, res: any) {
   // CORS
   res.setHeader('Access-Control-Allow-Credentials', 'true');
@@ -21,6 +42,12 @@ export default async function handler(req: any, res: any) {
 
   if (req.method !== 'GET') {
     return res.status(405).json({ error: 'Method Not Allowed' });
+  }
+
+  // Rate limit por IP
+  const ip = (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() || req.socket?.remoteAddress || 'unknown';
+  if (rateLimited(ip)) {
+    return res.status(429).json({ success: false, message: 'Demasiadas consultas. Inténtalo de nuevo en un momento.' });
   }
 
   const documento = String(req.query.documento || '').trim();

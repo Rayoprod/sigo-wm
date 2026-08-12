@@ -7,7 +7,7 @@ import { CE_SIN_AUTOCOMPLETAR, getTipoDocumento } from '../../shared/utils/docum
 export class ApiPeruService {
 
   async buscarDocumento(documento: string) {
-    const doc = documento.trim();
+    const doc = String(documento || '').trim();
     const tipoDoc = getTipoDocumento(doc);
     if (!tipoDoc) {
       throw new Error('El documento debe ser un DNI (8 dígitos), RUC (11 dígitos) o Carné de Extranjería.');

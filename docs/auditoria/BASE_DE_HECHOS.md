@@ -1,7 +1,7 @@
 # 🛡️ BASE DE HECHOS PERSISTENTE Y ANTI-CONFABULACIÓN
 ## Ecosistema Sigo-WM (`sigo-wm` · `sigo_wm_mobile`)
 **Versión del Manifiesto:** `2026.08.12`  
-**Última Actualización:** 2026-08-12 12:30:00 COT  
+**Última Actualización:** 2026-08-12 13:10:00 COT  
 **Estado de Validación:** 🟢 TOTALMENTE VERIFICADO (Builds Angular/Flutter Clean · 24/24 Tests Passed · Conexión BD Supabase PostgreSQL Verificada)
 
 ---
@@ -598,6 +598,70 @@ graph TD
   - `flutter analyze` en `sigo_wm_mobile`: 🟢 **0 problemas**
   - `flutter test` en `sigo_wm_mobile`: 🟢 **24/24 tests pasados**
   - `./tools/generar_manifesto.sh`: 🟢 **Drift = 0, 117 archivos sincronizados**
+
+---
+
+### 🗓️ Ejecución: 2026-08-12 12:50 (Auditoría Recurrente de Generación de Reportes Web, Inmutabilidad de Fechas, Marca de Agua y Casting Seguro en Isolate Móvil)
+- **Área Auditada:** Servicio de Marca de Agua Fotográfica Móvil (`sigo_wm_mobile/lib/features/shared/services/watermark_service.dart`), Galería de Evidencias (`evidencias_gallery_screen.dart`), Pantalla de Captura Unificada (`unified_foto_screen.dart`), Módulo Web de Reportes (`sigo-wm/src/app/features/reportes/reportes.component.ts`) y Servicio PDF (`pdf.service.ts`).
+- **Hallazgos y Correcciones Aplicadas:**
+  1. 🔴 **Riesgo de Excepción por Casting Mismatched `(as double?)` en Coordenadas GPS de Isolate de Marca de Agua (`WatermarkService`):**
+     - **Problema:** En `watermark_service.dart` (L59-60), las variables `lat` y `lng` se extraían del mapa `params` con `params['latitude'] as double?` y `params['longitude'] as double?`. Si las coordenadas GPS eran pasadas como enteros (`int`, por ejemplo `0` o `10`), Dart 3 lanzaba `type 'int' is not a subtype of type 'double?' in type cast` dentro del Isolate en segundo plano.
+     - **Fix:** Se inyectó parseo numérico seguro con `(params['latitude'] as num?)?.toDouble()` y `(params['longitude'] as num?)?.toDouble()`.
+     - **Archivos corregidos:**
+       - `sigo_wm_mobile/lib/features/shared/services/watermark_service.dart`
+  2. 🔴 **Falta de Opción 'Anulada' y Riesgo de RangeError por Parseo de Fechas Inválidas en Filtro de Reportes Web (`ReportesComponent`):**
+     - **Problema:** En `reportes.component.ts` (L49-55), el arreglo `estadosVentas` omitía la opción `{ label: 'Anulada', value: 'ANULADA' }`, impidiendo consultar ventas o cotizaciones canceladas en el reporte web. Asimismo, en `cargarVentas()` (L141-150), las llamadas `fromDate.toISOString()` y `toDate.toISOString()` carecían de verificación `!isNaN(d.getTime())`, exponiendo la app a fallos `RangeError: Invalid time value` ante entradas de texto no estándar.
+     - **Fix:** Se incluyó `{ label: 'Anulada', value: 'ANULADA' }` en `estadosVentas` y se agregaron validaciones `!isNaN(fromDate.getTime())` y `!isNaN(toDate.getTime())` antes de convertir las fechas a formato ISO UTC.
+     - **Archivos corregidos:**
+       - `sigo-wm/src/app/features/reportes/reportes.component.ts`
+- **Verificación Técnica Realizada:**
+  - Conexión DB Supabase: 🟢 **OK (`23 RPCs verificadas en esquema public`)**
+  - `npx tsc --noEmit` en `sigo-wm`: 🟢 **0 errores**
+  - `flutter analyze` en `sigo_wm_mobile`: 🟢 **0 problemas**
+  - `flutter test` en `sigo_wm_mobile`: 🟢 **24/24 tests pasados**
+  - `./tools/generar_manifesto.sh`: 🟢 **Drift = 0, 117 archivos sincronizados**
+
+---
+
+### 🗓️ Ejecución: 2026-08-12 13:10 (Auditoría Recurrente de Gestión de Vehículos, Sesiones GPS de Chofer, Recuperación de Caché Offline y Discrepancias `viaje_id` Móviles)
+- **Área Auditada:** Módulo de Servicio Chofer Móvil (`sigo_wm_mobile/lib/features/chofer/services/chofer_local_service.dart`), Sesiones GPS (`sesiones_local_service.dart`), Detalle del Viaje (`chofer_viaje_detail_screen.dart`), Configuración Web (`configuracion.component.ts`) y Esquema DB Supabase PostgreSQL (`public.vehiculos`, `public.sesiones_gps`).
+- **Hallazgos y Correcciones Aplicadas:**
+  1. 🔴 **Pérdida de Identificador `viaje_id` al Cargar Pedidos Activos Offline desde Caché Local (`ChoferLocalService`):**
+     - **Problema:** En `chofer_local_service.dart` (L158 y L226), al construir el mapa de pedidos activos offline a partir de la caché `cached_pedidos_chofer` (L158) o de los viajes offline locales sin caché previa (L226), el campo `'viaje_id'` se establecía por error con una cadena vacía `''`. Debido a esto, cuando el chofer abría la pantalla de detalle del viaje sin conexión a internet (`ChoferViajeDetailScreen`), `viajeCabeceraId` llegaba vacío (`''`), impidiendo localizar los detalles del viaje en la base de datos local SQLite o Supabase.
+     - **Fix:** En L158 se reemplazó `'viaje_id': ''` por `'viaje_id': pedido['viaje_id'] ?? ''` (preservando el ID guardado en la caché JSON), y en L226 se reemplazó por `'viaje_id': vOffline.id`.
+     - **Archivos corregidos:**
+       - `sigo_wm_mobile/lib/features/chofer/services/chofer_local_service.dart`
+  2. 🟢 **Auditoría de Sesiones GPS de Chofer y Esquema PostgreSQL (`public.sesiones_gps` & `public.vehiculos`):**
+     - Verificado: Conexión directa a Supabase. `public.sesiones_gps` contiene las columnas `id`, `pedido_id`, `chofer_id`, `timestamp_inicio`, `timestamp_fin`, `viaje_id`, `estado`, `created_at`, `etiqueta`, `backup_timestamp`. La sincronización offline/online en `SesionesLocalService` utiliza `upsert` previniendo sesiones huérfanas sin conexión. `public.vehiculos` contiene `placa` y `created_at`.
+- **Verificación Técnica Realizada:**
+  - Conexión DB Supabase: 🟢 **OK (`SELECT 1`)**
+  - `npx tsc --noEmit` en `sigo-wm`: 🟢 **0 errores**
+  - `flutter analyze` en `sigo_wm_mobile`: 🟢 **0 problemas**
+  - `flutter test` en `sigo_wm_mobile`: 🟢 **24/24 tests pasados**
+  - `./tools/generar_manifesto.sh`: 🟢 **Drift = 0, 117 archivos sincronizados**
+
+---
+
+### 🗓️ Ejecución: 2026-08-12 15:15 (Auditoría Recurrente del Módulo de Despachos, Filtros de Documento y Resiliencia en Suscripción Realtime)
+- **Área Auditada:** Módulo Móvil de Despachos (`sigo_wm_mobile/lib/features/despachos/screens/despachos_list_screen.dart`, `pedido_detalle_despacho_screen.dart`, `registrar_viaje_screen.dart`), Servicio de Despachos (`sigo_wm_mobile/lib/features/despachos/services/despachador_local_service.dart`) y Módulo Web de Logística (`sigo-wm/src/app/features/logistica/logistica.component.ts`).
+- **Hallazgos y Correcciones Aplicadas:**
+  1. 🔴 **Falta de Filtro `tipo_documento = 'ORDEN_VENTA'` en Consulta Móvil de Despachos (`DespachadorLocalService`):**
+     - **Problema:** En `despachador_local_service.dart` (L8-11), la consulta `getPedidosAprobados()` ejecutaba `Supabase.instance.client.from('pedidos').select(...).eq('estado', 'APROBADA')` omitiendo el filtro `.eq('tipo_documento', 'ORDEN_VENTA')`. Si una cotización u otro documento de venta cambiaba erróneamente de estado en la base de datos, aparecía como orden de venta pendiente de despacho en la aplicación móvil de despachos. En cambio, en la web (`LogisticaComponent.cargarPedidos`), la consulta sí incluía explícitamente `.eq('tipo_documento', 'ORDEN_VENTA')`.
+     - **Fix:** Se inyectó `.eq('tipo_documento', 'ORDEN_VENTA')` en `DespachadorLocalService.getPedidosAprobados()` en `sigo_wm_mobile/lib/features/despachos/services/despachador_local_service.dart`.
+     - **Archivos corregidos:**
+       - `sigo_wm_mobile/lib/features/despachos/services/despachador_local_service.dart`
+  2. 🟢 **Auditoría de Resiliencia Realtime y Navegación Móvil (`sigo_wm_mobile`):**
+     - Verificado: Suscripción a canal Supabase Realtime en `DespachosListScreen` con desuscripción limpia en `dispose()` (`_pedidosSubscription?.unsubscribe()`) evitando memory leaks.
+     - Verificado: Comparación exacta de saldos con redondeo a 3 decimales en `PedidoDetalleDespachoScreen` y `RegistrarViajeScreen`.
+- **Verificación Técnica Realizada:**
+  - Conexión DB Supabase: 🟢 **OK (`SELECT routine_name FROM information_schema.routines -> 23 RPCs`)**
+  - `npx tsc --noEmit` en `sigo-wm`: 🟢 **0 errores**
+  - `flutter analyze` en `sigo_wm_mobile`: 🟢 **0 problemas**
+  - `flutter test` en `sigo_wm_mobile`: 🟢 **24/24 tests pasados**
+  - `./tools/generar_manifesto.sh`: 🟢 **Drift = 0, 117 archivos sincronizados**
+
+
+
 
 
 

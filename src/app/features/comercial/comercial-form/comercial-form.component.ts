@@ -374,7 +374,7 @@ export class ComercialFormComponent implements OnInit {
   get hasAdelantoValido() {
     if (this.tipo_documento === 'COTIZACION') return true;
     if (this.estado_pago !== 'PARCIAL') return true;
-    return this.monto_adelanto !== null && this.monto_adelanto >= 0 && this.monto_adelanto <= this.total;
+    return this.monto_adelanto !== null && this.monto_adelanto > 0 && this.monto_adelanto < this.total;
   }
 
   tiposEntrega = [
@@ -582,7 +582,7 @@ export class ComercialFormComponent implements OnInit {
 
   recalcularTotales() {
     this.subtotal = this.items.reduce((acc, item) => acc + (item.subtotal || 0), 0);
-    const neto = this.subtotal - (this.descuento_global || 0);
+    const neto = Math.max(0, this.subtotal - (this.descuento_global || 0));
     
     if (this.preciosConIgv) {
       // Los precios ya incluyen el 18%: el IGV se extrae (solo informativo) y NO se suma al total
@@ -610,7 +610,7 @@ export class ComercialFormComponent implements OnInit {
     }
     
     if (!this.hasAdelantoValido) {
-      alert("El monto de adelanto no puede ser mayor o igual al total de la venta.");
+      alert("Para pago parcial a crédito, el adelanto debe ser mayor a S/ 0.00 y menor al total de la venta.");
       return;
     }
 

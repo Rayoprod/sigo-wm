@@ -50,7 +50,8 @@ export class ReportesComponent implements OnInit {
     { label: 'Todos', value: null },
     { label: 'Aprobada', value: 'APROBADA' },
     { label: 'Completada', value: 'COMPLETADA' },
-    { label: 'Cotización', value: 'COTIZACION' }
+    { label: 'Cotización', value: 'COTIZACION' },
+    { label: 'Anulada', value: 'ANULADA' }
   ];
   estadoVentaFiltro: string | null = null;
 
@@ -139,14 +140,18 @@ export class ReportesComponent implements OnInit {
       // Filtro de Fechas
       if (this.fechaInicioVentas) {
         const fromDate = new Date(this.fechaInicioVentas);
-        fromDate.setHours(0, 0, 0, 0);
-        query = query.gte('created_at', fromDate.toISOString());
+        if (!isNaN(fromDate.getTime())) {
+          fromDate.setHours(0, 0, 0, 0);
+          query = query.gte('created_at', fromDate.toISOString());
+        }
       }
       
       if (this.fechaFinVentas) {
         const toDate = new Date(this.fechaFinVentas);
-        toDate.setHours(23, 59, 59, 999);
-        query = query.lte('created_at', toDate.toISOString());
+        if (!isNaN(toDate.getTime())) {
+          toDate.setHours(23, 59, 59, 999);
+          query = query.lte('created_at', toDate.toISOString());
+        }
       }
 
       const { data, error } = await query;
