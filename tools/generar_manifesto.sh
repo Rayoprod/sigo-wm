@@ -9,12 +9,12 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 CURRENT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 
-if [ -d "$CURRENT_DIR/src" ]; then
-  ROOT_DIR="$(cd "$CURRENT_DIR/.." && pwd)"
-elif [ -d "$CURRENT_DIR/sigo-wm" ]; then
+if [ -d "$CURRENT_DIR/sigo-wm" ] && [ -d "$CURRENT_DIR/sigo_wm_mobile" ]; then
   ROOT_DIR="$CURRENT_DIR"
-else
+elif [ -d "$CURRENT_DIR/../sigo-wm" ] && [ -d "$CURRENT_DIR/../sigo_wm_mobile" ]; then
   ROOT_DIR="$(cd "$CURRENT_DIR/.." && pwd)"
+else
+  ROOT_DIR="$CURRENT_DIR"
 fi
 
 OUTPUT_FILE="$ROOT_DIR/docs/auditoria/MANIFIESTO_BASE.json"
@@ -91,6 +91,11 @@ rm -f "$TMP_JSON"
 
 [ -f "$OUTPUT_FILE" ] && [ -d "$ROOT_DIR/sigo-wm/docs/auditoria" ] && cp -f "$OUTPUT_FILE" "$ROOT_DIR/sigo-wm/docs/auditoria/MANIFIESTO_BASE.json" 2>/dev/null || true
 [ -f "$OUTPUT_FILE" ] && [ -d "$ROOT_DIR/sigo_wm_mobile/docs/auditoria" ] && cp -f "$OUTPUT_FILE" "$ROOT_DIR/sigo_wm_mobile/docs/auditoria/MANIFIESTO_BASE.json" 2>/dev/null || true
+
+if [ -f "$ROOT_DIR/docs/auditoria/BASE_DE_HECHOS.md" ]; then
+  [ -d "$ROOT_DIR/sigo-wm/docs/auditoria" ] && cp -f "$ROOT_DIR/docs/auditoria/BASE_DE_HECHOS.md" "$ROOT_DIR/sigo-wm/docs/auditoria/BASE_DE_HECHOS.md" 2>/dev/null || true
+  [ -d "$ROOT_DIR/sigo_wm_mobile/docs/auditoria" ] && cp -f "$ROOT_DIR/docs/auditoria/BASE_DE_HECHOS.md" "$ROOT_DIR/sigo_wm_mobile/docs/auditoria/BASE_DE_HECHOS.md" 2>/dev/null || true
+fi
 
 COUNT=$(grep -c '"path"' "$OUTPUT_FILE" || true)
 echo "✅ Manifiesto generado con éxito: $COUNT archivos fuente registrados."

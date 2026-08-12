@@ -1,5 +1,5 @@
 {
-    "generado": "2026-08-12T05:58:39Z",
+    "generado": "2026-08-12T06:09:37Z",
     "archivos": [
         {
             "path": "sigo-wm/api/chat.ts",
@@ -555,21 +555,21 @@
         },
         {
             "path": "sigo_wm_mobile/lib/features/chofer/services/entregas_local_service.dart",
-            "sha256": "cd280ffaa02b2618e5c97c651539b4f7cc430b61b77f2f9f1558d7830861f65b",
-            "lineas": 218,
-            "mtime": "2026-08-11T19:48:12Z"
+            "sha256": "e0653d4e77a1730077bfc1bff0391feaddf780b3747e759ad6d53b102ba778b4",
+            "lineas": 224,
+            "mtime": "2026-08-12T01:05:09Z"
         },
         {
             "path": "sigo_wm_mobile/lib/features/chofer/services/eventos_local_service.dart",
-            "sha256": "92203fa513d4c799b6aec24d5963dc32db3c7c3f0fcbabc8174cf10f0733a7a2",
-            "lineas": 62,
-            "mtime": "2026-06-22T15:38:54Z"
+            "sha256": "650a0c7933b31ac3e961be557bc773b9598e8bc8e1a2de653a959691d33ca875",
+            "lineas": 70,
+            "mtime": "2026-08-12T01:09:10Z"
         },
         {
             "path": "sigo_wm_mobile/lib/features/chofer/services/recepciones_local_service.dart",
-            "sha256": "942c76ff505b16837a4dce4ac60620929e2c6523914ad68d7eb1bb9cc3fc9db7",
-            "lineas": 155,
-            "mtime": "2026-08-11T19:48:10Z"
+            "sha256": "f25c7c305a7e4d2a047256457c3aa6afaf737541b426ab5cc318aa7a8fd8116a",
+            "lineas": 167,
+            "mtime": "2026-08-12T01:05:15Z"
         },
         {
             "path": "sigo_wm_mobile/lib/features/chofer/services/rutas_local_service.dart",

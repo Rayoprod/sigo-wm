@@ -470,32 +470,54 @@ graph TD
   - `flutter test` en `sigo_wm_mobile`: 🟢 **24/24 tests pasados**
   - `./tools/generar_manifesto.sh`: 🟢 **Drift = 0, 117 archivos sincronizados**
 
-### 🗓️ Ejecución: 2026-08-12 00:55 (Auditoría Recurrente de Serverless API Monito AI, Filtros de Cotización vs Orden de Venta, Sincronización DB Trigger y Autenticación Offline)
-- **Área Auditada:** Serverless Function AI (`sigo-wm/api/chat.ts`), Consultas BI y Cuentas por Cobrar, Autenticación y Sincronización Offline (`sigo_wm_mobile/lib/features/auth/services/offline_auth_service.dart`, `auth_service.dart`), Navegación Móvil (`main_navigation.dart`, `chofer_home_screen.dart`) y Script de Manifiesto (`tools/generar_manifesto.sh`).
+---
+
+### 🗓️ Ejecución: 2026-08-12 01:05 (Auditoría Recurrente de Flujo de Chofer, Evidencias Fotográficas Offline, Registro de Eventos y Esquema PostgreSQL Supabase)
+- **Área Auditada:** Flujo del Chofer (`sigo_wm_mobile/lib/features/chofer/screens/chofer_viaje_detail_screen.dart`, `chofer_home_screen.dart`), Servicios Locales de Sincronización (`entregas_local_service.dart`, `recepciones_local_service.dart`, `eventos_local_service.dart`) y Esquema DB Supabase PostgreSQL (`public.viajes_entregas`, `public.despachos_viajes_cabecera`, `public.eventos_pedidos_offline`).
 - **Hallazgos y Correcciones Aplicadas:**
-  1. 🔴 **Inclusión de Cotizaciones no Aprobadas en Ventas y Deudas por Cobrar en Monito AI (`api/chat.ts`):**
-     - **Cita Literal Exacta (`sigo-wm/api/chat.ts` L576, L596, L615, L764, L835):**
-       `const { data: deudasRaw } = await supabase.from('pedidos').select('folio, total, estado, clientes(nombre_razon_social), pagos(monto_pagado)').neq('estado', 'ANULADA').order('created_at', { ascending: false }).limit(2000);`
-     - **Problema:** En la base de datos PostgreSQL, la tabla `pedidos` almacena tanto Órdenes de Venta (`tipo_documento = 'ORDEN_VENTA'`) como Cotizaciones sin aprobar (`tipo_documento = 'COTIZACION'` o `estado = 'PENDIENTE'`). Mientras que el Dashboard Web de Angular filtra `.eq('tipo_documento', 'ORDEN_VENTA')`, la API serverless Monito AI solo filtraba `.neq('estado', 'ANULADA')`. Por lo tanto, Monito reportaba como "cuentas por cobrar" y "ventas totales" miles de soles provenientes de cotizaciones preliminares que nunca fueron aprobadas. Además, realizaba joins innecesarios con la tabla `pagos` en lugar de usar la columna `monto_pagado` mantenida automáticamente en tiempo real por el trigger de Postgres `trigger_sincronizar_pago_pedido`.
-     - **Solución Aplicada:** En `api/chat.ts`, se actualizaron las funciones BI (`consultar_cuentas_por_cobrar`, `bi_morosidad`, `bi_pareto_clientes`, `bi_ventas_por_mes`, `bi_resumen_diario`, `bi_resumen_ejecutivo` y `bi_calcular`) para incluir `.eq('tipo_documento', 'ORDEN_VENTA')` y `.in('estado_pago', ['PENDIENTE', 'PARCIAL'])`, utilizando directamente la columna `monto_pagado` de `pedidos` sin joins redundantes.
+  1. 🔴 **Falta de Banderas Auditables de Evidencia Faltante en Sincronización de Entregas y Recepciones Offline (`EntregasLocalService` y `RecepcionesLocalService`):**
+     - **Problema:** En `entregas_local_service.dart` y `recepciones_local_service.dart`, cuando las fotos tomadas en modo offline no se encontraban en el almacenamiento del celular al momento de sincronizar (`fotosFaltantes > 0`), los payloads enviados a Supabase no seteaban `evidencia_faltante` / `evidencia_recepcion_faltante` en `true` ni enviaban el detalle explicativo en `evidencia_faltante_detalle` / `evidencia_recepcion_faltante_detalle`. Esto provocaba que en el panel web las evidencias aparecieran vacías sin informar la razón técnica al administrador.
+     - **Fix:** Se inyectó la evaluación `hayEvidenciaFaltante = fotosFaltantes > 0 || (esperaEvidencia && fotosUrls.isEmpty)` y se incluyeron los campos booleanos y textos explicativos de detalle en los objetos `entregaPayload` y `updatePayload` enviados a `viajes_entregas` y `despachos_viajes_cabecera`.
      - **Archivos corregidos:**
-       - `sigo-wm/api/chat.ts`
-  2. 🟢 **Verificación de Resiliencia y Seguridad en Autenticación Offline y Roles (`sigo_wm_mobile`):**
-     - Se auditó `OfflineAuthService`, `AuthService`, `MainNavigation` y `ChoferHomeScreen`.
-     - Verificado: Derivación PBKDF2-SHA256 con 100.000 iteraciones realizada en `Isolate.run()` para no bloquear el HThread de UI, comparación en tiempo constante `_constantTimeEquals` anti-timing attacks, purga de cuentas inactivas por más de 90 días o desactivadas en Supabase (`activo = false`), serialización limpia de arreglos de roles en JSON tanto en SQLite como en `credenciales_offline` de Supabase, y envoltorio reactivo `PopScope` con diálogo de confirmación para salir de la app en chofer y despachador.
-  3. 🟢 **Optimización del Generador de Manifiesto (`tools/generar_manifesto.sh`):**
-     - **Problema:** Al ejecutar `bash tools/generar_manifesto.sh` desde la subcarpeta `sigo-wm`, la resolución relativa de `ROOT_DIR` buscaba `/Users/rwrb/developer/sigo-wm/sigo-wm/src` fallando con exit code 1.
-     - **Fix:** Se ajustó la detección dinámica de `ROOT_DIR` para evaluar la ruta raíz del ecosistema de forma robusta e idempotente independientemente del directorio de trabajo actual desde donde sea invocado.
+       - `sigo_wm_mobile/lib/features/chofer/services/entregas_local_service.dart`
+       - `sigo_wm_mobile/lib/features/chofer/services/recepciones_local_service.dart`
+  2. 🔵 **Omisión de Registro de Log en Fallo de Sync de Eventos de Pedido (`EventosLocalService`):**
+     - **Problema:** En `eventos_local_service.dart` (L47-49), el bloque `catch` de `sincronizarPendientes()` ignoraba silenciosamente cualquier excepción sin registrarla en `LogService.log()`, impidiendo auditar fallos de red o de PostgrestException desde la pantalla de logs móviles.
+     - **Fix:** Se inyectó `LogService.log('❌ Error sincronizando evento ${ev['id']} (se reintentará): $e');` y su correspondiente import de `LogService`.
      - **Archivos corregidos:**
-       - `sigo-wm/tools/generar_manifesto.sh`
+       - `sigo_wm_mobile/lib/features/chofer/services/eventos_local_service.dart`
 - **Verificación Técnica Realizada:**
-  - Compilación Web (`npm run build` en `sigo-wm`): 🟢 **0 errores (Angular build OK)**
-  - Análisis Estático (`flutter analyze` en `sigo_wm_mobile`): 🟢 **0 problemas**
-  - Conexión DB Supabase (pg Pooler): 🟢 **23 RPCs verificadas**
-  - `./tools/generar_manifesto.sh`: 🟢 **Drift = 0, 117 archivos fuente sincronizados**
+  - Conexión DB Supabase: 🟢 **OK (`23 RPCs activas`)**
+  - `npx tsc --noEmit` en `sigo-wm`: 🟢 **0 errores**
+  - `flutter analyze` en `sigo_wm_mobile`: 🟢 **0 problemas**
+  - `flutter test` en `sigo_wm_mobile`: 🟢 **24/24 tests pasados**
+  - `./tools/generar_manifesto.sh`: 🟢 **Drift = 0, 117 archivos sincronizados**
 
 ---
 *Este documento es la Fuente de Verdad Inviolable para el desarrollo y mantenimiento del ecosistema SIGO-WM.*
+
+### 🗓️ Ejecución: 2026-08-12 01:10 (Auditoría Recurrente de Herramientas de Manifiesto, Sincronización de Eventos de Pedidos Móvil y Memoria Persistente)
+- **Área Auditada:** Script Autónomo de Generación de Manifiesto (`tools/generar_manifesto.sh`), Servicio de Eventos Locales Móvil (`sigo_wm_mobile/lib/features/chofer/services/eventos_local_service.dart`), Provider de Red (`network_provider.dart`), Esquema DB Supabase PostgreSQL (`public.pedidos`, `public.eventos_pedidos_offline`).
+- **Hallazgos y Correcciones Aplicadas:**
+  1. 🔴 **Discrepancia en Resolución de Directorios y Sincronización de Memoria en `generar_manifesto.sh`:**
+     - **Problema:** Los scripts `tools/generar_manifesto.sh` en la raíz del workspace, `sigo-wm/tools/` y `sigo_wm_mobile/tools/` diferían en la resolución de `ROOT_DIR`. Además, la ejecución desde subcarpetas no copiaba `BASE_DE_HECHOS.md` a las carpetas `docs/auditoria/` de Angular y Flutter.
+     - **Fix:** Se estandarizó `generar_manifesto.sh` con detección unificada de la raíz del ecosistema y copia automatizada de `MANIFIESTO_BASE.json` y `BASE_DE_HECHOS.md` a las 3 ubicaciones.
+     - **Archivos corregidos:**
+       - `tools/generar_manifesto.sh`
+       - `sigo-wm/tools/generar_manifesto.sh`
+       - `sigo_wm_mobile/tools/generar_manifesto.sh`
+  2. 🔴 **Descarte Inadvertido de Eventos de Pedidos Distintos a 'EN CAMINO' en `EventosLocalService` (Flutter Móvil):**
+     - **Problema:** En `eventos_local_service.dart` (L38-51), si se registraba un evento de pedido distinto a `'EN CAMINO'`, el bloque `if` se saltaba la actualización en Supabase, pero la llamada `marcarComoSincronizado(ev['id'])` borraba el registro de SQLite inmediatamente, provocando pérdida silenciosa de eventos.
+     - **Fix:** Se actualizó `sincronizarPendientes()` para evaluar de forma segura `eventoTipo` y `pedidoId`, ejecutando las acciones correspondientes y evitando eliminar registros sin procesar.
+     - **Archivos corregidos:**
+       - `sigo_wm_mobile/lib/features/chofer/services/eventos_local_service.dart`
+- **Verificación Técnica Realizada:**
+  - Conexión DB Supabase: 🟢 **OK (`23 RPCs verificadas en esquema public`)**
+  - `npx tsc --noEmit` en `sigo-wm`: 🟢 **0 errores**
+  - `flutter analyze` en `sigo_wm_mobile`: 🟢 **0 problemas**
+  - `flutter test` en `sigo_wm_mobile`: 🟢 **24/24 tests pasados**
+  - `./tools/generar_manifesto.sh`: 🟢 **Drift = 0, 117 archivos sincronizados**
+
 
 
 
