@@ -343,7 +343,10 @@ export class ComercialListComponent implements OnInit {
     const ep = this.conversionConfig.estadoPago;
     if ((ep === 'PAGADO' || ep === 'PARCIAL') && this.pedidoAConvertir) {
       const total = Number(this.pedidoAConvertir.total) || 0;
-      const montoPago = ep === 'PAGADO' ? total : 0; // PARCIAL sin monto definido: 0 por ahora
+      const montoPago = ep === 'PAGADO' 
+        ? total 
+        : (ep === 'PARCIAL' ? (Number(this.conversionConfig.montoAdelanto) || 0) : 0);
+
       if (montoPago > 0) {
         const usuario = this.authService.currentUser();
         await this.supabase
@@ -351,8 +354,8 @@ export class ComercialListComponent implements OnInit {
           .insert({
             pedido_id: this.pedidoAConvertir.id,
             monto_pagado: montoPago,
-            metodo_pago: 'EFECTIVO', // default; el usuario puede editarlo desde el modal de pagos
-            referencia_operacion: 'Pago registrado al convertir cotización',
+            metodo_pago: this.conversionConfig.metodoPago || 'EFECTIVO',
+            referencia_operacion: this.conversionConfig.referencia || 'Pago registrado al convertir cotización',
             usuario_id: usuario?.id
           });
       }
@@ -490,7 +493,7 @@ export class ComercialListComponent implements OnInit {
 
       if (errPago) throw errPago;
 
-      // 2. Calcular nuevo saldo para actualizar estado de pago del pedido
+      // 2. Calcular nuevo saldo para actualizar modelo local (el trigger DB fn_sincronizar_pago_pedido ya actualiza pedidos en PostgreSQL)
       const nuevoTotalPagado = this.historialPagos.reduce((acc, p) => acc + Number(p.monto_pagado), 0) + this.nuevoPago.monto;
       const nuevoSaldo = Number(this.selectedPedidoPagos.total) - nuevoTotalPagado;
       let nuevoEstadoPago = 'PARCIAL';
@@ -499,15 +502,7 @@ export class ComercialListComponent implements OnInit {
         nuevoEstadoPago = 'PAGADO';
       }
 
-      // 3. Actualizar estado del pedido en DB
-      const { error: errPedido } = await this.supabase
-        .from('pedidos')
-        .update({ estado_pago: nuevoEstadoPago })
-        .eq('id', this.selectedPedidoPagos.id);
-
-      if (errPedido) throw errPedido;
-
-      // 4. Refrescar datos locales
+      // 3. Refrescar datos locales
       this.selectedPedidoPagos.estado_pago = nuevoEstadoPago;
       
       // Actualizar la referencia en la tabla

@@ -167,22 +167,49 @@ export class AuthService {
   }
 
   private async loadAppUser(userId: string) {
-    const { data, error } = await this.supabase
-      .from('usuarios')
-      .select('*')
-      .eq('id', userId)
-      .single();
+    try {
+      const { data, error } = await this.supabase
+        .from('usuarios')
+        .select('*')
+        .eq('id', userId)
+        .single();
 
-    if (error || !data || !data.activo) {
-      console.error('Error loading user profile or user inactive', error);
-      // If inactive, we should sign out
-      if (data && !data.activo) {
-        await this.signOut();
+      if (error || !data || data.activo === false) {
+        console.error('Error loading user profile or user inactive', error);
+        // Si la cuenta está explícitamente desactivada en la BD, cerrar sesión
+        if (data && data.activo === false) {
+          await this.signOut();
+          return;
+        }
+        // Si ocurrió un error de red o timeout, intentar restaurar perfil desde localStorage
+        const cached = localStorage.getItem(`sigo_user_profile_${userId}`);
+        if (cached) {
+          try {
+            const user = JSON.parse(cached) as AppUser;
+            if (user && user.activo !== false) {
+              this.currentUser.set(user);
+              return;
+            }
+          } catch (_) {}
+        }
+        return;
       }
-      return;
-    }
 
-    this.currentUser.set(data as AppUser);
+      // Guardar el perfil válido en localStorage para resiliencia ante micro-cortes
+      localStorage.setItem(`sigo_user_profile_${userId}`, JSON.stringify(data));
+      this.currentUser.set(data as AppUser);
+    } catch (e) {
+      console.warn('[AuthService] loadAppUser exception:', e);
+      const cached = localStorage.getItem(`sigo_user_profile_${userId}`);
+      if (cached) {
+        try {
+          const user = JSON.parse(cached) as AppUser;
+          if (user && user.activo !== false) {
+            this.currentUser.set(user);
+          }
+        } catch (_) {}
+      }
+    }
   }
 
   async signIn(email: string, password: string) {
@@ -202,6 +229,10 @@ export class AuthService {
 
   async signOut() {
     try {
+      const user = this.currentUser();
+      if (user?.id) {
+        localStorage.removeItem(`sigo_user_profile_${user.id}`);
+      }
       await this.supabase.auth.signOut();
     } catch (e) {
       // Ignorar errores de red: igual limpiamos el estado local

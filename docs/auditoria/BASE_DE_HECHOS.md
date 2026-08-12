@@ -1,8 +1,8 @@
 # 🛡️ BASE DE HECHOS PERSISTENTE Y ANTI-CONFABULACIÓN
 ## Ecosistema Sigo-WM (`sigo-wm` · `sigo_wm_mobile`)
 **Versión del Manifiesto:** `2026.08.11`  
-**Última Actualización:** 2026-08-11 23:04:00 UTC  
-**Estado de Validación:** 🟢 TOTALMENTE VERIFICADO (Builds Angular/Flutter Clean · 24/24 Tests Passed)
+**Última Actualización:** 2026-08-11 20:12:00 COT  
+**Estado de Validación:** 🟢 TOTALMENTE VERIFICADO (Builds Angular/Flutter Clean · 24/24 Tests Passed · Conexión BD Supabase PostgreSQL Verificada)
 
 ---
 
@@ -70,6 +70,19 @@ El archivo binario estructurado `MANIFIESTO_BASE.json` contiene la huella digita
    - **Error detectado:** En `ChoferLocalService.getPedidosActivos()` (`chofer_local_service.dart` L166 y L202), la lista de viajes completados para filtrar pedidos activos offline llamaba a `EntregasLocalService().getEntregasPendientes()` en lugar de `getAllEntregasLocales()`.
    - **Causa raíz:** `getEntregasPendientes()` sólo busca registros con `sincronizado = 0`. Al perder la conexión a internet, las entregas que ya habían sido sincronizadas previamente (`sincronizado = 1`) no ingresaban al set `viajesEntregados`, haciendo que los viajes finalizados reaparecieran como pedidos activos en la pantalla del chofer.
    - **Solución aplicada:** Se sustituyó `getEntregasPendientes()` por `getAllEntregasLocales()` en ambos bloques de fallback offline de `getPedidosActivos()`.
+
+10. **Trampa #10 — Detección Frágil de Red `ConnectivityResult.contains(mobile/wifi)` o `contains(none)` en Dispositivos Multi-interfaz**:
+    - **Error detectado:** En 9 componentes clave de `sigo_wm_mobile` (`despachos_list_screen.dart`, `pedido_detalle_despacho_screen.dart`, `registrar_item_despacho_screen.dart`, `viajes_local_service.dart`, `chofer_viaje_detail_screen.dart`, `chofer_local_service.dart`, `background_gps_service.dart`, `sesiones_local_service.dart`, `auth_service.dart`), la verificación de red usaba `contains(mobile)||contains(wifi)` o `contains(none)`.
+    - **Causa raíz:** `connectivity_plus` 6.x retorna un `List<ConnectivityResult>`. En conexiones Ethernet/VPN (comunes en tablets o emuladores), `mobile/wifi` dava falso ignorando la red disponible. En estados multi-interfaz con `[none, wifi]`, `contains(none)` evaluaba `true` forzando offline.
+    - **Solución aplicada:** Se estandarizó la verificación de conectividad a `!connectivityResult.every((r) => r == ConnectivityResult.none)` para confirmar red y `connectivityResult.every((r) => r == ConnectivityResult.none)` para fallback offline.
+
+11. **Trampa #11 — Sobrescritura Accidental de `chofer_id` con `NULL` durante Sincronización en Segundo Plano de Recepciones y Entregas:**
+    - **Error detectado:** En `recepciones_local_service.dart` (L115) y `entregas_local_service.dart` (L152), el mapa de datos enviado a Supabase incluía `'chofer_id': supabaseClient.auth.currentUser?.id`. Si la sincronización en segundo plano se ejecutaba sin una sesión activa recuperada (`currentUser?.id` era `null`), Supabase sobrescribía el `chofer_id` existente del viaje con `NULL`, perdiendo la asignación del chofer en la nube.
+    - **Solución aplicada:** Se actualizó la construcción del payload en `RecepcionesLocalService` y `EntregasLocalService` para incluir `'chofer_id'` en el mapa únicamente cuando `currentUserId != null`.
+
+12. **Trampa #12 — Inyección Implícita de `chofer_id: NULL` durante Sincronización en Lote de Rutas GPS:**
+    - **Error detectado:** En `rutas_local_service.dart` (L37, L58, L111, L144), la construcción del payload usaba `'chofer_id': p['chofer_id'] ?? supabaseClient.auth.currentUser?.id`. Cuando la subida de puntos GPS corría en background isolate o sin sesión activa de Supabase (`currentUser` es `null`) y `p['chofer_id']` no venía en SQLite, se enviaba explícitamente `'chofer_id': null`.
+    - **Solución aplicada:** Se condicionó la inyección de `'chofer_id'` en el mapa enviándolo únicamente si `choferId != null` (tanto en insert individual como en `sincronizarPendientesBatch`).
 
 ---
 
@@ -232,9 +245,211 @@ graph TD
 
 ---
 
-## ⚪ SECCIÓN 8: ELEMENTOS NO VERIFICABLES DESDE EL REPO
-1. **RPC `ajustar_stock_atomico` en Supabase desplegado**: El SQL está versionado en `sigo-wm/supabase/migrations/20250201000000_ajustar_stock_atomico.sql`, pero su ejecución activa en la instancia remota de Supabase requiere consulta directa al servidor (⚪ NO VERIFICABLE sin acceso a la BD remota).
-2. **RPC `reenlazar_huerfanas_de_pedido` en Supabase desplegado**: Invocado en `network_provider.dart` (L257), su existencia en la BD remota no se encuentra en las migraciones de este repo (⚪ NO VERIFICABLE sin acceso a la BD remota).
+## 🟢 SECCIÓN 8: ELEMENTOS ANTERIORMENTE NO VERIFICABLES (AHORA 100% VERIFICADOS EN BD REMOTA)
+1. **RPC `ajustar_stock_atomico` en Supabase**: 🟢 **VERIFICADO EN BD**. La migración `20250201000000_ajustar_stock_atomico.sql` fue ejecutada y verificada mediante conexión PostgreSQL directa al pooler de Supabase. La función `public.ajustar_stock_atomico(uuid, text, numeric, text, uuid, boolean)` existe y está lista para uso.
+2. **Columnas de respaldo en `sesiones_gps`**: 🟢 **VERIFICADO EN BD**. La migración `20250101000000_sesiones_gps_etiqueta.sql` fue ejecutada. Las columnas `etiqueta` (text) y `backup_timestamp` (timestamptz) existen en la tabla `public.sesiones_gps`.
+3. **RPC `reenlazar_huerfanas_de_pedido` en Supabase**: 🟢 **VERIFICADO EN BD**. Se confirmó la presencia activa de `public.reenlazar_huerfanas_de_pedido` en el esquema `public` de la base de datos remota.
+4. **RPCs de Rastreo Cliente (`get_public_tracking_data`, `get_public_tracking_data_by_ruc`)**: 🟢 **VERIFICADO EN BD**. Se confirmó la presencia activa de ambas funciones RPC en el esquema `public`.
+5. **Columnas de evidencia de fotos faltantes (`evidencia_faltante`, `evidencia_recepcion_faltante`)**: 🟢 **VERIFICADO EN BD**. Se confirmó la presencia activa de las 4 columnas en `public.viajes_entregas` y `public.despachos_viajes_cabecera`.
+
+---
+
+## 📝 SECCIÓN 9: REGISTRO DE AUDITORÍAS Y CORRECCIONES RECURRENTES
+
+### 🗓️ Ejecución: 2026-08-11 20:53 (Auditoría Recurrente de Dashboard Web, Métricas de Ventas, SQLite Móvil y Cola de Sincronización)
+- **Área Auditada:** Dashboard Web (`sigo-wm/src/app/features/dashboard/dashboard.component.ts`), Base de Datos SQLite Móvil (`sigo_wm_mobile/lib/core/config/local_db.dart`), Visor de Cola de Sincronización (`sigo_wm_mobile/lib/features/shared/screens/sync_queue_screen.dart`), Visor de Logs (`sigo_wm_mobile/lib/features/shared/screens/log_viewer_screen.dart`) y Esquema DB Supabase PostgreSQL (`public.pedidos`, `public.pagos`, trigger DB `fn_sincronizar_pago_pedido`).
+- **Hallazgos y Correcciones Aplicadas:**
+  1. 🔴 **Cálculo Descalibrado de Ritmo de Ventas Diario en Dashboard (`DashboardComponent`):**
+     - **Problema:** En `generarInsights()` (L290), el promedio de ventas por día (`montoPromedioDia`) dividía `this.montoVentas` (que representa el total histórico acumulado de ventas de la empresa) entre 30 días (`days`). Esto producía un ritmo proyectado de ventas diario y mensual totalmente desproporcionado e incorrecto.
+     - **Fix:** Se sustituyó `this.montoVentas` por `(this.totalMesVentas || 0)`, asegurando que el cálculo del promedio diario de ventas use exclusivamente el total acumulado de las ventas del último mes (`totalMesVentas`).
+     - **Archivos corregidos:** `sigo-wm/src/app/features/dashboard/dashboard.component.ts`.
+  2. 🔵 **Optimización de Consulta de Deudas de Pedidos en Dashboard (`DashboardComponent`):**
+     - **Problema:** En `loadDeudaStatus()` (L84-102), se consultaba la relación anidada `pagos(monto_pagado)` para calcular el saldo pendiente de cada pedido. Esto era ineficiente puesto que la columna `monto_pagado` en `pedidos` ya es mantenida automáticamente en tiempo real por el trigger de base de datos PostgreSQL `trigger_sincronizar_pago_pedido`.
+     - **Fix:** Se simplificó la consulta a `.select('total, monto_pagado')` sobre `pedidos`, eliminando el join innecesario con la tabla `pagos` y mejorando la velocidad de carga.
+     - **Archivos corregidos:** `sigo-wm/src/app/features/dashboard/dashboard.component.ts`.
+  3. 🟠 **Omisión de Notificación y Recarga al Eliminar Puntos GPS en la Cola Local (`SyncQueueScreen`):**
+     - **Problema:** En `sync_queue_screen.dart` (L182-203), al eliminar un lote de 'Puntos GPS', el borrado SQL se ejecutaba correctamente, pero `LogService.log()`, `ScaffoldMessenger` y `_loadQueue()` se encontraban anidados dentro de la rama `else`. Por consiguiente, la pantalla no se refrescaba ni mostraba confirmación al borrar ubicaciones GPS locales.
+     - **Fix:** Se reubicaron `LogService.log()`, `ScaffoldMessenger` y `_loadQueue()` fuera del condicional `if/else`, garantizando que todo borrado (incluyendo Puntos GPS) notifique al usuario y actualice la lista de inmediato.
+     - **Archivos corregidos:** `sigo_wm_mobile/lib/features/shared/screens/sync_queue_screen.dart`.
+- **Verificación Técnica Realizada:**
+  - Conexión DB Supabase: 🟢 **OK (`23 RPCs en esquema public`)**
+  - `npx tsc --noEmit` en `sigo-wm`: 🟢 **0 errores**
+  - `flutter analyze` en `sigo_wm_mobile`: 🟢 **0 problemas**
+  - `flutter test` en `sigo_wm_mobile`: 🟢 **24/24 tests pasados**
+  - `./tools/generar_manifesto.sh`: 🟢 **Drift = 0, 117 archivos sincronizados**
+
+
+### 🗓️ Ejecución: 2026-08-11 20:40 (Auditoría Recurrente de Ventas, Conversión de Cotizaciones, Adelanto Parcial y Triggers de Pago DB)
+- **Área Auditada:** Módulo Comercial y de Pedidos (`sigo-wm/src/app/features/comercial/comercial-list/comercial-list.component.ts`, `comercial-form.component.ts`), Clientes (`sigo-wm/src/app/features/clientes/clientes.component.ts`) y Triggers de Base de Datos Supabase PostgreSQL (`trigger_sincronizar_pago_pedido ON pagos`, RPC `fn_sincronizar_pago_pedido`).
+- **Hallazgos y Correcciones Aplicadas:**
+  1. 🔴 **Captura de Pago de Adelanto Parcial y Metadatos al Convertir Cotización a Venta (`ComercialListComponent`):**
+     - **Problema:** En `comercial-list.component.ts` (L344-358), al convertir una cotización a orden de venta con opción de pago `PARCIAL` y un adelanto en `montoAdelanto`, la variable `montoPago` se forzaba a `0`, omitiendo la creación del registro en la tabla `pagos`. Además, `metodo_pago` y `referencia_operacion` estaban hardcodeados a `'EFECTIVO'` y texto genérico en lugar de usar las selecciones del usuario (`conversionConfig.metodoPago` y `conversionConfig.referencia`). Por ello, cuando el trigger DB re-calculaba la suma, `estado_pago` se revertía a `'PENDIENTE'`.
+     - **Fix:** Se actualizó `confirmarConversion()` para evaluar `montoPago = ep === 'PAGADO' ? total : (ep === 'PARCIAL' ? (Number(this.conversionConfig.montoAdelanto) || 0) : 0)` e insertar el pago usando `metodoPago` y `referencia` seleccionados en el modal.
+     - **Archivos corregidos:** `sigo-wm/src/app/features/comercial/comercial-list/comercial-list.component.ts`.
+  2. 🔵 **Eliminación de UPDATE Redundante tras Registro de Abono (`ComercialListComponent`):**
+     - **Problema:** En `registrarAbono()` (L493-508), se ejecutaba un `update({ estado_pago })` explícito sobre `pedidos` después de insertar en `pagos`. Esto era redundante porque el trigger en PostgreSQL `trigger_sincronizar_pago_pedido` recalcula y actualiza `monto_pagado` y `estado_pago` atómicamente en el servidor.
+     - **Fix:** Se removió la llamada HTTP `update` redundante, permitiendo que el trigger de BD sea la fuente atómica de verdad.
+     - **Archivos corregidos:** `sigo-wm/src/app/features/comercial/comercial-list/comercial-list.component.ts`.
+- **Verificación Técnica Realizada:**
+  - Conexión DB Supabase: 🟢 **OK (`db: postgres, usr: postgres`)**
+  - `npx tsc --noEmit` en `sigo-wm`: 🟢 **0 errores**
+  - `flutter analyze` en `sigo_wm_mobile`: 🟢 **0 problemas**
+  - `flutter test` en `sigo_wm_mobile`: 🟢 **24/24 tests pasados**
+  - `./tools/generar_manifesto.sh`: 🟢 **Drift = 0, 117 archivos sincronizados**
+
+### 🗓️ Ejecución: 2026-08-11 20:32 (Auditoría Recurrente de Autenticación, Gestión de Roles, Sesión y Resiliencia Web ↔ Mobile ↔ Supabase DB)
+- **Área Auditada:** Sistema de Autenticación y Perfil de Usuario (`sigo-wm/src/app/core/services/auth.service.ts`), Creación y Administración de Usuarios (`sigo-wm/src/app/features/configuracion/configuracion.component.ts`), Servicio Móvil de Autenticación y Sesión (`sigo_wm_mobile/lib/features/auth/services/auth_service.dart`, `offline_auth_service.dart`, `login_screen.dart`, `role_selector_screen.dart`) y Esquema DB Supabase PostgreSQL (`public.usuarios`, `public.credenciales_offline`, RPCs `get_user_role`, `handle_new_user`, `upsert_credencial_offline`).
+- **Hallazgos y Correcciones Aplicadas:**
+  1. 🔴 **Resiliencia ante Micro-cortes de Red en Carga de Perfil `loadAppUser` (Angular Web):**
+     - **Problema:** En `auth.service.ts` (L169-186), si ocurría una desconexión momentánea al cargar la app web o recargar una pestaña, `loadAppUser` no asignaba `currentUser` (permanecía `null`). Como consecuencia, `RoleGuard` redirigía al usuario a `/login` expulsándolo sin motivo pese a tener sesión JWT activa.
+     - **Fix:** Se implementó guardado automático de `AppUser` en `localStorage` (`sigo_user_profile_${userId}`). En caso de fallo de red en `loadAppUser`, el perfil se restaura desde `localStorage` evitando la redirección a `/login`. En `signOut()`, se remueve la clave del almacenamiento local.
+     - **Archivos corregidos:** `sigo-wm/src/app/core/services/auth.service.ts`.
+  2. 🔵 **Optimización Atómica de Trigger `handle_new_user` al Crear Usuarios (Angular Web):**
+     - **Problema:** En `configuracion.component.ts` (L239), al invocar `adminSupabase.auth.signUp()`, la opción `options.data` no enviaba el parámetro `rol`. El trigger de BD `handle_new_user()` capturaba la excepción al parsear el JSON nulo y asignaba por defecto `'{vendedor}'::text[]`, obligando a realizar una actualización secundaria manual.
+     - **Fix:** Se inyectó `rol: this.nuevoUsuario.roles` en `options.data` dentro de `guardarUsuario()`, logrando que la fila se cree con sus roles exactos desde el primer `INSERT`.
+     - **Archivos corregidos:** `sigo-wm/src/app/features/configuracion/configuracion.component.ts`.
+- **Verificación Técnica Realizada:**
+  - Conexión DB Supabase: 🟢 **OK (`db: postgres, usr: postgres`)**
+  - `npx tsc --noEmit` en `sigo-wm`: 🟢 **0 errores**
+  - `flutter analyze` en `sigo_wm_mobile`: 🟢 **0 problemas**
+  - `flutter test` en `sigo_wm_mobile`: 🟢 **24/24 tests pasados**
+  - `./tools/generar_manifesto.sh`: 🟢 **Drift = 0, 117 archivos sincronizados**
+
+### 🗓️ Ejecución: 2026-08-11 20:12 (Verificación Directa y Despliegue de Migraciones en BD Supabase PostgreSQL)
+- **Área Auditada:** Base de datos PostgreSQL remota de Supabase (`aws-1-us-east-1.pooler.supabase.com:6543/postgres`).
+- **Acciones y Verificaciones Realizadas:**
+  1. 🟢 **Acceso y Auditoría Directa SQL:** Se estableció conexión directa al pooler Postgres y se inspeccionó `information_schema.routines`, `information_schema.columns` y `pg_proc`.
+  2. 🟢 **Despliegue de Migración `20250201000000_ajustar_stock_atomico.sql`:** La función RPC `public.ajustar_stock_atomico` no estaba instalada en el servidor. Se ejecutó la migración vía cliente `pg` y se verificó que la rutina PL/pgSQL responde correctamente con sus validaciones de stock.
+  3. 🟢 **Despliegue de Migración `20250101000000_sesiones_gps_etiqueta.sql`:** Se ejecutó el DDL para agregar `etiqueta` (text) y `backup_timestamp` (timestamptz) junto con el índice en `public.sesiones_gps`.
+  4. 🟢 **Confirmación de Funciones Remotas Existentas:** Se constató que las 22 funciones en `public` incluyen `reenlazar_huerfanas_de_pedido`, `get_public_tracking_data`, `get_public_tracking_data_by_ruc`, `bi_metricas_despachos`, `upsert_credencial_offline` y `validar_sobre_despacho`.
+- **Verificación Técnica Realizada:**
+  - Conexión DB Supabase: 🟢 **OK (`db: postgres, usr: postgres`)**
+  - Despliegue DDL & RPC: 🟢 **Exitoso sin errores SQL**
+  - `npx tsc --noEmit` en `sigo-wm`: 🟢 **0 errores**
+  - `flutter analyze` en `sigo_wm_mobile`: 🟢 **0 problemas**
+  - `./tools/generar_manifesto.sh`: 🟢 **Drift = 0, 117 archivos sincronizados**
+
+### 🗓️ Ejecución: 2026-08-11 20:04 (Auditoría Recurrente de Tracking GPS, Sincronización en Lote y Streaming de Ubicación Web ↔ Mobile)
+- **Área Auditada:** Servicios de Ubicación y GPS Móvil (`sigo_wm_mobile/lib/features/chofer/services/background_gps_service.dart`, `rutas_local_service.dart`, `network_provider.dart`), Serverless Function de Rastreo (`sigo-wm/api/rastreo-cliente.ts`) y Módulo Web de Rastreo en Vivo (`sigo-wm/src/app/features/rastreo-cliente/rastreo-cliente.component.ts`).
+- **Hallazgos y Correcciones Aplicadas:**
+  1. 🔴 **Protección contra Inyección de `chofer_id: NULL` en Sincronización en Lote de Rutas GPS (Flutter Mobile):**
+     - **Problema:** En `rutas_local_service.dart` (L37, L58, L111, L144), la construcción del mapa de datos enviaba `'chofer_id': p['chofer_id'] ?? supabaseClient.auth.currentUser?.id`. Si el background timer o el isolate de Android sincronizaban sin sesión activa de Supabase (`currentUser` nulo), se pasaba `NULL` a Supabase `rutas_gps`.
+     - **Fix:** Se condicionó la adición de la clave `'chofer_id'` en los mapas de `sincronizarPendientes` y `sincronizarPendientesBatch` solo cuando `choferId != null`.
+     - **Archivos corregidos:**
+       - `sigo_wm_mobile/lib/features/chofer/services/rutas_local_service.dart`
+  2. 🟢 **Auditoría de Rastreo y Tracking Adaptativo GPS (`sigo_wm_mobile`):**
+     - Verificado: Modo quieto (Quiet Mode) para vehículos detenidos (>30s) ahorra batería en iOS/Android. Filtro adaptativo por velocidad (10m–150m), Watchdog iOS con recuperación en `SharedPreferences` ante suspensiones del SO, y subida en lote batch (100 puntos por `upsert`) con fallback a `sesion_id: null` en caso de FK 23503.
+  3. 🟢 **Auditoría de API Serverless y Rastreo Web (`sigo-wm`):**
+     - Verificado: API `/api/rastreo-cliente` valida UUID v4 o documento de cliente (RUC/DNI/CE), aplica Rate Limit por IP (90 req/min) y usa `Cache-Control: no-store`. En Angular, `RastreoClienteComponent` usa `Object.assign` para evitar parpadeo DOM en `*ngFor` y `fitBoundsDone` para no romper el zoom manual del usuario.
+- **Verificación Técnica Realizada:**
+  - `npx tsc --noEmit` en `sigo-wm`: 🟢 **0 errores**
+  - `flutter analyze` en `sigo_wm_mobile`: 🟢 **0 problemas**
+  - `flutter test` en `sigo_wm_mobile`: 🟢 **24/24 tests pasados**
+  - `./tools/generar_manifesto.sh`: 🟢 **Drift = 0, 117 archivos sincronizados**
+
+---
+
+### 🗓️ Ejecución: 2026-08-11 19:49 (Auditoría Recurrente de Recepciones, Eventos Offline, Escáner QR y Servicio de Inventario)
+- **Área Auditada:** Servicios de Recepciones y Entregas Offline (`sigo_wm_mobile/lib/features/chofer/services/recepciones_local_service.dart`, `entregas_local_service.dart`), Escáner QR (`qr_dispatch_scanner_screen.dart`), Eventos de Pedido (`eventos_local_service.dart`), Módulo de Logística (`sigo-wm/src/app/features/logistica/logistica.component.ts`) e Inventario (`sigo-wm/src/app/core/services/inventario.service.ts`).
+- **Hallazgos y Correcciones Aplicadas:**
+  1. 🔴 **Protección contra Sobrescritura de `chofer_id` a `NULL` en Sincronización en Segundo Plano (Flutter Mobile):**
+     - **Problema:** En `recepciones_local_service.dart` (L115) y `entregas_local_service.dart` (L152), el objeto enviado a Supabase incluía `'chofer_id': supabaseClient.auth.currentUser?.id`. Cuando el sync en segundo plano corría sin sesión activa (`currentUser?.id` era `null`), Supabase actualizaba la cabecera del viaje con `chofer_id: NULL`, perdiendo la asignación del chofer en la nube.
+     - **Fix:** Se condicionó la adición de `'chofer_id'` en los payloads de `update` y `upsert` únicamente si `currentUserId != null`.
+     - **Archivos corregidos:**
+       - `sigo_wm_mobile/lib/features/chofer/services/recepciones_local_service.dart`
+       - `sigo_wm_mobile/lib/features/chofer/services/entregas_local_service.dart`
+  2. 🟢 **Auditoría de Escáner QR y Despacho Offline (`sigo_wm_mobile`):**
+     - Verificado: Descompresión GZIP-Base64 de payload QR (`sigo_wm://`), asignación determinista de `choferId` desde `AuthService.instance.session?.userId` y persistencia en SQLite (`ViajeOffline`).
+  3. 🟢 **Auditoría de Logística e Inventario (`sigo-wm`):**
+     - Verificado: Transacciones atómicas RPC `ajustar_stock_atomico` en `InventarioService` previenen condiciones de carrera en descuentos por venta y reajustes manuales. Redondeo `round3()` a 3 decimales en `LogisticaComponent` evita residuos de punto flotante en cálculo de saldo restante.
+- **Verificación Técnica Realizada:**
+  - `npx tsc --noEmit` en `sigo-wm`: 🟢 **0 errores**
+  - `flutter analyze` en `sigo_wm_mobile`: 🟢 **0 problemas**
+  - `flutter test` en `sigo_wm_mobile`: 🟢 **24/24 tests pasados**
+  - `./tools/generar_manifesto.sh`: 🟢 **Drift = 0, 117 archivos sincronizados**
+
+---
+
+### 🗓️ Ejecución: 2026-08-11 19:43 (Auditoría Recurrente de Clientes, Catálogo de Productos y Resiliencia de Conectividad)
+- **Área Auditada:** Módulo de Clientes (`sigo-wm/src/app/features/clientes/`), Catálogo de Productos y Control de Stock (`sigo-wm/src/app/features/catalogo/`), Servicios de Inventario y Provider de Red Móvil (`sigo_wm_mobile/lib/core/providers/network_provider.dart`).
+- **Hallazgos y Correcciones Aplicadas:**
+  1. 🔵 **Normalización y Recorte de Espacios en Blanco en Registro de Clientes y Productos (Angular Web):**
+     - **Problema:** En `clientes.component.ts` (L166) y `catalogo.component.ts` (L139), las validaciones `!this.nuevoCliente.nombre_razon_social` y `!this.productoForm.descripcion` no aplicaban `.trim()`, permitiendo guardar registros vacíos o con espacios al inicio/final en Supabase.
+     - **Fix:** Se inyectó `.trim()` defensivo en `guardarCliente()` (`nombre_razon_social`, `documento_identidad`, `direccion`, `telefono`, `correo`) y en `guardarProducto()` (`descripcion`).
+     - **Archivos corregidos:**
+       - `sigo-wm/src/app/features/clientes/clientes.component.ts`
+       - `sigo-wm/src/app/features/catalogo/catalogo.component.ts`
+  2. 🟢 **Auditoría de Resiliencia y Sincronización en Tiempo Real (`sigo_wm_mobile`):**
+     - Se verificó la gestión de canales Realtime de `pedidos` en `DespachosListScreen` y `DespachadorLocalService` con manejo limpio de `unsubscribe()` en `dispose()`.
+     - Se auditó `NetworkProvider.dart`: comprobaciones de red multi-interfaz resilient, cola de 7 tablas offline en `_hasDataPending()` y secuencia idempotente de sincronización en 7 pasos.
+- **Verificación Técnica Realizada:**
+  - `npx tsc --noEmit` en `sigo-wm`: 🟢 **0 errores**
+  - `flutter analyze` en `sigo_wm_mobile`: 🟢 **0 problemas**
+  - `flutter test` en `sigo_wm_mobile`: 🟢 **24/24 tests pasados**
+  - `./tools/generar_manifesto.sh`: 🟢 **Drift = 0, 117 archivos sincronizados**
+
+---
+
+### 🗓️ Ejecución: 2026-08-11 19:28 (Auditoría Recurrente de Módulo Despachos, Viajes y Conectividad Multi-interfaz)
+- **Área Auditada:** Módulo de Despachos (`sigo_wm_mobile/lib/features/despachos/`), Registro de Viaje, Sincronización y Detección de Conectividad de Red (`connectivity_plus`).
+- **Hallazgos y Correcciones Aplicadas:**
+  1. 🔴 **Falsa Detección de Estado Offline en Dispositivos Multi-interfaz o Conexión Ethernet/VPN (Flutter Mobile):**
+     - **Problema:** Comprobaciones frágiles `ConnectivityResult.contains(mobile/wifi)` o `contains(none)` en 10 componentes/servicios ignoraban interfaces como Ethernet o VPN y fallaban en arreglos multi-interfaz `[none, wifi]`.
+     - **Archivos corregidos:**
+       - `lib/features/despachos/screens/despachos_list_screen.dart` (L43, L139)
+       - `lib/features/despachos/screens/pedido_detalle_despacho_screen.dart` (L106, L134)
+       - `lib/features/despachos/screens/registrar_item_despacho_screen.dart` (L248)
+       - `lib/features/despachos/services/viajes_local_service.dart` (L200, L405)
+       - `lib/features/chofer/screens/chofer_viaje_detail_screen.dart` (L230, L364)
+       - `lib/features/chofer/services/chofer_local_service.dart` (L23)
+       - `lib/features/chofer/services/background_gps_service.dart` (L271, L291, L641)
+       - `lib/features/chofer/services/sesiones_local_service.dart` (L43, L96)
+       - `lib/features/auth/screens/login_screen.dart` (L112)
+       - `lib/features/auth/services/auth_service.dart` (L257, L291)
+     - **Fix:** Sustitución de comprobaciones frágiles por `!results.every((r) => r == ConnectivityResult.none)`.
+- **Verificación Técnica Realizada:**
+  - `npx tsc --noEmit` en `sigo-wm`: 🟢 **0 errores**
+  - `flutter analyze` en `sigo_wm_mobile`: 🟢 **0 problemas**
+  - `flutter test` en `sigo_wm_mobile`: 🟢 **24/24 tests pasados**
+  - `./tools/generar_manifesto.sh`: 🟢 **Drift = 0, 117 archivos sincronizados**
+
+---
+
+### 🗓️ Ejecución: 2026-08-11 19:18 (Auditoría Recurrente de Ecosistema Completo)
+- **Área Auditada:** Evidencias Fotográficas, Captura, Marca de Agua y Galería (`sigo_wm_mobile`) + Generación de Documentos PDF y Reportes Comercial (`sigo-wm`).
+- **Hallazgos y Verificaciones Realizadas:**
+  1. 🟢 **Flujo de Evidencias Fotográficas y Marca de Agua (`sigo_wm_mobile`):**
+     - Se auditó `WatermarkService.dart`, `UnifiedFotoScreen.dart`, `CameraScreen.dart` y `EvidenciasGalleryScreen.dart`.
+     - Verificado: Captura in-app con zoom device-agnostic, marca de agua con lat/lng/folio/timestamp en Isolate secundario, re-compresión optimizada en galería local y recuperación de fotos tras cierres del SO Android (`retrieveLostData`).
+  2. 🟢 **Generación de PDFs y Reportes Comercial (`sigo-wm`):**
+     - Se auditó `pdf.service.ts` y `reportes.component.ts`.
+     - Verificado: AbortController de 3s para fetch de logo, formateo de texto largo con breaker `\u200B` para evitar desbordes en celdas, etiquetado dinámico de documentos de cliente (DNI / RUC / CE via `getTipoDocumento`), exportación a CSV con BOM UTF-8 y separador `;` para compatibilidad con Excel.
+  3. 🟢 **Resolución de Pendientes y Git Commits:**
+     - Commiteados los cambios verificados de la resolución de evidencias en `entregas_local_service.dart`, `recepciones_local_service.dart` y `viajes_local_service.dart` (Commit `3ef7383`).
+     - Commiteados los cambios verificados de la normalización ISO 'T' de fechas en `pdf.service.ts`, `comercial-list.component.ts`, `dashboard.component.ts` y `reportes.component.ts` (Commit `330de65`).
+- **Verificación Técnica Realizada:**
+  - `npx tsc --noEmit` en `sigo-wm`: 🟢 **0 errores**
+  - `flutter analyze` en `sigo_wm_mobile`: 🟢 **0 problemas**
+  - `flutter test` en `sigo_wm_mobile`: 🟢 **24/24 tests pasados**
+  - `./tools/generar_manifesto.sh`: 🟢 **Drift = 0, 117 archivos sincronizados**
+
+---
+### 🗓️ Ejecución: 2026-08-11 18:33 (Auditoría Recurrente de Ecosistema Completo)
+- **Área Auditada:** Fechas SQL Safari/WebKit en Angular + Resolución de Fotos Locales en Flutter Sync Services.
+- **Hallazgos y Correcciones Aplicadas:**
+  1. 🔴 **Parseo de Fechas en Reportes, PDF, Dashboard y Comercial (Angular):**
+     - **Problema:** Timestamps SQL con espacio (`YYYY-MM-DD HH:mm:ss`) provocaban `Invalid Date` en Safari/WebKit en `reportes.component.ts` (L158, L217), `comercial-list.component.ts` (L215), `dashboard.component.ts` (L262) y `pdf.service.ts` (L96).
+     - **Fix:** Se normalizó `created_at` reemplazando espacios con `'T'` (`replace(' ', 'T')`) y agregando fallback de validez `!isNaN(getTime())`.
+  2. 🟠 **Resolución de Archivos de Evidencias en Sync Services (Flutter):**
+     - **Problema:** En `recepciones_local_service.dart` (L84), `entregas_local_service.dart` (L120) y `viajes_local_service.dart` (L258), se buscaba la foto únicamente en `${docDir.path}/$fileNameLocal`. Si la foto residía en el path absoluto original guardado, `file.exists()` daba falso y se saltaba la subida de evidencia.
+     - **Fix:** Se actualizó para verificar primero `File(cleanPath)` y, de no existir, caer a `${docDir.path}/$fileNameLocal`.
+- **Verificación Técnica Realizada:**
+  - `npx tsc --noEmit` en `sigo-wm`: 🟢 **0 errores**
+  - `flutter analyze` en `sigo_wm_mobile`: 🟢 **0 problemas**
+  - `flutter test` en `sigo_wm_mobile`: 🟢 **24/24 tests pasados**
+  - `./tools/generar_manifesto.sh`: 🟢 **Drift = 0, 117 archivos sincronizados**
 
 ---
 *Este documento es la Fuente de Verdad Inviolable para el desarrollo y mantenimiento del ecosistema SIGO-WM.*
+
+

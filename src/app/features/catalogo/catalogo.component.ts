@@ -137,7 +137,9 @@ export class CatalogoComponent implements OnInit {
   }
 
   async guardarProducto() {
-    if (!this.productoForm.descripcion) { alert('La descripción es obligatoria.'); return; }
+    const desc = this.productoForm.descripcion?.trim();
+    if (!desc) { alert('La descripción es obligatoria.'); return; }
+    this.productoForm.descripcion = desc;
     this.isSavingProducto = true;
     try {
       if (this.productoForm.id) {

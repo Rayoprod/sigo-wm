@@ -239,7 +239,8 @@ export class ConfiguracionComponent implements OnInit {
           options: {
             data: {
               nombre_completo: this.nuevoUsuario.nombre_completo,
-              full_name: this.nuevoUsuario.nombre_completo
+              full_name: this.nuevoUsuario.nombre_completo,
+              rol: this.nuevoUsuario.roles
             }
           }
         });

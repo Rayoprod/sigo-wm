@@ -84,18 +84,14 @@ export class DashboardComponent implements OnInit, OnDestroy {
   async loadDeudaStatus() {
     const { data } = await this.supabase
       .from('pedidos')
-      .select(`
-        total, estado_pago,
-        pagos (monto_pagado)
-      `)
+      .select('total, monto_pagado')
       .eq('tipo_documento', 'ORDEN_VENTA')
       .neq('estado', 'ANULADA')
       .in('estado_pago', ['PENDIENTE', 'PARCIAL']);
 
     let totalDeudaAcc = 0;
     (data || []).forEach((p: any) => {
-      const totalPagado = p.pagos ? p.pagos.reduce((acc: number, pago: any) => acc + Number(pago.monto_pagado || 0), 0) : 0;
-      const saldo = Number(p.total || 0) - totalPagado;
+      const saldo = Number(p.total || 0) - Number(p.monto_pagado || 0);
       if (saldo > 0) totalDeudaAcc += saldo;
     });
     this.montoDeuda = totalDeudaAcc;
@@ -291,7 +287,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
     this.predictiveInsights = [];
     const days = 30;
 
-    const montoPromedioDia = this.montoVentas / days;
+    const montoPromedioDia = (this.totalMesVentas || 0) / days;
     const pctDeuda = this.montoVentas > 0 ? (this.montoDeuda / this.montoVentas) * 100 : 0;
     const ticketPromedio = this.totalVentas > 0 ? this.montoVentas / this.totalVentas : 0;
 

@@ -164,9 +164,23 @@ export class ClientesComponent implements OnInit {
   }
 
   async guardarCliente() {
-    if (!this.nuevoCliente.nombre_razon_social) {
+    const nombre = this.nuevoCliente.nombre_razon_social?.trim();
+    if (!nombre) {
       alert('La razón social es obligatoria');
       return;
+    }
+    this.nuevoCliente.nombre_razon_social = nombre;
+    if (this.nuevoCliente.documento_identidad) {
+      this.nuevoCliente.documento_identidad = this.nuevoCliente.documento_identidad.trim();
+    }
+    if (this.nuevoCliente.direccion) {
+      this.nuevoCliente.direccion = this.nuevoCliente.direccion.trim();
+    }
+    if (this.nuevoCliente.telefono) {
+      this.nuevoCliente.telefono = this.nuevoCliente.telefono.trim();
+    }
+    if (this.nuevoCliente.correo) {
+      this.nuevoCliente.correo = this.nuevoCliente.correo.trim();
     }
 
     this.isSaving = true;
@@ -176,7 +190,7 @@ export class ClientesComponent implements OnInit {
         let query = this.supabase
           .from('clientes')
           .select('id, nombre_razon_social')
-          .eq('documento_identidad', this.nuevoCliente.documento_identidad.trim());
+          .eq('documento_identidad', this.nuevoCliente.documento_identidad);
           
         if (this.nuevoCliente.id) {
           query = query.neq('id', this.nuevoCliente.id);
