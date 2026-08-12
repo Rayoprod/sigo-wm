@@ -210,9 +210,9 @@ export class ComercialListComponent implements OnInit {
     if (pedido.tipo_documento !== 'COTIZACION') return false;
     if (pedido.estado !== 'PENDIENTE') return false;
     
-    if (!pedido.created_at || !pedido.dias_validez_oferta) return false;
-    
-    const createdAt = new Date(pedido.created_at);
+    const safeStr = typeof pedido.created_at === 'string' ? pedido.created_at.replace(' ', 'T') : pedido.created_at;
+    const createdAt = new Date(safeStr);
+    if (isNaN(createdAt.getTime())) return false;
     const validUntil = new Date(createdAt);
     validUntil.setDate(validUntil.getDate() + pedido.dias_validez_oferta);
     

@@ -92,8 +92,11 @@ export class PdfService {
 
       const isCotizacion = pedido.tipo_documento === 'COTIZACION';
       const docLabel = isCotizacion ? 'COTIZACIÓN' : 'ORDEN DE VENTA';
-
-      const fechaFormat = new Date(pedido.created_at ?? new Date()).toLocaleDateString('es-PE', { day: '2-digit', month: 'long', year: 'numeric' });
+      const rawFecha = pedido.created_at;
+      const safeFechaStr = typeof rawFecha === 'string' ? rawFecha.replace(' ', 'T') : rawFecha;
+      const parsedDate = safeFechaStr ? new Date(safeFechaStr) : new Date();
+      const validDate = !isNaN(parsedDate.getTime()) ? parsedDate : new Date();
+      const fechaFormat = validDate.toLocaleDateString('es-PE', { day: '2-digit', month: 'long', year: 'numeric' });
 
       const entregaRaw = String(pedido.lugar_entrega || '').toUpperCase().trim();
       let textoEntrega = 'NO ESPECIFICADO';

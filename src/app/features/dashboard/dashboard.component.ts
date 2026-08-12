@@ -259,7 +259,9 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
     (ventas || []).forEach((v: any) => {
       if (!v.created_at) return;
-      const fecha = new Date(v.created_at);
+      const safeStr = typeof v.created_at === 'string' ? v.created_at.replace(' ', 'T') : v.created_at;
+      const fecha = new Date(safeStr);
+      if (isNaN(fecha.getTime())) return;
       // La BD guarda fechas en UTC; el día real en Perú (UTC-5) puede caer
       // un día antes. Convertimos a hora local de Perú antes de leer el día.
       const diaLocal = new Date(fecha.getTime() - 5 * 60 * 60 * 1000).getUTCDay();

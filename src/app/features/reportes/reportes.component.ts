@@ -155,7 +155,9 @@ export class ReportesComponent implements OnInit {
         const pagado = pagos.reduce((sum: number, p: any) => sum + Number(p.monto_pagado), 0);
         const saldo  = Number(v.total) - pagado;
         const metodos = [...new Set(pagos.map((p: any) => p.metodo_pago).filter(Boolean))].join(', ');
-        const dDate  = new Date(v.created_at);
+        const safeDateStr = typeof v.created_at === 'string' ? v.created_at.replace(' ', 'T') : v.created_at;
+        const dDate = safeDateStr ? new Date(safeDateStr) : new Date();
+        const isFechaValid = !isNaN(dDate.getTime());
         const tipoEntregaMap: Record<string, string> = {
           DOMICILIO: 'Entrega en Obra',
           CANTERA:   'Recojo en Cantera'
@@ -167,7 +169,7 @@ export class ReportesComponent implements OnInit {
           ...v,
           saldo_pendiente:   saldo,
           total_pagado:      pagado,
-          fecha_formateada:  dDate.toLocaleDateString('es-PE') + ' ' + dDate.toLocaleTimeString('es-PE', { hour: '2-digit', minute: '2-digit' }),
+          fecha_formateada:  isFechaValid ? (dDate.toLocaleDateString('es-PE') + ' ' + dDate.toLocaleTimeString('es-PE', { hour: '2-digit', minute: '2-digit' })) : 'N/A',
           cliente_nombre:    (v.clientes as any)?.nombre_razon_social  || 'Consumidor Final',
           cliente_doc:       (v.clientes as any)?.documento_identidad   || '',
           cliente_telefono:  (v.clientes as any)?.telefono              || '',
@@ -214,11 +216,13 @@ export class ReportesComponent implements OnInit {
       this.deudas = data.map(d => {
         const pagado = d.pagos?.reduce((sum: number, p: any) => sum + Number(p.monto_pagado), 0) || 0;
         const saldo = Number(d.total) - pagado;
-        const dDate = new Date(d.created_at);
+        const safeDateStr = typeof d.created_at === 'string' ? d.created_at.replace(' ', 'T') : d.created_at;
+        const dDate = safeDateStr ? new Date(safeDateStr) : new Date();
+        const isFechaValid = !isNaN(dDate.getTime());
         return {
           ...d,
           saldo_pendiente: saldo,
-          fecha_formateada: dDate.toLocaleDateString(),
+          fecha_formateada: isFechaValid ? dDate.toLocaleDateString('es-PE') : 'N/A',
           cliente_nombre: (d.clientes as any)?.nombre_razon_social || 'Consumidor Final',
           cliente_telefono: (d.clientes as any)?.telefono || '-'
         };
