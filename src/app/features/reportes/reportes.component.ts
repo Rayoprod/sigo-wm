@@ -84,8 +84,10 @@ export class ReportesComponent implements OnInit {
     { field: 'folio', header: 'Folio' },
     { field: 'cliente_nombre', header: 'Cliente' },
     { field: 'cliente_telefono', header: 'Teléfono' },
-    { field: 'total', header: 'Total' },
-    { field: 'saldo_pendiente', header: 'Deuda Pendiente' }
+    { field: 'total', header: 'Total (S/)' },
+    { field: 'total_pagado', header: 'Abonado (S/)' },
+    { field: 'saldo_pendiente', header: 'Deuda Pendiente (S/)' },
+    { field: 'estado_pago', header: 'Estado Pago' }
   ];
 
   colsInventario = [
@@ -204,23 +206,29 @@ export class ReportesComponent implements OnInit {
           folio,
           created_at,
           total,
+          monto_pagado,
+          estado_pago,
           estado,
           clientes ( nombre_razon_social, telefono ),
           pagos ( monto_pagado )
         `)
+        .eq('tipo_documento', 'ORDEN_VENTA')
+        .neq('estado', 'COTIZACION')
         .neq('estado', 'ANULADA')
         .order('created_at', { ascending: true });
 
       if (error) throw error;
       
       this.deudas = data.map(d => {
-        const pagado = d.pagos?.reduce((sum: number, p: any) => sum + Number(p.monto_pagado), 0) || 0;
-        const saldo = Number(d.total) - pagado;
+        const pagadoFromPayments = d.pagos?.reduce((sum: number, p: any) => sum + Number(p.monto_pagado), 0) || 0;
+        const totalPagado = d.monto_pagado !== null && d.monto_pagado !== undefined ? Number(d.monto_pagado) : pagadoFromPayments;
+        const saldo = Number(d.total) - totalPagado;
         const safeDateStr = typeof d.created_at === 'string' ? d.created_at.replace(' ', 'T') : d.created_at;
         const dDate = safeDateStr ? new Date(safeDateStr) : new Date();
         const isFechaValid = !isNaN(dDate.getTime());
         return {
           ...d,
+          total_pagado: totalPagado,
           saldo_pendiente: saldo,
           fecha_formateada: isFechaValid ? dDate.toLocaleDateString('es-PE') : 'N/A',
           cliente_nombre: (d.clientes as any)?.nombre_razon_social || 'Consumidor Final',

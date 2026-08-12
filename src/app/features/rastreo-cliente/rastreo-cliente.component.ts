@@ -112,9 +112,9 @@ export class RastreoClienteComponent implements OnInit, OnDestroy {
             Object.assign(this.trackingData, data);
           }
 
-        } else if (data.gps_actual) {
-          // Si solo cambió el GPS, actualizarlo sin perder referencia del objeto
-          this.trackingData.gps_actual = data.gps_actual;
+        } else if (this.trackingData) {
+          // Mantener gps_actual sincronizado sin perder la referencia (actualiza punto GPS o borra si es null)
+          this.trackingData.gps_actual = data.gps_actual || null;
         }
 
         // Pedido finalizado o anulado: detener polling y limpiar el mapa

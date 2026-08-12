@@ -1,7 +1,7 @@
 # 🛡️ BASE DE HECHOS PERSISTENTE Y ANTI-CONFABULACIÓN
 ## Ecosistema Sigo-WM (`sigo-wm` · `sigo_wm_mobile`)
-**Versión del Manifiesto:** `2026.08.11`  
-**Última Actualización:** 2026-08-11 20:12:00 COT  
+**Versión del Manifiesto:** `2026.08.12`  
+**Última Actualización:** 2026-08-12 12:30:00 COT  
 **Estado de Validación:** 🟢 TOTALMENTE VERIFICADO (Builds Angular/Flutter Clean · 24/24 Tests Passed · Conexión BD Supabase PostgreSQL Verificada)
 
 ---
@@ -329,6 +329,24 @@ graph TD
   - `flutter analyze` en `sigo_wm_mobile`: 🟢 **0 problemas**
   - `./tools/generar_manifesto.sh`: 🟢 **Drift = 0, 117 archivos sincronizados**
 
+### 🗓️ Ejecución: 2026-08-12 12:30 (Auditoría Recurrente de Sincronización Móvil, Cola Local y Módulo de Rastreo Web)
+- **Área Auditada:** Servicio de Sincronización y Pantalla de Cola Local Móvil (`sigo_wm_mobile/lib/features/shared/screens/sync_queue_screen.dart`), Detección de Pendientes (`network_provider.dart`), Módulo de Rastreo de Clientes (`sigo-wm/src/app/features/rastreo-cliente/rastreo-cliente.component.ts`) e Íconos de Rastreo (`live-truck-marker.ts`).
+- **Hallazgos y Correcciones Aplicadas:**
+  1. 🔴 **Resolución de Discrepancia entre `NetworkProvider._hasDataPending()` y `SyncQueueScreen` (`sigo_wm_mobile`):**
+     - **Problema:** En `network_provider.dart` (L280-289), la consulta SQL `EXISTS` verifica el estado de `eventos_pedidos_offline`, `eventos_chofer_offline` y `chofer_viajes_offline` para encender el badge de registros pendientes. Sin embargo, `SyncQueueScreen` (`sync_queue_screen.dart`) omitía estas tres tablas en `_loadQueue()`, `_deleteItem()` y `_deleteAll()`. Esto provocaba que el badge de la app indicara que había trabajo pendiente pero la pantalla mostrara una lista vacía o no permitiese eliminarlos.
+     - **Fix:** Se integró la lectura, renderizado e íconos para `eventos_pedidos_offline`, `eventos_chofer_offline` y `chofer_viajes_offline` en `SyncQueueScreen`, además de incluir su borrado individual y en lote en `_deleteItem` y `_deleteAll`.
+     - **Archivos corregidos:**
+       - `sigo_wm_mobile/lib/features/shared/screens/sync_queue_screen.dart`
+  2. 🟢 **Auditoría del Módulo de Rastreo Web y Mapa en Vivo (`sigo-wm`):**
+     - Verificado: Manejo de parpadeo DOM en `*ngFor` mediante `Object.assign` en lugar de reasignación de referencias de objeto `this.trackingData`. Resguardo de zoom manual con `fitBoundsDone`. Inyección limpia de estilos CSS del marcador en vivo en `<head>` (`live-truck-marker.ts`).
+- **Verificación Técnica Realizada:**
+  - `npx tsc --noEmit` en `sigo-wm`: 🟢 **0 errores**
+  - `flutter analyze` en `sigo_wm_mobile`: 🟢 **0 problemas**
+  - `flutter test` en `sigo_wm_mobile`: 🟢 **24/24 tests pasados**
+  - `./tools/generar_manifesto.sh`: 🟢 **Drift = 0, 117 archivos sincronizados**
+
+---
+
 ### 🗓️ Ejecución: 2026-08-11 20:04 (Auditoría Recurrente de Tracking GPS, Sincronización en Lote y Streaming de Ubicación Web ↔ Mobile)
 - **Área Auditada:** Servicios de Ubicación y GPS Móvil (`sigo_wm_mobile/lib/features/chofer/services/background_gps_service.dart`, `rutas_local_service.dart`, `network_provider.dart`), Serverless Function de Rastreo (`sigo-wm/api/rastreo-cliente.ts`) y Módulo Web de Rastreo en Vivo (`sigo-wm/src/app/features/rastreo-cliente/rastreo-cliente.component.ts`).
 - **Hallazgos y Correcciones Aplicadas:**
@@ -517,6 +535,71 @@ graph TD
   - `flutter analyze` en `sigo_wm_mobile`: 🟢 **0 problemas**
   - `flutter test` en `sigo_wm_mobile`: 🟢 **24/24 tests pasados**
   - `./tools/generar_manifesto.sh`: 🟢 **Drift = 0, 117 archivos sincronizados**
+### 🗓️ Ejecución: 2026-08-12 03:10 (Auditoría Recurrente de Rastreo en Vivo de Cliente, Sincronización GPS y Resiliencia de Referencias DOM)
+- **Área Auditada:** Módulo Web de Rastreo de Cliente (`sigo-wm/src/app/features/rastreo-cliente/rastreo-cliente.component.ts`), API Serverless (`sigo-wm/api/rastreo-cliente.ts`) y Servicio GPS Móvil (`sigo_wm_mobile/lib/features/chofer/services/background_gps_service.dart`).
+- **Hallazgos y Correcciones Aplicadas:**
+  1. 🔴 **Persistencia de GPS Nulo / Pérdida de Señal no Actualizada en `RastreoClienteComponent` (Angular Web):**
+     - **Problema:** En `rastreo-cliente.component.ts` (L101-117), la comparación `newStr !== oldStr` para evitar el parpadeo DOM ignoraba deliberadamente `gps_actual` (`{ ...data, gps_actual: null }`). Cuando la señal GPS se perdía o el servidor retornaba `data.gps_actual: null`, `newStr === oldStr` evaluaba a `true` y la rama `else if (data.gps_actual)` fallaba porque `data.gps_actual` era `null`. Por consiguiente, `this.trackingData.gps_actual` mantenía la posición GPS antigua caducada indefinidamente.
+     - **Fix:** Se actualizó la rama a `else if (this.trackingData) { this.trackingData.gps_actual = data.gps_actual || null; }`, garantizando que `gps_actual` se mantenga siempre al día con los datos devueltos por la API (ya sea nuevo punto GPS o `null`) sin destruir las referencias ni provocar parpadeos en el DOM.
+     - **Archivos corregidos:**
+       - `sigo-wm/src/app/features/rastreo-cliente/rastreo-cliente.component.ts`
+  2. 🟢 **Auditoría de API Serverless y Servicio GPS Móvil:**
+     - Verificado: API `/api/rastreo-cliente` con validación estricta por Regex de UUID v4 y RUC/DNI/CE, rate limit por IP (90 req/min), `Cache-Control: no-store`. `BackgroundGpsService` en Flutter con Adaptive GPS v2 (Quiet Mode >30s, filtro de distancia por velocidad 10m-150m, watchdog iOS de 30s con `SharedPreferences` y batch timer de 45s).
+- **Verificación Técnica Realizada:**
+  - Conexión DB Supabase: 🟢 **OK (`23 RPCs verificadas en esquema public`)**
+  - `npx tsc --noEmit` en `sigo-wm`: 🟢 **0 errores**
+  - `flutter analyze` en `sigo_wm_mobile`: 🟢 **0 problemas**
+  - `flutter test` en `sigo_wm_mobile`: 🟢 **24/24 tests pasados**
+  - `./tools/generar_manifesto.sh`: 🟢 **Drift = 0, 117 archivos sincronizados**
+
+---
+
+### 🗓️ Ejecución: 2026-08-12 04:12 (Auditoría Recurrente de Escáner QR de Despacho, Modelos Offline y Casting Seguro de Payloads)
+- **Área Auditada:** Escáner QR de Despacho (`sigo_wm_mobile/lib/features/chofer/screens/qr_dispatch_scanner_screen.dart`), Modelos de Persistencia Offline (`ViajeOffline`, `ViajeDetalleOffline`, `EntregaOffline`, `RecepcionOffline`), Servicio de Viajes (`ViajesLocalService`) y Módulo de Logística Web (`LogisticaComponent`).
+- **Hallazgos y Correcciones Aplicadas:**
+  1. 🔴 **Vulnerabilidad a Excepciones por Casting Nulo (Type Mismatch) en Deserialización de QR y Modelos Offline (Flutter Móvil):**
+     - **Problema:** En `QrDispatchScannerScreen._onDetect` (L143-146), la conversión `(data['pv'] as String)` asumía que el payload QR decodificado siempre contenía la cadena no nula. Si un código QR omitía campos o contenía `null`, Dart 3 lanzaba `type 'Null' is not a subtype of type 'String' in type cast`. Asimismo, en `ViajeOffline.fromMap`, `ViajeDetalleOffline.fromMap` y `EntregaOffline.fromMap`, la conversión de números `cantidad_viaje`, `latitud`, `longitud` carecía de `(as num?)?.toDouble()`, arriesgando fallos runtime si SQLite u otras fuentes retornaban `int` o `null`.
+     - **Fix:** Se inyectó parseo seguro con `data['pv'] is String && (data['pv'] as String).isNotEmpty ? data['pv'] as String : null`, `(item['cv'] as num?)?.toDouble() ?? 0.0` y conversiones numéricas / fallbacks defensivos en los constructores `fromMap` de `ViajeOffline`, `ViajeDetalleOffline` y `EntregaOffline`. En `ViajesLocalService.getViajesActivosCombinados`, se aseguraron fallbacks `?? 'Desconocido'` y `?? 'UND'` para descripción y unidad de medida.
+     - **Archivos corregidos:**
+       - `sigo_wm_mobile/lib/features/chofer/screens/qr_dispatch_scanner_screen.dart`
+       - `sigo_wm_mobile/lib/features/despachos/models/viaje_offline.dart`
+       - `sigo_wm_mobile/lib/features/chofer/models/entrega_offline.dart`
+       - `sigo_wm_mobile/lib/features/despachos/services/viajes_local_service.dart`
+- **Verificación Técnica Realizada:**
+  - Conexión DB Supabase: 🟢 **OK (`23 RPCs verificadas en esquema public`)**
+  - `npx tsc --noEmit` en `sigo-wm`: 🟢 **0 errores**
+  - `flutter analyze` en `sigo_wm_mobile`: 🟢 **0 problemas**
+  - `flutter test` en `sigo_wm_mobile`: 🟢 **24/24 tests pasados**
+  - `./tools/generar_manifesto.sh`: 🟢 **Drift = 0, 117 archivos sincronizados**
+
+---
+
+### 🗓️ Ejecución: 2026-08-12 10:06 (Auditoría Recurrente de Cuentas por Cobrar en Reportes Web, Historial de Despachos Móvil y Detección de Pendientes Offline)
+- **Área Auditada:** Módulo Web de Reportes (`sigo-wm/src/app/features/reportes/reportes.component.ts`), Historial Móvil de Despachos (`sigo_wm_mobile/lib/features/despachos/screens/despachos_historial_screen.dart`), Provider de Red (`sigo_wm_mobile/lib/core/providers/network_provider.dart`), Pantalla de Cola Local (`sync_queue_screen.dart`) y Esquema DB Supabase PostgreSQL (`public.pedidos`, `public.chofer_viajes_offline`).
+- **Hallazgos y Correcciones Aplicadas:**
+  1. 🔴 **Falsos Negativos en Indicador de Datos Pendientes Offline por Omisión de `chofer_viajes_offline` (`NetworkProvider`):**
+     - **Problema:** En `network_provider.dart` (L280-289), la consulta SQL `EXISTS` en SQLite comprobaba 7 tablas locales pero ignoraba `chofer_viajes_offline`. Cuando el chofer realizaba cambios de estado de viaje offline, `_hasDataPending()` retornaba `false` erróneamente y el badge indicador de sincronización en el AppBar no notificaba los cambios guardados sin subir.
+     - **Fix:** Se incluyó `EXISTS(SELECT 1 FROM chofer_viajes_offline WHERE sincronizado = 0) AS chofer_viajes` en la consulta `_hasDataPending()` de `NetworkProvider`.
+     - **Archivos corregidos:**
+       - `sigo_wm_mobile/lib/core/providers/network_provider.dart`
+  2. 🔴 **Riesgo de Crash Runtime por Parseo Frágil de Fechas en Historial de Despachos (`DespachosHistorialScreen`):**
+     - **Problema:** En `despachos_historial_screen.dart` (L58), se usaba `DateTime.parse(viaje.fechaDispositivo).toLocal()` directamente. Si `fechaDispositivo` contenía espacios en lugar de `'T'` o un formato no estándar, la aplicación móvil lanzaba una excepción fatal.
+     - **Fix:** Se inyectó normalización con `replaceFirst(' ', 'T')` y parseo defensivo `DateTime.tryParse() ?? DateTime.now()` con formateo seguro.
+     - **Archivos corregidos:**
+       - `sigo_wm_mobile/lib/features/despachos/screens/despachos_historial_screen.dart`
+  3. 🔴 **Filtros Incompletos y Falta de Abonos en Reporte Web de Cuentas por Cobrar (`ReportesComponent`):**
+     - **Problema:** En `reportes.component.ts` (L204-237), la consulta de Deudas Pendientes no excluía las cotizaciones (`COTIZACION`), y el cálculo del saldo dependía únicamente del join `pagos` ignorando la columna atómica `monto_pagado` de `pedidos`. Además, las columnas `Abonado` y `Estado Pago` no se mostraban en la tabla UI.
+     - **Fix:** Se agregaron los filtros `.neq('estado', 'COTIZACION')`, `.eq('tipo_documento', 'ORDEN_VENTA')`, y se utilizó `monto_pagado` directo del pedido con fallback a `pagos`. Se agregaron las columnas `Total (S/)`, `Abonado (S/)`, `Deuda Pendiente (S/)` y `Estado Pago` a la interfaz.
+     - **Archivos corregidos:**
+       - `sigo-wm/src/app/features/reportes/reportes.component.ts`
+- **Verificación Técnica Realizada:**
+  - Conexión DB Supabase: 🟢 **OK (`23 RPCs verificadas en esquema public`)**
+  - `npx tsc --noEmit` en `sigo-wm`: 🟢 **0 errores**
+  - `flutter analyze` en `sigo_wm_mobile`: 🟢 **0 problemas**
+  - `flutter test` en `sigo_wm_mobile`: 🟢 **24/24 tests pasados**
+  - `./tools/generar_manifesto.sh`: 🟢 **Drift = 0, 117 archivos sincronizados**
+
+
 
 
 
