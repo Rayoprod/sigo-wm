@@ -169,10 +169,21 @@ export class ClientesComponent implements OnInit {
       alert('La razón social es obligatoria');
       return;
     }
-    this.nuevoCliente.nombre_razon_social = nombre;
-    if (this.nuevoCliente.documento_identidad) {
-      this.nuevoCliente.documento_identidad = this.nuevoCliente.documento_identidad.trim();
+
+    const doc = this.nuevoCliente.documento_identidad?.trim();
+    if (!doc) {
+      alert('El documento de identidad (RUC, DNI o CE) es obligatorio');
+      return;
     }
+
+    const tipoDoc = getTipoDocumento(doc);
+    if (!tipoDoc) {
+      alert('El documento debe ser un DNI válido (8 dígitos), RUC (11 dígitos) o Carné de Extranjería.');
+      return;
+    }
+
+    this.nuevoCliente.nombre_razon_social = nombre;
+    this.nuevoCliente.documento_identidad = doc;
     if (this.nuevoCliente.direccion) {
       this.nuevoCliente.direccion = this.nuevoCliente.direccion.trim();
     }

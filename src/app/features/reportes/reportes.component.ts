@@ -160,7 +160,8 @@ export class ReportesComponent implements OnInit {
       this.ventas = data.map(v => {
         const pagos = (v.pagos as any[]) || [];
         const pagado = pagos.reduce((sum: number, p: any) => sum + Number(p.monto_pagado), 0);
-        const saldo  = Number(v.total) - pagado;
+        const rawSaldo = Number(v.total) - pagado;
+        const saldo = Math.round(rawSaldo * 100) / 100;
         const metodos = [...new Set(pagos.map((p: any) => p.metodo_pago).filter(Boolean))].join(', ');
         const safeDateStr = typeof v.created_at === 'string' ? v.created_at.replace(' ', 'T') : v.created_at;
         const dDate = safeDateStr ? new Date(safeDateStr) : new Date();
@@ -227,7 +228,8 @@ export class ReportesComponent implements OnInit {
       this.deudas = data.map(d => {
         const pagadoFromPayments = d.pagos?.reduce((sum: number, p: any) => sum + Number(p.monto_pagado), 0) || 0;
         const totalPagado = d.monto_pagado !== null && d.monto_pagado !== undefined ? Number(d.monto_pagado) : pagadoFromPayments;
-        const saldo = Number(d.total) - totalPagado;
+        const rawSaldo = Number(d.total) - totalPagado;
+        const saldo = Math.round(rawSaldo * 100) / 100;
         const safeDateStr = typeof d.created_at === 'string' ? d.created_at.replace(' ', 'T') : d.created_at;
         const dDate = safeDateStr ? new Date(safeDateStr) : new Date();
         const isFechaValid = !isNaN(dDate.getTime());

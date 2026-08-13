@@ -145,15 +145,25 @@ export class CatalogoComponent implements OnInit {
       if (this.productoForm.id) {
         // Excluimos stock_actual para evitar una condición de carrera si alguien vende mientras se edita
         const { id, created_at, stock_actual, ...updateData } = this.productoForm;
+        updateData.precio_unitario_base = Number(updateData.precio_unitario_base ?? 0);
+        updateData.stock_minimo = Number(updateData.stock_minimo ?? 0);
         const { error } = await this.supabase.from('productos').update(updateData).eq('id', id);
         if (error) throw error;
       } else {
         const { id, stock_actual, codigo_sku, ...insertData } = this.productoForm;
+        const payloadInsert = {
+          ...insertData,
+          precio_unitario_base: Number(insertData.precio_unitario_base ?? 0),
+          stock_minimo: Number(insertData.stock_minimo ?? 0),
+          unidad_medida: insertData.unidad_medida || 'UND',
+          tipo_inventario: insertData.tipo_inventario || 'GRANEL_ESTIMADO',
+          stock_actual: 0
+        };
         const { data: insertado, error } = await this.supabase
-          .from('productos').insert({ ...insertData, stock_actual: 0 }).select('id').single();
+          .from('productos').insert(payloadInsert).select('id').single();
         if (error) throw error;
-        if (stock_actual && stock_actual > 0) {
-          await this.inventarioService.registrarMovimientoManual(insertado.id, 'ENTRADA', stock_actual, 'Inventario Inicial');
+        if (stock_actual && Number(stock_actual) > 0) {
+          await this.inventarioService.registrarMovimientoManual(insertado.id, 'ENTRADA', Number(stock_actual), 'Inventario Inicial');
         }
       }
       this.displayModalProducto = false;

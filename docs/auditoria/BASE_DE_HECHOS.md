@@ -1,8 +1,8 @@
 # 🛡️ BASE DE HECHOS PERSISTENTE Y ANTI-CONFABULACIÓN
 ## Ecosistema Sigo-WM (`sigo-wm` · `sigo_wm_mobile`)
 **Versión del Manifiesto:** `2026.08.12`  
-**Última Actualización:** 2026-08-12 13:10:00 COT  
-**Estado de Validación:** 🟢 TOTALMENTE VERIFICADO (Builds Angular/Flutter Clean · 24/24 Tests Passed · Conexión BD Supabase PostgreSQL Verificada)
+**Última Actualización:** 2026-08-13 03:22:00 COT  
+**Estado de Validación:** 🟢 TOTALMENTE VERIFICADO (Builds Angular/Flutter Clean · 24/24 Tests Passed · 0 Drift · Conexión BD Supabase PostgreSQL Verificada)
 
 ---
 
@@ -255,6 +255,32 @@ graph TD
 ---
 
 ## 📝 SECCIÓN 9: REGISTRO DE AUDITORÍAS Y CORRECCIONES RECURRENTES
+
+### 🗓️ Ejecución: 2026-08-12 22:45 (Auditoría Recurrente de Gestión de Clientes, Documento Único, Sincronización Móvil de Despachos y Chatbot AI)
+- **Área Auditada:** Módulo Web de Clientes (`sigo-wm/src/app/features/clientes/clientes.component.ts`), Asistente Chatbot AI UI (`sigo-wm/src/app/shared/layout/chat-bot/chat-bot.component.ts`), Serverless Function Chatbot (`sigo-wm/api/chat.ts`), Servicio Móvil de Despachos (`sigo_wm_mobile/lib/features/despachos/services/viajes_local_service.dart`) y Esquema DB Supabase PostgreSQL (`public.clientes`, `clientes_documento_identidad_key`, `despachos_viajes_cabecera`).
+- **Hallazgos y Correcciones Aplicadas:**
+  1. 🔴 **Vulnerabilidad a Violación de Unicidad (Error 23505) y Falta de Validación de Documento en Gestión de Clientes (`ClientesComponent`):**
+     - **Problema:** En `clientes.component.ts` (L166-175), al guardar un cliente nuevo la función `guardarCliente()` no exigía la presencia ni validaba la sintaxis de `documento_identidad`. Como la columna en PostgreSQL es `NOT NULL` con la restricción `UNIQUE (documento_identidad)`, el formulario intentaba insertar una cadena vacía `""`. Al guardar un segundo cliente sin documento, PostgreSQL abortaba con el error `23505 duplicate key value violates unique constraint "clientes_documento_identidad_key"`.
+     - **Fix:** Se inyectó validación estricta de `documento_identidad` exigiendo su ingreso, recortando espacios y validando contra `getTipoDocumento(doc)` (DNI 8 dígitos, RUC 11 dígitos, CE 7-11 caracteres).
+     - **Archivos corregidos:** `sigo-wm/src/app/features/clientes/clientes.component.ts`.
+  2. 🔴 **Protección contra Inyección de `despachador_id: NULL` en Sincronización en Segundo Plano (`ViajesLocalService`):**
+     - **Problema:** En `viajes_local_service.dart` (L286), la construcción del objeto `payload` para `.upsert()` en Supabase asignaba `'despachador_id': viaje.despachadorId ?? supabaseClient.auth.currentUser?.id`. Cuando la sincronización corría en background sin sesión activa del cliente Supabase (`currentUser` nulo) y sin `despachadorId` en SQLite, se enviaba `'despachador_id': null`, sobrescribiendo y desligando al despachador del viaje en la nube.
+     - **Fix:** Se condicionó la inyección de `'despachador_id'` en el mapa `payload` evaluando únicamente `if (despachadorId != null && despachadorId.isNotEmpty) { payload['despachador_id'] = despachadorId; }`.
+     - **Archivos corregidos:** `sigo_wm_mobile/lib/features/despachos/services/viajes_local_service.dart`.
+  3. 🔵 **Memory Leak por Suscripción Realtime Asíncrona en Chatbot UI (`ChatBotComponent`):**
+     - **Problema:** En `chat-bot.component.ts` (L48-55, L147-152), `suscribirRealtime()` asignaba `this.realtimeChannel` asíncronamente dentro de `.then()`. Si el componente se destruía antes de responder la promesa de auth, `ngOnDestroy()` no encontraba el canal y la conexión Realtime quedaba colgada en memoria.
+     - **Fix:** Se agregó una bandera `isDestroyed`, la cual se marca en `ngOnDestroy()` y cancela la suscripción asíncrona en `.then()` si el componente ya fue destruido.
+     - **Archivos corregidos:** `sigo-wm/src/app/shared/layout/chat-bot/chat-bot.component.ts`.
+  4. 🔵 **Riesgo de Excepción `TypeError` y Fallo de Parseo de Fechas en BI de Chatbot AI (`api/chat.ts`):**
+     - **Problema:** En `bi_flujo_caja` (L599), `p.created_at.substring(0, 7)` provocaba `TypeError: Cannot read properties of null` si una fila tenía `created_at` nulo. En `bi_morosidad` (L611), las fechas SQL con espacios sin letra `'T'` causaban `NaN` en `new Date()`.
+     - **Fix:** Se inyectó resguardo `if (!p.created_at) return;` en `bi_flujo_caja` y normalización `.replace(' ', 'T')` en `bi_morosidad`.
+     - **Archivos corregidos:** `sigo-wm/api/chat.ts`.
+- **Verificación Técnica Realizada:**
+  - Conexión DB Supabase: 🟢 **OK (`23 RPCs activas`)**
+  - `npx tsc --noEmit` en `sigo-wm`: 🟢 **0 errores**
+  - `flutter analyze` en `sigo_wm_mobile`: 🟢 **0 problemas**
+  - `flutter test` en `sigo_wm_mobile`: 🟢 **24/24 tests pasados**
+  - `./tools/generar_manifesto.sh`: 🟢 **Drift = 0, 117 archivos sincronizados**
 
 ### 🗓️ Ejecución: 2026-08-11 20:53 (Auditoría Recurrente de Dashboard Web, Métricas de Ventas, SQLite Móvil y Cola de Sincronización)
 - **Área Auditada:** Dashboard Web (`sigo-wm/src/app/features/dashboard/dashboard.component.ts`), Base de Datos SQLite Móvil (`sigo_wm_mobile/lib/core/config/local_db.dart`), Visor de Cola de Sincronización (`sigo_wm_mobile/lib/features/shared/screens/sync_queue_screen.dart`), Visor de Logs (`sigo_wm_mobile/lib/features/shared/screens/log_viewer_screen.dart`) y Esquema DB Supabase PostgreSQL (`public.pedidos`, `public.pagos`, trigger DB `fn_sincronizar_pago_pedido`).
@@ -709,6 +735,30 @@ graph TD
   - `flutter analyze` en `sigo_wm_mobile`: 🟢 **0 problemas**
   - `flutter test` en `sigo_wm_mobile`: 🟢 **24/24 tests pasados**
   - `./tools/generar_manifesto.sh`: 🟢 **Drift = 0, 117 archivos sincronizados**
+
+---
+
+### 🗓️ Ejecución: 2026-08-12 21:06 (Auditoría Recurrente de Catálogo de Productos Web, Sincronización de Catálogo Móvil de Vehículos y Restricciones NOT-NULL en PostgreSQL)
+- **Área Auditada:** Módulo Web de Catálogo e Inventario (`sigo-wm/src/app/features/catalogo/catalogo.component.ts`), Servicio de Inventario (`inventario.service.ts`), Servicio Móvil de Viajes y Sincronización de Vehículos (`sigo_wm_mobile/lib/features/despachos/services/viajes_local_service.dart`) y Esquema DB Supabase PostgreSQL (`public.productos`, `public.vehiculos`, RPC `ajustar_stock_atomico`).
+- **Hallazgos y Correcciones Aplicadas:**
+  1. 🔴 **Riesgo de Destrucción Silenciosa de Vehículos Creados Offline durante Sincronización Móvil (`viajes_local_service.dart`):**
+     - **Problema:** En `viajes_local_service.dart` (L373-386), el método `sincronizarVehiculos` iniciaba borrando la tabla local `vehiculos_offline` mediante `await txn.delete('vehiculos_offline')` antes de descargar las placas desde Supabase. Si el usuario había registrado una nueva placa de vehículo sin conexión a internet en `registrarVehiculoGlobal()`, el intento de inserción remota fallaba silenciosamente por falta de red, y al reconectarse `sincronizarVehiculos` borraba la tabla SQLite local antes de subirla, destruyendo la placa ingresada offline.
+     - **Fix:** Se actualizó `sincronizarVehiculos` para consultar primero los registros en `vehiculos_offline` de SQLite local, enviar un `upsert` individual a Supabase para cada placa ingresada sin conexión, y recién tras respaldar las placas locales en la nube, refrescar SQLite con el catálogo maestro consolidado de Supabase.
+     - **Archivos corregidos:**
+       - `sigo_wm_mobile/lib/features/despachos/services/viajes_local_service.dart`
+  2. 🔴 **Riesgo de Excepción NOT-NULL `23502` en PostgreSQL al Crear/Editar Productos con Precio Nulo (`catalogo.component.ts`):**
+     - **Problema:** En `catalogo.component.ts` (L145-154), al guardar o editar un producto con el campo "Precio Base" vacío, `productoForm.precio_unitario_base` se evaluaba como `null`. Dado que la columna `precio_unitario_base` en la tabla `public.productos` de PostgreSQL tiene la restricción `NOT NULL`, la operación lanzaba una excepción fatal de base de datos alertando `"Error al guardar: null value in column 'precio_unitario_base' violates not-null constraint"`.
+     - **Fix:** Se inyectó saneamiento explícito con `Number(val ?? 0)` para `precio_unitario_base` y `stock_minimo`, junto con fallbacks por defecto para `unidad_medida` (`'UND'`) y `tipo_inventario` (`'GRANEL_ESTIMADO'`), garantizando que la estructura enviada a Supabase nunca contenga valores `null` en columnas requeridas.
+     - **Archivos corregidos:**
+       - `sigo-wm/src/app/features/catalogo/catalogo.component.ts`
+- **Verificación Técnica Realizada:**
+  - Conexión DB Supabase: 🟢 **OK (`23 RPCs, 20 Triggers, 30 Políticas RLS verificadas`)**
+  - `npx tsc --noEmit` en `sigo-wm`: 🟢 **0 errores**
+  - `flutter analyze` en `sigo_wm_mobile`: 🟢 **0 problemas**
+  - `flutter test` en `sigo_wm_mobile`: 🟢 **24/24 tests pasados**
+  - `./tools/generar_manifesto.sh`: 🟢 **Drift = 0, 117 archivos sincronizados**
+
+
 
 
 

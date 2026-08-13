@@ -596,7 +596,8 @@ REGLAS ESTRICTAS DE RESPUESTA:
             const { data: pagos } = await supabase.from('pagos').select('monto_pagado, created_at').order('created_at', { ascending: false }).limit(2000);
             const flujoPorMes: any = {};
             pagos?.forEach((p: any) => {
-              const mes = p.created_at.substring(0, 7);
+              if (!p.created_at) return;
+              const mes = String(p.created_at).substring(0, 7);
               flujoPorMes[mes] = (flujoPorMes[mes] || 0) + Number(p.monto_pagado);
             });
             apiResponse = Object.keys(flujoPorMes).map(k => ({ mes: k, ingresos: flujoPorMes[k] })).sort((a,b) => b.mes.localeCompare(a.mes));
@@ -607,8 +608,9 @@ REGLAS ESTRICTAS DE RESPUESTA:
             deudasRaw?.forEach((d: any) => {
               const pagado = Number(d.monto_pagado || 0);
               const deuda = Number(d.total || 0) - pagado;
-              if (deuda > 0) {
-                const dias = Math.floor((hoy - new Date(d.created_at).getTime()) / (1000 * 60 * 60 * 24));
+              if (deuda > 0 && d.created_at) {
+                const dateClean = String(d.created_at).replace(' ', 'T');
+                const dias = Math.floor((hoy - new Date(dateClean).getTime()) / (1000 * 60 * 60 * 24));
                 morosidad.deuda_total += deuda;
                 if (dias <= 30) morosidad['0_a_30_dias'] += deuda;
                 else if (dias <= 60) morosidad['31_a_60_dias'] += deuda;

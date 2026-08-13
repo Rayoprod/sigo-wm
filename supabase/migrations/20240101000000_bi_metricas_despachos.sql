@@ -68,7 +68,7 @@ as $$
   por_estado as (
     select coalesce(estado_viaje, 'SIN ESTADO') as estado,
            count(*)::int as cantidad
-    from base
+    from despachos_viajes_cabecera
     group by 1
   ),
   por_chofer as (

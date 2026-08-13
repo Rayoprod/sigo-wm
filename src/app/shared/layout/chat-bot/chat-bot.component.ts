@@ -36,6 +36,7 @@ export class ChatBotComponent implements OnInit, OnDestroy {
   @ViewChild('chatTextarea') chatTextarea?: ElementRef<HTMLTextAreaElement>;
 
   private realtimeChannel: any;
+  private isDestroyed = false;
 
   constructor(private supabase: SupabaseService, private cdr: ChangeDetectorRef) {}
 
@@ -46,6 +47,7 @@ export class ChatBotComponent implements OnInit, OnDestroy {
   }
 
   ngOnDestroy() {
+    this.isDestroyed = true;
     if (this.realtimeChannel) {
       this.supabase.client.removeChannel(this.realtimeChannel);
     }
@@ -146,7 +148,7 @@ export class ChatBotComponent implements OnInit, OnDestroy {
 
   private suscribirRealtime() {
     this.supabase.client.auth.getUser().then(({ data: { user } }) => {
-      if (!user) return;
+      if (!user || this.isDestroyed) return;
       
       this.realtimeChannel = this.supabase.client.channel('chat_realtime')
         .on('postgres_changes', { 
