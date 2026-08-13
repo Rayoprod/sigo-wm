@@ -123,18 +123,20 @@
 
                 <ng-template pTemplate="body" let-pedido>
                     <tr>
-                        <td class="font-bold">
+                        <td class="font-bold text-900">
                             {{ pedido.folio }}
                             <span *ngIf="pedido.folio_cotizacion_origen"
-                                  class="block text-xs font-normal text-500 mt-1"
+                                  class="block text-xs font-normal text-600 mt-1"
                                   pTooltip="Esta orden proviene de la cotización {{ pedido.folio_cotizacion_origen }}" tooltipPosition="right">
                                 <i class="pi pi-arrow-up-right mr-1" style="font-size:0.65rem"></i>ex {{ pedido.folio_cotizacion_origen }}
                             </span>
                         </td>
-                        <td>{{ pedido.tipo_documento === 'COTIZACION' ? 'Cotización' : 'Venta' }}</td>
-                        <td>{{ pedido.clientes?.nombre_razon_social }}</td>
-                        <td>{{ pedido.created_at | peruDate:'dd/MM/yyyy HH:mm' }}</td>
-                        <td class="font-semibold text-primary text-right">{{ pedido.total | currency:'PEN':'symbol':'1.2-2' }}</td>
+                        <td>
+                            <p-tag [value]="pedido.tipo_documento === 'COTIZACION' ? 'Cotización' : 'Venta'" [severity]="pedido.tipo_documento === 'COTIZACION' ? 'info' : 'success'"></p-tag>
+                        </td>
+                        <td class="font-medium text-800">{{ pedido.clientes?.nombre_razon_social }}</td>
+                        <td class="text-700"><i class="pi pi-calendar text-xs mr-1 text-500"></i>{{ pedido.created_at | peruDate:'dd/MM/yyyy HH:mm' }}</td>
+                        <td class="font-bold text-right" style="color: #059669 !important; font-size: 0.95rem;">{{ pedido.total | currency:'PEN':'symbol':'1.2-2' }}</td>
                         <td>
                             <div *ngIf="isCotizacionVencida(pedido); else dropdownTemplate">
                                 <p-tag value="VENCIDA" severity="danger" pTooltip="Cotización expirada"></p-tag>
@@ -148,7 +150,7 @@
                                     appendTo="body" 
                                     styleClass="w-full text-sm">
                                     <ng-template let-option pTemplate="item">
-                                        <span [ngClass]="{'text-orange-500 font-bold': option.value === 'PENDIENTE', 'text-green-500 font-bold': option.value === 'APROBADA' || option.value === 'COMPLETADA', 'text-red-500 font-bold': option.value === 'RECHAZADA' || option.value === 'ANULADA'}">
+                                        <span [ngClass]="{'text-amber-600 font-bold': option.value === 'PENDIENTE', 'text-green-600 font-bold': option.value === 'APROBADA' || option.value === 'COMPLETADA', 'text-red-600 font-bold': option.value === 'RECHAZADA' || option.value === 'ANULADA'}">
                                             {{option.label}}
                                         </span>
                                     </ng-template>
@@ -159,10 +161,7 @@
                             </ng-template>
                         </td>
                         <td>
-                            <span class="text-sm border-round px-2 py-1 font-bold" 
-                                  [ngClass]="{'bg-green-soft text-green-500': pedido.estado_pago === 'PAGADO', 'bg-orange-soft text-orange-500': pedido.estado_pago === 'PARCIAL', 'bg-red-soft text-red-500': pedido.estado_pago === 'PENDIENTE'}">
-                                {{ pedido.estado_pago }}
-                            </span>
+                            <p-tag [value]="pedido.estado_pago" [severity]="pedido.estado_pago === 'PAGADO' ? 'success' : (pedido.estado_pago === 'PARCIAL' ? 'info' : 'warning')"></p-tag>
                         </td>
                         <td class="text-center">
                             <div class="flex justify-content-center gap-2">

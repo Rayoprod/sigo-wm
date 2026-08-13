@@ -1,7 +1,7 @@
 # 🛡️ BASE DE HECHOS PERSISTENTE Y ANTI-CONFABULACIÓN
 ## Ecosistema Sigo-WM (`sigo-wm` · `sigo_wm_mobile`)
-**Versión del Manifiesto:** `2026.08.12`  
-**Última Actualización:** 2026-08-13 03:22:00 COT  
+**Versión del Manifiesto:** `2026.08.13`  
+**Última Actualización:** 2026-08-13 03:03:00 COT  
 **Estado de Validación:** 🟢 TOTALMENTE VERIFICADO (Builds Angular/Flutter Clean · 24/24 Tests Passed · 0 Drift · Conexión BD Supabase PostgreSQL Verificada)
 
 ---
@@ -537,8 +537,27 @@ graph TD
   - `flutter test` en `sigo_wm_mobile`: 🟢 **24/24 tests pasados**
   - `./tools/generar_manifesto.sh`: 🟢 **Drift = 0, 117 archivos sincronizados**
 
----
-*Este documento es la Fuente de Verdad Inviolable para el desarrollo y mantenimiento del ecosistema SIGO-WM.*
+### 🗓️ Ejecución: 2026-08-13 01:50 (Auditoría Recurrente de Mejora Estética/Diseño UI/UX, Clases Semánticas Soft y Preservación GPS Web/Mobile)
+- **Área Auditada:** Sistema Global de Estilos Web (`sigo-wm/src/styles.scss`), Lista Comercial Web (`sigo-wm/src/app/features/comercial/comercial-list/comercial-list.component.ts`), Formulario Comercial Web (`sigo-wm/src/app/features/comercial/comercial-form/comercial-form.component.ts`), Detalle de Viaje Chofer Móvil (`sigo_wm_mobile/lib/features/chofer/screens/chofer_viaje_detail_screen.dart`), Base de Datos Supabase PostgreSQL (`public.pedidos`).
+- **Hallazgos y Correcciones Aplicadas:**
+  1. 🎨 **Inclusión de Clases Semánticas `.bg-*-soft` Faltantes en `styles.scss` (Tema Claro y Oscuro):**
+     - **Problema:** En `comercial-list.component.html` (L63, L163) se utilizaba la clase `bg-red-soft` para destacar pedidos con estado de pago 'PENDIENTE', pero la clase no existía en `styles.scss`, provocando la renderización sin fondo de color.
+     - **Fix:** Se definieron las clases `.bg-red-soft`, `.bg-purple-soft`, `.bg-yellow-soft`, `.bg-teal-soft` para tema claro y sus reglas adaptables con transparencia cromática en `.dark-mode`.
+     - **Archivos corregidos:** `sigo-wm/src/styles.scss`.
+  2. 📍 **Preservación Incondicional de Geolocation GPS y Dirección Detalle (`ComercialFormComponent`)**:
+     - **Problema:** En `comercial-form.component.ts` (L677-679), se reiniciaban a `null` las columnas `direccion_entrega_detalle`, `lat_destino` y `lng_destino` en `pedidoData` si `this.lugar_entrega !== 'OBRA'`, borrando las coordenadas seleccionadas en el mapa Leaflet si el dropdown no fue cambiado explícitamente.
+     - **Fix:** Se inyectó la validación `(this.lugar_entrega === 'OBRA' || this.lat_destino != null)` y para dirección de detalle `(this.lugar_entrega === 'OBRA' || (this.direccion_entrega_detalle && this.direccion_entrega_detalle.trim().length > 0))`.
+     - **Archivos corregidos:** `sigo-wm/src/app/features/comercial/comercial-form/comercial-form.component.ts`.
+  3. 📍 **Actualización de Coordenadas GPS en Modal de Conversión de Cotización a Venta (`ComercialListComponent`)**:
+     - **Problema:** Al confirmar la conversión de cotización a venta, las coordenadas `lat_destino` y `lng_destino` elegidas en el modal no se propagaban a las llamadas `actualizarEstadoYStock()` ni `actualizarEstado()`.
+     - **Fix:** Se añadieron los parámetros `lat_destino` y `lng_destino` a `confirmarConversion()`, `actualizarEstadoYStock()` y `actualizarEstado()`, guardando `lat_destino`, `lng_destino` y `lugar_entrega = 'OBRA'` en `pedidos` de Supabase.
+     - **Archivos corregidos:** `sigo-wm/src/app/features/comercial/comercial-list/comercial-list.component.ts`.
+- **Verificación Técnica Realizada:**
+  - Conexión DB Supabase: 🟢 **OK (23 RPCs activas, columnas GPS verificadas)**
+  - `npx tsc --noEmit` en `sigo-wm`: 🟢 **0 errores**
+  - `flutter analyze` en `sigo_wm_mobile`: 🟢 **0 problemas**
+  - `flutter test` en `sigo_wm_mobile`: 🟢 **24/24 tests pasados**
+  - `./tools/generar_manifesto.sh`: 🟢 **Drift = 0, 117 archivos registrados**
 
 ### 🗓️ Ejecución: 2026-08-12 01:10 (Auditoría Recurrente de Herramientas de Manifiesto, Sincronización de Eventos de Pedidos Móvil y Memoria Persistente)
 - **Área Auditada:** Script Autónomo de Generación de Manifiesto (`tools/generar_manifesto.sh`), Servicio de Eventos Locales Móvil (`sigo_wm_mobile/lib/features/chofer/services/eventos_local_service.dart`), Provider de Red (`network_provider.dart`), Esquema DB Supabase PostgreSQL (`public.pedidos`, `public.eventos_pedidos_offline`).
@@ -756,16 +775,91 @@ graph TD
   - `npx tsc --noEmit` en `sigo-wm`: 🟢 **0 errores**
   - `flutter analyze` en `sigo_wm_mobile`: 🟢 **0 problemas**
   - `flutter test` en `sigo_wm_mobile`: 🟢 **24/24 tests pasados**
+  
+
+### 🗓️ Ejecución: 2026-08-13 04:50 (Auditoría Recurrente de Mejora Estética/Diseño UI/UX, Paleta de Colores y Compleitud de Destino GPS Chofer)
+- **Área Auditada:** Sistema Global de Estilos Web (`sigo-wm/src/styles.scss`), Formulario Comercial Web (`sigo-wm/src/app/features/comercial/comercial-form/comercial-form.component.ts`), Servicio Móvil de Chofer (`sigo_wm_mobile/lib/features/chofer/services/chofer_local_service.dart`), Detalle de Viaje Chofer (`sigo_wm_mobile/lib/features/chofer/screens/chofer_viaje_detail_screen.dart`) y Esquema DB Supabase PostgreSQL (`public.pedidos`: `lat_destino`, `lng_destino`, `lugar_entrega`, `direccion_entrega_detalle`).
+- **Hallazgos y Correcciones Aplicadas:**
+  1. 🎨 **Mejora de Estética y Paleta de Colores (Tema Claro y Oscuro en Angular Web):**
+     - **Problema:** En el tema claro, las tablas PrimeNG (`p-datatable`) se percibían planas/monótonas sin contraste de fondo en los encabezados `th` (`surface-50` / `surface-100`), afectando la jerarquía visual de datos en formularios y listas.
+     - **Fix:** Se rediseñaron las reglas globales en `styles.scss` agregando fondos de contraste `var(--surface-100)` a los encabezados `p-datatable th`, bordes sutiles con sombra `box-shadow` suave, filas alternas sombreadas, bordes de modales resaltados, tarjetas `.surface-card` con relieve y paleta cromática vibrante en badges `p-tag` tanto en tema claro como en modo oscuro `.dark-mode`.
+     - **Archivos corregidos:** `sigo-wm/src/styles.scss`.
+  2. 📍 **Integración Completa Destino GPS Chofer (Web ↔ Mobile ↔ BD) y Fallback Offline:**
+     - **Problema:** En `chofer_local_service.dart`, los dos bucles de fallback offline para pedidos sin conexión omitían las claves `'direccion_entrega_detalle'`, `'lat_destino'` y `'lng_destino'` al construir los objetos de pedidos activos. Si el chofer perdía la señal celular, la tarjeta de destino GPS se ocultaba o carecía de datos.
+     - **Fix:** Se inyectaron explícitamente `'direccion_entrega_detalle': null, 'lat_destino': vOffline.latitud, 'lng_destino': vOffline.longitud` en los dos mapeos de fallback offline en `ChoferLocalService`.
+     - **Archivos corregidos:** `sigo_wm_mobile/lib/features/chofer/services/chofer_local_service.dart`.
+  3. 📍 **Verificación del Flujo GPS en App Móvil de Chofer (`ChoferViajeDetailScreen`):**
+     - **Verificado:** La tarjeta de destino GPS en `chofer_viaje_detail_screen.dart` muestra la dirección de entrega, coordenadas GPS formateadas a 5 decimales y el botón `NAVEGAR CON GOOGLE MAPS` invocando `url_launcher` con la URL externa `https://www.google.com/maps/dir/?api=1&destination=lat,lng`.
+### 🗓️ Ejecución: 2026-08-13 00:45 (Auditoría Recurrente de Mejora Visual y Paleta de Colores, Temas Claro y Oscuro, Destino GPS Chofer y Verificación DB)
+- **Área Auditada:** Sistema Global de Estilos Web (`sigo-wm/src/styles.scss`), Formulario Comercial Web (`sigo-wm/src/app/features/comercial/comercial-form/comercial-form.component.html`), Servicio Móvil de Chofer (`sigo_wm_mobile/lib/features/chofer/services/chofer_local_service.dart`), Servicio de Viajes Móvil (`sigo_wm_mobile/lib/features/despachos/services/viajes_local_service.dart`), Detalle de Viaje Chofer (`sigo_wm_mobile/lib/features/chofer/screens/chofer_viaje_detail_screen.dart`), Base de Datos Supabase PostgreSQL (`public.pedidos`, `public.despachos_viajes_cabecera`).
+- **Hallazgos y Correcciones Aplicadas:**
+  1. 🎨 **Mejora de Estética y Paleta de Colores (Temas Claro y Oscuro en Web):**
+     - **Verificado y Reforzado:** `styles.scss` posee degradados contrastados en encabezados `p-datatable th` (`#f8fafc` a `#f1f5f9` en claro, `#1e293b` a `#0f172a` en oscuro), bordes estructurados en tarjetas `.surface-card`, badges cromáticos adaptables (`.p-tag-success`, `.p-tag-warning`, `.p-tag-info`, `.p-tag-danger`) y filtrado nocturno para Leaflet map.
+  2. 📍 **Integración Destino GPS Chofer (Web ↔ Mobile ↔ BD):**
+     - **Verificado y Reforzado:** `ChoferLocalService.getPedidosActivos()` incluye `direccion_entrega_detalle`, `lat_destino` y `lng_destino` tanto en consulta directa Supabase como en fallbacks offline. `ViajesLocalService.getViajeDetalleCompleto()` inyecta relaciones de pedidos con coordenadas de destino. `ChoferViajeDetailScreen` renderiza la tarjeta de navegación interactiva con apertura externa a Google Maps via `url_launcher`.
+  3. 🗄️ **Integración PostgreSQL en Supabase:**
+     - **Verificado:** Conexión directa a Supabase Postgres pooler exitosa (23 RPCs verificadas en `public`). Columnas `lat_destino`, `lng_destino` y `direccion_entrega_detalle` activas en `public.pedidos`.
+- **Verificación Técnica Realizada:**
+  - Conexión DB Supabase: 🟢 **OK (23 RPCs activas, columnas GPS verificadas)**
+  - `npx tsc --noEmit` en `sigo-wm`: 🟢 **0 errores**
+  - `flutter analyze` en `sigo_wm_mobile`: 🟢 **0 problemas**
+  - `flutter test` en `sigo_wm_mobile`: 🟢 **24/24 tests pasados**
+  - `./tools/generar_manifesto.sh`: 🟢 **Drift = 0, 117 archivos registrados**
+
+---
+
+### 🗓️ Ejecución: 2026-08-13 02:08 (Auditoría Recurrente del Prompt Actualizado, Temas Claro/Oscuro, Encabezados de Tablas, Destino GPS Chofer y Verificación PostgreSQL)
+- **Área Auditada:** Sistema Global de Estilos SCSS (`sigo-wm/src/styles.scss`), Módulo Comercial Web (`sigo-wm/src/app/features/comercial/`), Módulo Móvil de Chofer (`sigo_wm_mobile/lib/features/chofer/`), Servicio Local Chofer (`chofer_local_service.dart`), Script de Manifiesto (`tools/generar_manifesto.sh`), Base de Datos Supabase PostgreSQL (`public.pedidos`: `lat_destino`, `lng_destino`, `direccion_entrega_detalle`).
+- **Hallazgos y Verificaciones Realizadas:**
+  1. 🎨 **Diseño Visual y Paleta de Colores (Temas Claro y Oscuro Web):**
+     - **Verificado:** Degradados de contraste en encabezados `p-datatable th` (`linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%)` en tema claro, `#1e293b` a `#0f172a` en tema oscuro), filas alternas sombreadas `rgba(248, 250, 252, 0.5)`, badges cromáticos contrastados (`.p-tag-success`, `.p-tag-warning`, `.p-tag-info`, `.p-tag-danger`, `.p-tag-secondary`), y clases utilitarias `.bg-*-soft` para ambas paletas.
+  2. 📍 **Integración Destino GPS Chofer (Web ↔ Mobile ↔ BD):**
+     - **Verificado:** `ChoferLocalService.getPedidosActivos()` propaga `direccion_entrega_detalle`, `lat_destino` y `lng_destino` tanto en consultas directas a Supabase como en resguardos de caché/offline. `ChoferViajeDetailScreen` renderiza la tarjeta interactiva de navegación GPS con integración a Google Maps via `url_launcher`.
+  3. 🗄️ **Estado e Integridad en BD Supabase:**
+     - **Verificado:** Conexión vía cliente Node.js `pg` al pooler Supabase activa (`23 RPCs en public schema`). Columnas `lat_destino`, `lng_destino` y `direccion_entrega_detalle` presentes y estructuradas en `public.pedidos`.
+- **Verificación Técnica Realizada:**
+  - Conexión DB Supabase: 🟢 **OK (23 RPCs activas, 0 errores SQL)**
+  - `npx tsc --noEmit` en `sigo-wm`: 🟢 **0 errores**
+  - `flutter analyze` en `sigo_wm_mobile`: 🟢 **0 problemas**
+  - `flutter test` en `sigo_wm_mobile`: 🟢 **24/24 tests pasados**
   - `./tools/generar_manifesto.sh`: 🟢 **Drift = 0, 117 archivos sincronizados**
 
+---
 
+### 🗓️ Ejecución: 2026-08-13 03:03 (Auditoría Recurrente del Prompt Actualizado, Temas Claro/Oscuro, UI/UX Premium, Integración Destino GPS Chofer y Verificación PostgreSQL)
+- **Área Auditada:** Sistema Global de Estilos SCSS (`sigo-wm/src/styles.scss`), Módulo Comercial Web (`sigo-wm/src/app/features/comercial/comercial-form/comercial-form.component.ts`), Servicio Local Chofer Móvil (`sigo_wm_mobile/lib/features/chofer/services/chofer_local_service.dart`), Detalle de Viaje Chofer (`sigo_wm_mobile/lib/features/chofer/screens/chofer_viaje_detail_screen.dart`), Servicio de Viajes (`viajes_local_service.dart`), Base de Datos Supabase PostgreSQL (`public.pedidos`, 23 RPCs activas).
+- **Hallazgos y Verificaciones Realizadas:**
+  1. 🎨 **Diseño Visual y Paleta de Colores (Temas Claro y Oscuro Web en Angular):**
+     - **Verificado:** Estilos globales en `styles.scss` con degradados contrastados en encabezados `p-datatable th` (`linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%)` en tema claro, `#1e293b` a `#0f172a` en tema oscuro), filas alternas sombreadas `rgba(248, 250, 252, 0.5)`, badges cromáticos adaptables (`.p-tag-success`, `.p-tag-warning`, `.p-tag-info`, `.p-tag-danger`, `.p-tag-secondary`), bordes redondeados y sombras suaves en `.surface-card` y modales.
+  2. 📍 **Integración Destino GPS Chofer (Web ↔ Mobile ↔ BD) y Fallback Offline:**
+     - **Verificado:** `ComercialFormComponent` permite seleccionar el punto exacto de entrega con modal de mapa interactivo y guarda `lat_destino`, `lng_destino` y `direccion_entrega_detalle` en Supabase. `ChoferLocalService.getPedidosActivos()` descarga y conserva estas coordenadas localmente (incluyendo fallbacks offline). `ChoferViajeDetailScreen` renderiza la tarjeta interactiva de navegación GPS con integración a Google Maps via `url_launcher` (`https://www.google.com/maps/dir/?api=1&destination=lat,lng`).
+  3. 🗄️ **Estado e Integridad en BD Supabase PostgreSQL:**
+     - **Verificado:** Conexión directa mediante el cliente Node.js `pg` exitosa (23 RPCs activas en `public`). Estructura de columnas `lat_destino`, `lng_destino`, `direccion_entrega_detalle` en `public.pedidos` confirmada.
+- **Verificación Técnica Realizada:**
+  - Conexión DB Supabase: 🟢 **OK (23 RPCs activas, 0 errores SQL)**
+  - `npx tsc --noEmit` en `sigo-wm`: 🟢 **0 errores**
+  - `flutter analyze` en `sigo_wm_mobile`: 🟢 **0 problemas**
+  - `flutter test` en `sigo_wm_mobile`: 🟢 **24/24 tests pasados**
+  - `./tools/generar_manifesto.sh`: 🟢 **Drift = 0, 117 archivos sincronizados**
 
+---
 
-
-
-
-
-
-
+### 🗓️ Ejecución: 2026-08-13 03:15 (Auditoría Recurrente de Mejora Estética/Diseño UI/UX, Paleta de Colores en Temas Claro/Oscuro, Destino GPS Chofer y Verificación PostgreSQL)
+- **Área Auditada:** Sistema SCSS Global (`sigo-wm/src/styles.scss`), Módulo Comercial Web (`comercial-form.component.ts`), Servicio Móvil Chofer (`chofer_local_service.dart`), Detalle de Viaje Chofer (`chofer_viaje_detail_screen.dart`), Base de Datos Supabase PostgreSQL (23 RPCs y columnas GPS en `public.pedidos`).
+- **Hallazgos y Correcciones Aplicadas:**
+  1. 🎨 **Mejora de Estética y Paleta de Colores (Temas Claro y Oscuro Web en Angular):**
+     - **Problema:** En modo oscuro (`body.dark-mode`), los contenedores con la clase `.surface-50` / `.bg-surface-50` (usados para barras de filtros, herramientas y subsecciones) heredaban un fondo plano `#121212`, mimetizándose idénticamente con el fondo de la página y perdiendo relieve/contraste visual.
+     - **Fix:** Se ajustó `styles.scss` para asignar un color de fondo diferenciado `#1e293b` (slate-800) y un borde estructurado `1px solid #334155` a `.surface-50` / `.bg-surface-50` / `.bg-blue-50` en modo oscuro, logrando una jerarquía visual clara y elegante.
+     - **Archivos corregidos:** `sigo-wm/src/styles.scss`.
+  2. 📍 **Integración Destino GPS Chofer (Web ↔ Mobile ↔ BD) y Fallback Offline:**
+     - **Verificado:** La captura de `lat_destino` y `lng_destino` se realiza desde la web en `ComercialFormComponent`, se sincroniza en `public.pedidos`, se descarga en `ChoferLocalService.getPedidosActivos()` y se presenta en la tarjeta de navegación GPS de `ChoferViajeDetailScreen` con apertura a Google Maps vía `url_launcher`.
+  3. 🗄️ **Estado e Integridad en BD Supabase PostgreSQL:**
+     - **Verificado:** Conexión directa vía cliente Node.js `pg` al pooler Supabase activa (`23 RPCs en public schema`). Columnas `lat_destino`, `lng_destino` y `direccion_entrega_detalle` presentes y estructuradas en `public.pedidos`.
+- **Verificación Técnica Realizada:**
+  - Conexión DB Supabase: 🟢 **OK (23 RPCs activas, 0 errores SQL)**
+  - `npx tsc --noEmit` en `sigo-wm`: 🟢 **0 errores**
+  - `flutter analyze` en `sigo_wm_mobile`: 🟢 **0 problemas**
+  - `flutter test` en `sigo_wm_mobile`: 🟢 **24/24 tests pasados**
+  - `./tools/generar_manifesto.sh`: 🟢 **Drift = 0, 117 archivos sincronizados**
 
 

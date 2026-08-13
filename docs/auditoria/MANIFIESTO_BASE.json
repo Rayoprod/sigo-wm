@@ -1,5 +1,5 @@
 {
-    "generado": "2026-08-13T03:46:11Z",
+    "generado": "2026-08-13T08:29:36Z",
     "archivos": [
         {
             "path": "sigo-wm/api/chat.ts",
@@ -153,9 +153,9 @@
         },
         {
             "path": "sigo-wm/src/app/features/comercial/comercial-form/comercial-form.component.html",
-            "sha256": "61fbbee7765049f241cfedd32afcab9927ddf1273193ff0b497cd750a233e9a0",
+            "sha256": "9760f0300576d44ca0e9d03be32f4362ef5a722ecba8dda2bf425d5e4c7decfa",
             "lineas": 447,
-            "mtime": "2026-08-09T21:23:31Z"
+            "mtime": "2026-08-12T23:09:33Z"
         },
         {
             "path": "sigo-wm/src/app/features/comercial/comercial-form/comercial-form.component.scss",
@@ -165,9 +165,9 @@
         },
         {
             "path": "sigo-wm/src/app/features/comercial/comercial-form/comercial-form.component.ts",
-            "sha256": "5461a5c7ea7f877b4c93dbd10cb9e30854fc0437f935bb699bb16eb9c26bd5f2",
+            "sha256": "029f3de2831e155d5e807cf10f0b66c0798b605259a63a4f37a4ed84e93dd3d7",
             "lineas": 777,
-            "mtime": "2026-08-12T17:32:32Z"
+            "mtime": "2026-08-13T01:53:41Z"
         },
         {
             "path": "sigo-wm/src/app/features/comercial/comercial-form/tabla-carrito/tabla-carrito.component.html",
@@ -189,9 +189,9 @@
         },
         {
             "path": "sigo-wm/src/app/features/comercial/comercial-list/comercial-list.component.html",
-            "sha256": "06691022beafcec5b90d507d87e2ce3d8ad7e50f1e614cc409c24c442ce0577a",
-            "lineas": 415,
-            "mtime": "2026-08-09T05:53:50Z"
+            "sha256": "2395887fc6a8e3b597850128e8255515a56722edfdd11a87cfa49fe7833dae06",
+            "lineas": 414,
+            "mtime": "2026-08-13T03:27:09Z"
         },
         {
             "path": "sigo-wm/src/app/features/comercial/comercial-list/comercial-list.component.scss",
@@ -201,9 +201,9 @@
         },
         {
             "path": "sigo-wm/src/app/features/comercial/comercial-list/comercial-list.component.ts",
-            "sha256": "0e212c4fd30a78af56f6128418bee52a9aa1e5234ee6cd582e9a16fe6cd878ad",
-            "lineas": 526,
-            "mtime": "2026-08-12T17:32:37Z"
+            "sha256": "f310594758f8d56520a4101f9763998225d54de74e5424592ddfcda0e487ebe1",
+            "lineas": 539,
+            "mtime": "2026-08-13T01:54:02Z"
         },
         {
             "path": "sigo-wm/src/app/features/configuracion/configuracion.component.html",
@@ -297,9 +297,9 @@
         },
         {
             "path": "sigo-wm/src/app/features/reportes/reportes.component.html",
-            "sha256": "a37b9c8152c63836db538effb788b2e27746a4d13306fe2418584272dbf98f9c",
+            "sha256": "75d28088377553931a82dff7004217f0ee9bc6d52ec7f9c795c4301626526a0b",
             "lineas": 252,
-            "mtime": "2026-08-09T22:49:51Z"
+            "mtime": "2026-08-13T01:05:21Z"
         },
         {
             "path": "sigo-wm/src/app/features/reportes/reportes.component.scss",
@@ -345,9 +345,9 @@
         },
         {
             "path": "sigo-wm/src/app/shared/layout/main-layout/main-layout.component.scss",
-            "sha256": "4ec75850cd1dda73102d5eb9e30b59bdccece564131408e40ba6b53ed412f45f",
-            "lineas": 78,
-            "mtime": "2026-08-10T18:17:31Z"
+            "sha256": "fb0e9191810ee477bd9af2bb15ad6820a51ef6ee5ec849674a3e78a0b74dc9d5",
+            "lineas": 85,
+            "mtime": "2026-08-13T03:22:07Z"
         },
         {
             "path": "sigo-wm/src/app/shared/layout/main-layout/main-layout.component.ts",
@@ -381,15 +381,15 @@
         },
         {
             "path": "sigo-wm/src/assets/themes/lara-dark-teal/theme.css",
-            "sha256": "e06b9ce8f31f12ddd7c9cfc8fa1bb7a14eef704326ca1f01a734f79745b4755a",
+            "sha256": "2013175b281076bbc456441efd18232edc46c6d3e61bdc77e614e669f1f2bb22",
             "lineas": 6570,
-            "mtime": "2026-08-10T01:09:03Z"
+            "mtime": "2026-08-13T03:29:30Z"
         },
         {
             "path": "sigo-wm/src/assets/themes/lara-light-teal/theme.css",
-            "sha256": "a6cb40c1dd2e860739eb6d446289a99019e2bb0f75d3a9aaa7e0a5ac0629824f",
+            "sha256": "21b57b1c903249ab9972dd50a0709aae64d00f26a2d6a35e9b2b3c99945d645e",
             "lineas": 6555,
-            "mtime": "2026-08-10T01:09:03Z"
+            "mtime": "2026-08-13T03:21:38Z"
         },
         {
             "path": "sigo-wm/src/environments/environment.development.ts",
@@ -417,9 +417,9 @@
         },
         {
             "path": "sigo-wm/src/styles.scss",
-            "sha256": "4fe017d8bb28ed2c0cd134f735ea105c998102c0bef5c6224835f3627c64e091",
-            "lineas": 470,
-            "mtime": "2026-08-10T17:58:11Z"
+            "sha256": "9e9407ac4d565a08e5100dd41b50948da4211bc20044a92162efd0158a5aebe1",
+            "lineas": 638,
+            "mtime": "2026-08-13T03:29:16Z"
         },
         {
             "path": "sigo_wm_mobile/lib/core/config/gps_db_helper.dart",
@@ -501,9 +501,9 @@
         },
         {
             "path": "sigo_wm_mobile/lib/features/auth/services/auth_service.dart",
-            "sha256": "d00cff52e56ef587a142ebce5fe358689a4cbb52ca647af97c974e8ffcbbc043",
-            "lineas": 778,
-            "mtime": "2026-08-12T13:12:47Z"
+            "sha256": "45bcd53740d396b29d37ba539d10ce70497c1e6226c7c621de03e622f3f81062",
+            "lineas": 801,
+            "mtime": "2026-08-12T23:24:58Z"
         },
         {
             "path": "sigo_wm_mobile/lib/features/auth/services/offline_auth_service.dart",
@@ -531,9 +531,9 @@
         },
         {
             "path": "sigo_wm_mobile/lib/features/chofer/screens/chofer_viaje_detail_screen.dart",
-            "sha256": "2be7b95314adc1d97cd3e49ddbac326c9be1cd9d547c6ab75adf7baefacaf5b3",
-            "lineas": 1227,
-            "mtime": "2026-08-11T19:27:27Z"
+            "sha256": "7c77ad37afd2353eef7ede578faba2cfc0fd9178ea926ac09b4d78ec2535f282",
+            "lineas": 1346,
+            "mtime": "2026-08-12T23:43:56Z"
         },
         {
             "path": "sigo_wm_mobile/lib/features/chofer/screens/qr_dispatch_scanner_screen.dart",
@@ -549,9 +549,9 @@
         },
         {
             "path": "sigo_wm_mobile/lib/features/chofer/services/chofer_local_service.dart",
-            "sha256": "5203018fe7a9a3675afb8cb5828502cba7190a2243c8293db0874f42c141fffa",
-            "lineas": 242,
-            "mtime": "2026-08-12T13:06:16Z"
+            "sha256": "afcff142442d7fc227de7723cf25e197c2c80744cea4e6ca74d070d4218190fe",
+            "lineas": 260,
+            "mtime": "2026-08-12T23:52:26Z"
         },
         {
             "path": "sigo_wm_mobile/lib/features/chofer/services/entregas_local_service.dart",
@@ -633,9 +633,9 @@
         },
         {
             "path": "sigo_wm_mobile/lib/features/despachos/services/viajes_local_service.dart",
-            "sha256": "b5714c01e66b836404072bd4a718dc7bc242c90eb66221567cf4dcae64518e8c",
+            "sha256": "ba4a1e14d1966d0eb8839314f5e85f89371847cff785a3ff346de944287b7e2f",
             "lineas": 485,
-            "mtime": "2026-08-12T22:45:07Z"
+            "mtime": "2026-08-12T23:43:38Z"
         },
         {
             "path": "sigo_wm_mobile/lib/features/shared/screens/evidencias_gallery_screen.dart",

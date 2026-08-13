@@ -25,51 +25,58 @@
 
 /* Base link styling */
 .menu-item-link {
-  color: var(--text-color-secondary);
+  color: #334155;
+  font-weight: 500;
   border: 1px solid transparent;
   
   .menu-icon {
+    color: #64748b;
     transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1), color 0.2s ease;
   }
 
   &:hover {
-    background-color: var(--surface-hover);
-    color: var(--text-color);
+    background-color: #f1f5f9;
+    color: #0f172a;
     
     .menu-icon {
       transform: scale(1.15) rotate(5deg);
-      color: var(--primary-color);
+      color: #00a884;
     }
   }
 }
 
-/* Active Route Styling - The "WOW" factor */
+/* Active Route Styling - Vibrant Light Mode Emerald Pill */
 .active-menu-item {
-  /* Elegant gradient matching the primary teal */
-  background: linear-gradient(135deg, rgba(20, 184, 166, 0.15) 0%, rgba(20, 184, 166, 0.05) 100%);
-  border: 1px solid rgba(20, 184, 166, 0.3);
-  box-shadow: 0 4px 15px -3px rgba(20, 184, 166, 0.15);
-  color: var(--primary-color) !important;
+  background: linear-gradient(135deg, #e6f4f1 0%, #d1fae5 100%);
+  border: 1px solid #b2e5dc;
+  box-shadow: 0 2px 8px rgba(0, 168, 132, 0.12);
+  color: #008069 !important;
   font-weight: 700 !important;
 
   .menu-icon {
-    color: var(--primary-color) !important;
+    color: #00a884 !important;
     transform: scale(1.1);
   }
 
   &:hover {
-    background: linear-gradient(135deg, rgba(20, 184, 166, 0.2) 0%, rgba(20, 184, 166, 0.1) 100%);
-    border-color: rgba(20, 184, 166, 0.4);
+    background: linear-gradient(135deg, #dcfce7 0%, #bbf7d0 100%);
+    border-color: #86efac;
   }
 }
 
 /* Adjustments for dark mode compatibility */
 :host-context(.dark-mode) {
+  .menu-item-link {
+    color: rgba(255, 255, 255, 0.7);
+    .menu-icon {
+      color: rgba(255, 255, 255, 0.5);
+    }
+  }
   .active-menu-item {
     background: linear-gradient(135deg, rgba(20, 184, 166, 0.25) 0%, rgba(20, 184, 166, 0.1) 100%);
     border: 1px solid rgba(20, 184, 166, 0.4);
     box-shadow: 0 4px 15px -3px rgba(20, 184, 166, 0.25);
-    color: #4ade80 !important; /* Brighter teal/green for dark mode contrast */
+    color: #4ade80 !important;
 
     .menu-icon {
       color: #4ade80 !important;

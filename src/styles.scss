@@ -106,25 +106,107 @@ html body .p-dialog {
   border: none;
 }
 
-/* Datatable (Mejoras de grilla) */
+/* Datatable (Mejoras de grilla y contraste premium) */
 html body .p-datatable .p-datatable-thead > tr > th {
-  background-color: var(--surface-50);
-  color: var(--text-color);
-  font-weight: 600;
+  background: linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%);
+  color: #0f172a;
+  font-weight: 700;
   text-transform: uppercase;
   font-size: 0.75rem;
-  letter-spacing: 0.05em;
-  padding: 1rem;
-  border-bottom: 2px solid var(--surface-border);
+  letter-spacing: 0.06em;
+  padding: 1.1rem 1rem;
+  border-top: 1px solid #e2e8f0;
+  border-bottom: 2px solid #cbd5e1;
   transition: background-color 0.2s, color 0.2s;
 }
 html body .p-datatable .p-datatable-tbody > tr > td {
   padding: 1rem;
-  border-bottom: 1px solid var(--surface-border);
+  border-bottom: 1px solid #e2e8f0;
   color: var(--text-color);
 }
+html body .p-datatable-tbody > tr:nth-child(even) {
+  background-color: rgba(248, 250, 252, 0.5);
+}
 html body .p-datatable-hoverable-rows .p-datatable-tbody > tr:not(.p-highlight):hover {
-  background-color: var(--surface-hover);
+  background-color: #f1f5f9;
+}
+
+/* Badges y Tags (Paleta cromática saturada, elegante y de alto impacto) */
+html body .p-tag {
+  border-radius: 8px;
+  font-weight: 700;
+  font-size: 0.75rem;
+  letter-spacing: 0.04em;
+  padding: 0.4rem 0.75rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  text-transform: uppercase;
+}
+
+/* Success (Completada, Pagado, Venta): Verde Esmeralda Vivo & Saturado */
+html body .p-tag.p-tag-success {
+  background: linear-gradient(135deg, #059669 0%, #047857 100%) !important;
+  color: #ffffff !important;
+  border: 1px solid #047857 !important;
+  box-shadow: 0 2px 6px rgba(5, 150, 105, 0.25) !important;
+}
+
+/* Warning (Pendiente, En Proceso): Ámbar / Naranja Vivo & Saturado */
+html body .p-tag.p-tag-warning {
+  background: linear-gradient(135deg, #d97706 0%, #b45309 100%) !important;
+  color: #ffffff !important;
+  border: 1px solid #b45309 !important;
+  box-shadow: 0 2px 6px rgba(217, 119, 6, 0.25) !important;
+}
+
+/* Info (Cotización, Aprobada, Parcial): Azul Real / Índigo Saturado */
+html body .p-tag.p-tag-info {
+  background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%) !important;
+  color: #ffffff !important;
+  border: 1px solid #1d4ed8 !important;
+  box-shadow: 0 2px 6px rgba(37, 99, 235, 0.25) !important;
+}
+
+/* Danger (Vencida, Rechazada, Anulada): Carmesí / Rojo Intenso */
+html body .p-tag.p-tag-danger {
+  background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%) !important;
+  color: #ffffff !important;
+  border: 1px solid #b91c1c !important;
+  box-shadow: 0 2px 6px rgba(220, 38, 38, 0.25) !important;
+}
+
+/* Secondary (Borrador, Neutral): Gris Pizarra Oscuro Elegante */
+html body .p-tag.p-tag-secondary {
+  background: linear-gradient(135deg, #475569 0%, #334155 100%) !important;
+  color: #ffffff !important;
+  border: 1px solid #334155 !important;
+}
+
+/* Selector Dropdown en Tabla */
+html body .p-dropdown {
+  background-color: #ffffff;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+  transition: all 0.2s ease;
+
+  &:hover:not(.p-disabled) {
+    border-color: #059669;
+    box-shadow: 0 2px 6px rgba(5, 150, 105, 0.15);
+  }
+
+  &.p-inputwrapper-focus, &:focus-within {
+    border-color: #059669;
+    box-shadow: 0 0 0 3px rgba(5, 150, 105, 0.2);
+  }
+
+  .p-dropdown-label {
+    padding: 0.35rem 0.5rem;
+    display: flex;
+    align-items: center;
+  }
 }
 
 /* Clases utilitarias para las tarjetas móviles (Responsive Cards) */
@@ -186,6 +268,10 @@ html body .p-datatable-hoverable-rows .p-datatable-tbody > tr:not(.p-highlight):
 .bg-orange-soft { background-color: var(--orange-50); }
 .bg-green-soft { background-color: var(--green-50); }
 .bg-blue-soft { background-color: var(--blue-50); }
+.bg-red-soft { background-color: #fef2f2; }
+.bg-purple-soft { background-color: #faf5ff; }
+.bg-yellow-soft { background-color: #fefce8; }
+.bg-teal-soft { background-color: #f0fdfa; }
 .bg-surface-soft { background-color: var(--surface-50); }
 
 .dark-mode .bg-orange-soft {
@@ -198,6 +284,22 @@ html body .p-datatable-hoverable-rows .p-datatable-tbody > tr:not(.p-highlight):
 
 .dark-mode .bg-blue-soft {
   background-color: rgba(59, 130, 246, 0.1) !important;
+}
+
+.dark-mode .bg-red-soft {
+  background-color: rgba(239, 68, 68, 0.1) !important;
+}
+
+.dark-mode .bg-purple-soft {
+  background-color: rgba(168, 85, 247, 0.1) !important;
+}
+
+.dark-mode .bg-yellow-soft {
+  background-color: rgba(234, 179, 8, 0.1) !important;
+}
+
+.dark-mode .bg-teal-soft {
+  background-color: rgba(20, 184, 166, 0.1) !important;
 }
 
 .dark-mode .bg-surface-soft {
@@ -287,41 +389,107 @@ html body .p-datatable-hoverable-rows .p-datatable-tbody > tr:not(.p-highlight):
    DARK MODE OVERRIDES 
    ========================================================================== */
 body.dark-mode {
-  --surface-ground: #121212;
-  --surface-border: #383838;
-  --text-color: rgba(255, 255, 255, 0.87);
-  --text-color-secondary: rgba(255, 255, 255, 0.6);
+  --surface-ground: #0f172a;
+  --surface-card: #1e293b;
+  --surface-border: #334155;
+  --text-color: #f8fafc;
+  --text-color-secondary: #cbd5e1;
 
   /* Background Fixes */
   .bg-white, .surface-card, .surface-0 {
-    background-color: #1e1e1e !important;
+    background-color: #1e293b !important;
   }
-  .bg-blue-50, .surface-ground, .bg-surface-50, .surface-50 {
-    background-color: #121212 !important;
+  .surface-ground {
+    background-color: #0f172a !important;
+  }
+  .bg-blue-50, .bg-surface-50, .surface-50 {
+    background-color: #1e293b !important;
+    border: 1px solid #334155 !important;
   }
   .surface-border {
-    border-color: #383838 !important;
+    border-color: #334155 !important;
   }
   
-  /* Text Color Fixes */
+  /* High-Contrast Text Color Overrides (Previenen letras grises deslavadas) */
+  color: #f8fafc !important;
+
   .text-900, .text-800, .text-700, .text-color {
-    color: rgba(255, 255, 255, 0.87) !important;
+    color: #ffffff !important;
+    font-weight: 600;
   }
   .text-600, .text-500, .text-400, .text-color-secondary {
-    color: rgba(255, 255, 255, 0.60) !important;
+    color: #cbd5e1 !important; /* Gris plateado claro en lugar de gris oscuro apagado */
   }
   
-  /* Datatable Fixes */
+  /* Datatable Fixes & Dark Header Accent */
   .p-datatable .p-datatable-thead > tr > th {
-    background-color: var(--surface-50) !important;
-    color: var(--text-color) !important;
-    border-bottom-color: var(--surface-border) !important;
+    background: linear-gradient(180deg, #1e293b 0%, #0f172a 100%) !important;
+    color: #ffffff !important;
+    font-weight: 800 !important;
+    border-top: 1px solid #334155 !important;
+    border-bottom: 2px solid #475569 !important;
   }
   .p-datatable .p-datatable-tbody > tr > td {
-    border-bottom-color: var(--surface-border) !important;
+    border-bottom-color: #334155 !important;
+    color: #f8fafc !important;
+  }
+  .p-datatable-tbody > tr:nth-child(even) {
+    background-color: rgba(255, 255, 255, 0.03) !important;
   }
   .p-datatable-hoverable-rows .p-datatable-tbody > tr:not(.p-highlight):hover {
-    background-color: var(--surface-hover) !important;
+    background-color: rgba(255, 255, 255, 0.07) !important;
+  }
+
+  /* Form Elements, Inputs & Dropdowns en Modo Oscuro */
+  .p-inputtext, .p-dropdown, .p-autocomplete-input, .p-multiselect, .p-calendar {
+    background-color: #0f172a !important;
+    border: 1px solid #475569 !important;
+    color: #ffffff !important;
+  }
+  .p-dropdown .p-dropdown-label {
+    color: #ffffff !important;
+  }
+  .p-dropdown-panel, .p-autocomplete-panel {
+    background-color: #1e293b !important;
+    border: 1px solid #475569 !important;
+    .p-dropdown-items .p-dropdown-item {
+      color: #f8fafc !important;
+      &:hover {
+        background-color: #334155 !important;
+      }
+    }
+  }
+
+  /* Dark mode Tag & Badge colors (Resplandecientes y con borde definido) */
+  .p-tag.p-tag-success {
+    background: linear-gradient(135deg, rgba(5, 150, 105, 0.35) 0%, rgba(4, 120, 87, 0.45) 100%) !important;
+    color: #34d399 !important;
+    border: 1px solid #059669 !important;
+    font-weight: 800 !important;
+  }
+  .p-tag.p-tag-warning {
+    background: linear-gradient(135deg, rgba(217, 119, 6, 0.35) 0%, rgba(180, 83, 9, 0.45) 100%) !important;
+    color: #fbbf24 !important;
+    border: 1px solid #d97706 !important;
+    font-weight: 800 !important;
+  }
+  .p-tag.p-tag-info {
+    background: linear-gradient(135deg, rgba(37, 99, 235, 0.35) 0%, rgba(29, 78, 216, 0.45) 100%) !important;
+    color: #60a5fa !important;
+    border: 1px solid #2563eb !important;
+    font-weight: 800 !important;
+  }
+  .p-tag.p-tag-danger {
+    background: linear-gradient(135deg, rgba(220, 38, 38, 0.35) 0%, rgba(185, 28, 28, 0.45) 100%) !important;
+    color: #f87171 !important;
+    border: 1px solid #dc2626 !important;
+    font-weight: 800 !important;
+  }
+  .p-tag.p-tag-secondary {
+    background: linear-gradient(135deg, rgba(71, 85, 105, 0.35) 0%, rgba(51, 65, 85, 0.45) 100%) !important;
+    color: #e2e8f0 !important;
+    border: 1px solid #64748b !important;
+    font-weight: 800 !important;
   }
   
   /* Menu Fixes */
@@ -337,35 +505,35 @@ body.dark-mode {
   .p-dialog .p-dialog-header,
   .p-dialog .p-dialog-content,
   .p-dialog .p-dialog-footer {
-    background-color: #1e1e1e !important;
-    color: rgba(255, 255, 255, 0.87) !important;
+    background-color: #1e293b !important;
+    color: #f8fafc !important;
   }
 
   /* PrimeNG specific fallback overrides */
   .p-tabview .p-tabview-panels {
-    background-color: #1e1e1e !important;
-    color: rgba(255, 255, 255, 0.87) !important;
+    background-color: #1e293b !important;
+    color: #f8fafc !important;
   }
   .p-tabview .p-tabview-nav {
-    background-color: #1e1e1e !important;
+    background-color: #1e293b !important;
   }
   .p-tabview .p-tabview-nav li .p-tabview-nav-link {
-    background-color: #1e1e1e !important;
-    color: rgba(255, 255, 255, 0.6) !important;
-    border-color: #383838 !important;
+    background-color: #1e293b !important;
+    color: #cbd5e1 !important;
+    border-color: #334155 !important;
   }
   .p-tabview .p-tabview-nav li.p-highlight .p-tabview-nav-link {
-    color: #00B4B6 !important;
-    border-color: #00B4B6 !important;
+    color: #34d399 !important;
+    border-color: #34d399 !important;
   }
 
-  /* Toolbar/Topbar (if styled globally) */
+  /* Toolbar/Topbar */
   .border-bottom-1.surface-border {
-    border-color: #383838 !important;
+    border-color: #334155 !important;
   }
   
   .topbar-glass {
-    background: rgba(30, 30, 30, 0.85) !important;
+    background: rgba(15, 23, 42, 0.9) !important;
   }
 }
 
