@@ -75,7 +75,17 @@ export class ComercialListComponent implements OnInit {
 
   // Variables para Dialog 
   onConversionDialogShow() {
-    setTimeout(() => this.initConversionMap(), 200);
+    // El contenedor del mapa está dentro de un *ngIf condicional (tipo_entrega/lugar_entrega).
+    // Un único setTimeout puede dispararse antes de que el *ngIf haya renderizado el div.
+    // Múltiples intentos con intervalos crecientes garantizan la inicialización.
+    const delays = [100, 300, 600, 1200];
+    delays.forEach(delay => {
+      setTimeout(() => {
+        if (!this.conversionMap) {
+          this.initConversionMap();
+        }
+      }, delay);
+    });
   }
 
   onConversionDialogHide() {

@@ -66,6 +66,26 @@ Las fotos de evidencia tomadas durante el despacho a veces no se visualizaban en
 
 ---
 
+## 🎯 HALLAZGO H-04: Ocultación de Marca de Agua "Mapa Vacío" cuando existe Ubicación de Destino (`sigo-wm`)
+
+### **Síntoma Reportado**
+Al ingresar al modal "Rastreo GPS" en el módulo de Logística Web para un pedido que ya posee coordenadas de destino desde la Orden de Venta pero aún no registra viajes/despachos en campo, la pantalla mostraba la tarjeta opaca de "Mapa Vacío" encima del mapa Leaflet.
+
+### **Causa Raíz Identificada**
+El condicional `*ngIf` en `logistica.component.html` para mostrar la tarjeta superpuesta de "Mapa Vacío" solo evaluaba la ausencia de puntos y viajes en la auditoría (`puntosRuta.length === 0 && viajesAuditoria.length === 0`), omitiendo verificar si el pedido ya contaba con `lat_destino` y `lng_destino`.
+
+### **Resolución Aplicada**
+* **Archivos Modificados:**
+  - `sigo-wm/src/app/features/logistica/logistica.component.html`
+  - `sigo-wm/src/app/features/logistica/logistica.component.ts`
+* **Cambios:**
+  - Se condicionó el banner "Mapa Vacío" agregando `&& !selectedPedidoParaRuta?.lat_destino` para que no se muestre si la orden de venta tiene ubicación.
+  - Se adaptó la renderización del mapa Leaflet (`renderMap`) para que, al detectar las coordenadas de destino y ningún viaje registrado aún, se solape el icono azul de destino 🎯 (`Destino de Entrega`) centrado con nivel de zoom 15.
+  - El panel lateral derecho de auditoría conserva el mensaje descriptivo ("Sin Viajes: No hay despachos registrados para este pedido") hasta que se comience a despachar en campo.
+* **Verificación:** `npx tsc --noEmit` completado con 0 errores.
+
+---
+
 ## 🛠️ VERIFICACIÓN INTEGRAL DE CALIDAD Y COMPILACIÓN
 
 | Proyecto | Herramienta de Validación | Resultado |

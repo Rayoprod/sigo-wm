@@ -522,3 +522,28 @@
 
 /* ─── Action Row ──────────────────────────────────────── */
 .event-action-row { margin-top: 1.5rem; }
+
+/* ─── Fotos Pendientes Banner ─────────────────────────── */
+/* Estado intermedio: el chofer subió el registro del despachador vía QR
+   pero el despachador aún no sincronizó sus fotos. */
+.fotos-pendientes-banner {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.6rem;
+  font-size: 0.8rem;
+  color: #92400e;          // ámbar oscuro
+  background: #fffbeb;     // ámbar muy claro
+  border-left: 3px solid #f59e0b;
+  border-radius: 0 6px 6px 0;
+  padding: 0.55rem 0.75rem;
+  margin-bottom: 0.75rem;
+
+  i {
+    color: #f59e0b;
+    font-size: 0.95rem;
+    flex-shrink: 0;
+    margin-top: 1px;
+  }
+
+  .font-semibold { font-weight: 600; }
+}

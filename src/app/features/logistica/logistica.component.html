@@ -418,8 +418,15 @@
                     <div class="text-sm text-color-secondary font-medium">
                         <i class="pi pi-building mr-2 text-500"></i>{{ selectedPedidoParaRuta?.clientes?.nombre_razon_social }}
                     </div>
-                    <div class="text-sm text-500 mt-1" *ngIf="selectedPedidoParaRuta?.lugar_entrega === 'OBRA'">
-                        <i class="pi pi-map-marker mr-2 text-red-500"></i>{{ selectedPedidoParaRuta?.direccion_entrega_detalle || 'Dirección no especificada' }}
+                    <div class="text-sm text-500 mt-1 flex align-items-center flex-wrap gap-2" *ngIf="selectedPedidoParaRuta?.lugar_entrega === 'OBRA'">
+                        <div>
+                            <i class="pi pi-map-marker mr-1 text-red-500"></i>
+                            <span>{{ selectedPedidoParaRuta?.direccion_entrega_detalle || 'Dirección no especificada' }}</span>
+                        </div>
+                        <span *ngIf="selectedPedidoParaRuta?.lat_destino && selectedPedidoParaRuta?.lng_destino" 
+                              class="bg-blue-50 text-blue-700 font-bold text-xs px-2 py-1 border-round font-mono">
+                            🎯 Destino GPS: {{ selectedPedidoParaRuta?.lat_destino | number:'1.5-5' }}, {{ selectedPedidoParaRuta?.lng_destino | number:'1.5-5' }}
+                        </span>
                     </div>
                     <!-- Warning Cantera Inside Dialog -->
                     <div *ngIf="selectedPedidoParaRuta?.tipo_entrega === 'CANTERA' || selectedPedidoParaRuta?.lugar_entrega === 'CANTERA'" class="p-2 bg-yellow-100 border-round flex align-items-start border-1 border-yellow-400">
@@ -454,9 +461,10 @@
                 </div>
             </p-dialog>
 
-            <div *ngIf="!loadingRuta && puntosRuta.length === 0 && entregasRuta.length === 0 && viajesAuditoria.length === 0" class="absolute top-0 left-0 w-full h-full flex flex-column align-items-center justify-content-center text-500 surface-card" style="z-index: 2;">
+            <div *ngIf="!loadingRuta && puntosRuta.length === 0 && entregasRuta.length === 0 && viajesAuditoria.length === 0 && !selectedPedidoParaRuta?.lat_destino" class="absolute top-0 left-0 w-full h-full flex flex-column align-items-center justify-content-center text-500 surface-card" style="z-index: 2;">
                 <i class="pi pi-map mb-3" style="font-size: 4rem"></i>
                 <h3>Mapa Vacío</h3>
+                <p class="text-sm text-400 mt-1">Este pedido no cuenta con ubicación de destino ni despachos registrados.</p>
             </div>
             <div id="ruta-mapa-unificado" style="width: 100%; height: 100%; z-index: 1;"></div>
         </div>
@@ -587,11 +595,32 @@
                                                 </div>
                                             </ng-container>
 
-                                            <div *ngIf="event.data.latitud && event.data.longitud" class="event-action-row">
+                                            <!-- BADGE: Fotos pendientes del despachador -->
+                                            <!-- Se muestra cuando el chofer subió el registro (vía QR) pero el despachador
+                                                 aún no sincronizó sus fotos. Desaparece sólo al sync del despachador. -->
+                                            <div *ngIf="event.data?.fotos_pendientes && !event.data?.fotos_urls?.length"
+                                                 class="fotos-pendientes-banner">
+                                                <i class="pi pi-clock"></i>
+                                                <div>
+                                                    <span class="font-semibold">Foto de despacho pendiente</span>
+                                                    <span class="text-xs block mt-1 opacity-80">
+                                                        El chofer registró el despacho vía QR. Las fotos se subirán automáticamente cuando el despachador recupere señal.
+                                                    </span>
+                                                </div>
+                                            </div>
+
+                                            <div *ngIf="event.data.latitud && event.data.longitud" class="event-action-row flex align-items-center flex-wrap gap-2 mt-2">
+                                                <span class="bg-purple-50 text-purple-700 font-bold text-xs px-2 py-1 border-round font-mono">
+                                                    🟣 GPS: {{ event.data.latitud | number:'1.5-5' }}, {{ event.data.longitud | number:'1.5-5' }}
+                                                </span>
                                                 <a class="subtle-link" (click)="enfocarEnPunto(event.data.latitud, event.data.longitud, 'Despacho registrado aquí'); $event.preventDefault()" href="#">
                                                     <i [class]="isFocusPunto(event.data.latitud, event.data.longitud) ? 'pi pi-eye-slash' : 'pi pi-map-marker'"></i>
                                                     {{ isFocusPunto(event.data.latitud, event.data.longitud) ? 'Ocultar punto' : 'Ver punto de despacho' }}
                                                 </a>
+                                            </div>
+                                            <div *ngIf="!event.data.latitud || !event.data.longitud" class="text-xs text-500 mt-2 flex align-items-center gap-1 opacity-75">
+                                                <i class="pi pi-info-circle text-orange-500"></i>
+                                                <span>Despacho registrado sin geolocalización de planta</span>
                                             </div>
                                         </ng-container>
                                         <ng-template #noCarga>
@@ -615,7 +644,10 @@
                                                     </div>
                                                 </div>
                                             </ng-container>
-                                            <div *ngIf="event.data.latitud_recepcion && event.data.longitud_recepcion" class="event-action-row">
+                                            <div *ngIf="event.data.latitud_recepcion && event.data.longitud_recepcion" class="event-action-row flex align-items-center flex-wrap gap-2 mt-2">
+                                                <span class="bg-orange-50 text-orange-700 font-bold text-xs px-2 py-1 border-round font-mono">
+                                                    🟠 GPS: {{ event.data.latitud_recepcion | number:'1.5-5' }}, {{ event.data.longitud_recepcion | number:'1.5-5' }}
+                                                </span>
                                                 <a class="subtle-link" (click)="enfocarEnPunto(event.data.latitud_recepcion, event.data.longitud_recepcion, 'Recepción registrada aquí'); $event.preventDefault()" href="#">
                                                     <i [class]="isFocusPunto(event.data.latitud_recepcion, event.data.longitud_recepcion) ? 'pi pi-eye-slash' : 'pi pi-map-marker'"></i>
                                                     {{ isFocusPunto(event.data.latitud_recepcion, event.data.longitud_recepcion) ? 'Ocultar punto' : 'Ver punto de recepción' }}
@@ -689,6 +721,15 @@
                                                     </div>
                                                 </div>
                                             </ng-container>
+                                            <div *ngIf="event.data.latitud && event.data.longitud" class="event-action-row flex align-items-center flex-wrap gap-2 mt-2">
+                                                <span class="bg-green-50 text-green-700 font-bold text-xs px-2 py-1 border-round font-mono">
+                                                    🟢 GPS: {{ event.data.latitud | number:'1.5-5' }}, {{ event.data.longitud | number:'1.5-5' }}
+                                                </span>
+                                                <a class="subtle-link" (click)="enfocarEnPunto(event.data.latitud, event.data.longitud, 'Entrega registrada aquí'); $event.preventDefault()" href="#">
+                                                    <i [class]="isFocusPunto(event.data.latitud, event.data.longitud) ? 'pi pi-eye-slash' : 'pi pi-map-marker'"></i>
+                                                    {{ isFocusPunto(event.data.latitud, event.data.longitud) ? 'Ocultar punto' : 'Ver punto de entrega' }}
+                                                </a>
+                                            </div>
                                         </ng-container>
                                         <ng-template #enProgreso>
                                             <div class="event-pending">

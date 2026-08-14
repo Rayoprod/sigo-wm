@@ -476,7 +476,18 @@ export class LogisticaComponent implements OnInit, OnDestroy {
     if (!cabecera) return '';
     const safeDetalles = Array.isArray(detalles) ? detalles : [];
 
-    const minMap = {
+    // Coordenadas de destino: buscamos en el pedido seleccionado, en el pedido
+    // para ruta, o directamente en la cabecera (si el despachador la asignó).
+    const pedidoParaCoords = this.selectedPedido || this.selectedPedidoParaRuta;
+    const rawLat = pedidoParaCoords?.lat_destino ?? cabecera?.pedidos?.lat_destino ?? null;
+    const rawLng = pedidoParaCoords?.lng_destino ?? cabecera?.pedidos?.lng_destino ?? null;
+    const latDestino = rawLat != null ? Number(rawLat) : null;
+    const lngDestino = rawLng != null ? Number(rawLng) : null;
+
+    const lugarEntrega = pedidoParaCoords?.lugar_entrega || cabecera?.pedidos?.lugar_entrega || null;
+    const direccionDetalle = pedidoParaCoords?.direccion_entrega_detalle || cabecera?.pedidos?.direccion_entrega_detalle || null;
+
+    const minMap: any = {
       t: 'h',
       i: cabecera.id || '',
       pi: cabecera.pedido_id || '',
@@ -494,6 +505,12 @@ export class LogisticaComponent implements OnInit, OnDestroy {
         um: d?.pedidos_items?.productos?.unidad_medida || d?.pedidos_items?.unidad_medida_manual || d?.unidad_medida || 'UND'
       }))
     };
+
+    // Incluir coordenadas y datos de entrega solo si existen (evita engordar el QR con nulos)
+    if (latDestino != null && !isNaN(latDestino)) minMap['la'] = latDestino;
+    if (lngDestino != null && !isNaN(lngDestino)) minMap['lo'] = lngDestino;
+    if (lugarEntrega) minMap['le'] = lugarEntrega;
+    if (direccionDetalle) minMap['dd'] = direccionDetalle;
 
     const jsonStr = JSON.stringify(minMap);
     // Comprimir con gzip (pako)
@@ -1429,20 +1446,24 @@ export class LogisticaComponent implements OnInit, OnDestroy {
       // Destino 🎯 siempre visible en la vista general (si el pedido tiene coordenadas)
       const pedidoDestGen = this.selectedPedidoParaRuta as any;
       if (pedidoDestGen?.lat_destino && pedidoDestGen?.lng_destino) {
-        const dest: L.LatLngTuple = [pedidoDestGen.lat_destino, pedidoDestGen.lng_destino];
-        const iconDestinoGen = L.divIcon({
-          className: '',
-          html: `<div style="background:#2563eb;color:#fff;width:36px;height:36px;
-                 display:flex;align-items:center;justify-content:center;border-radius:50%;
-                 border:3px solid #fff;font-size:1.2rem;
-                 box-shadow:0 2px 12px rgba(37,99,235,0.7);">🎯</div>`,
-          iconSize: [36, 36], iconAnchor: [18, 18], popupAnchor: [0, -22]
-        });
-        L.marker(dest, { icon: iconDestinoGen })
-          .bindPopup(`<b>🎯 Destino de Entrega</b><br>${pedidoDestGen.direccion_entrega_detalle || 'Coordenadas registradas'}`)
-          .addTo(this.layerGroupMarcadores!);
-        bounds.extend(dest);
-        pointsAdded++;
+        const rawLat = parseFloat(pedidoDestGen.lat_destino);
+        const rawLng = parseFloat(pedidoDestGen.lng_destino);
+        if (!isNaN(rawLat) && !isNaN(rawLng)) {
+          const dest: L.LatLngTuple = [rawLat, rawLng];
+          const iconDestinoGen = L.divIcon({
+            className: '',
+            html: `<div style="background:#2563eb;color:#fff;width:36px;height:36px;
+                   display:flex;align-items:center;justify-content:center;border-radius:50%;
+                   border:3px solid #fff;font-size:1.2rem;
+                   box-shadow:0 2px 12px rgba(37,99,235,0.7);">🎯</div>`,
+            iconSize: [36, 36], iconAnchor: [18, 18], popupAnchor: [0, -22]
+          });
+          L.marker(dest, { icon: iconDestinoGen })
+            .bindPopup(`<b>🎯 Destino de Entrega</b><br>${pedidoDestGen.direccion_entrega_detalle || 'Coordenadas registradas'}`)
+            .addTo(this.layerGroupMarcadores!);
+          bounds.extend(dest);
+          pointsAdded++;
+        }
       }
     }
 
@@ -1518,7 +1539,11 @@ export class LogisticaComponent implements OnInit, OnDestroy {
     // ── fitBounds: solo cuando se solicita explícitamente ────────────────────
     if (applyFitBounds) {
       if (pointsAdded > 0 && bounds.isValid()) {
-        this.map!.fitBounds(bounds, { padding: [50, 50], maxZoom: 17 });
+        if (bounds.getNorthEast().equals(bounds.getSouthWest())) {
+          this.map!.setView(bounds.getCenter(), 15);
+        } else {
+          this.map!.fitBounds(bounds, { padding: [50, 50], maxZoom: 17 });
+        }
         // Solo marcar como inicializado cuando realmente se pudieron encuadrar datos
         this.mapInitialBoundsDone = true;
       } else if (!this.mapInitialBoundsDone) {
