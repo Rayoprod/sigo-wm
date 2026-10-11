@@ -441,10 +441,15 @@ body.dark-mode {
   }
 
   /* Form Elements, Inputs & Dropdowns en Modo Oscuro */
-  .p-inputtext, .p-dropdown, .p-autocomplete-input, .p-multiselect, .p-calendar {
+  .p-inputtext, .p-dropdown, .p-autocomplete-input, .p-multiselect {
     background-color: #0f172a !important;
     border: 1px solid #475569 !important;
     color: #ffffff !important;
+  }
+  .p-calendar {
+    border: none !important;
+    background: transparent !important;
+    padding: 0 !important;
   }
   .p-dropdown .p-dropdown-label {
     color: #ffffff !important;

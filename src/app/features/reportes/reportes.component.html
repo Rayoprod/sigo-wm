@@ -182,11 +182,11 @@
       <div class="flex flex-column md:flex-row gap-3 mb-4 surface-50 p-3 border-round-xl border-1 surface-border align-items-end">
         <div class="w-full md:w-auto">
           <label class="block text-xs font-semibold mb-1 text-700">Fecha Desde</label>
-          <p-calendar [(ngModel)]="fechaInicioVentas" [maxDate]="fechaFinVentas || undefined" [readonlyInput]="true" placeholder="dd/mm/aaaa" (onSelect)="aplicarFiltrosVentas()" (onClear)="aplicarFiltrosVentas()" [showClear]="true" appendTo="body" styleClass="w-full"></p-calendar>
+          <p-calendar [(ngModel)]="fechaInicioVentas" [maxDate]="fechaFinVentas || undefined" [readonlyInput]="true" placeholder="dd/mm/aaaa" (onSelect)="aplicarFiltrosVentas()" (onClear)="aplicarFiltrosVentas()" [showClear]="true" appendTo="body" styleClass="w-full" inputStyleClass="w-full"></p-calendar>
         </div>
         <div class="w-full md:w-auto">
           <label class="block text-xs font-semibold mb-1 text-700">Fecha Hasta</label>
-          <p-calendar [(ngModel)]="fechaFinVentas" [minDate]="fechaInicioVentas || undefined" [readonlyInput]="true" placeholder="dd/mm/aaaa" (onSelect)="aplicarFiltrosVentas()" (onClear)="aplicarFiltrosVentas()" [showClear]="true" appendTo="body" styleClass="w-full"></p-calendar>
+          <p-calendar [(ngModel)]="fechaFinVentas" [minDate]="fechaInicioVentas || undefined" [readonlyInput]="true" placeholder="dd/mm/aaaa" (onSelect)="aplicarFiltrosVentas()" (onClear)="aplicarFiltrosVentas()" [showClear]="true" appendTo="body" styleClass="w-full" inputStyleClass="w-full"></p-calendar>
         </div>
         <div class="w-full md:w-auto">
           <label class="block text-xs font-semibold mb-1 text-700">Estado</label>
