@@ -23,6 +23,9 @@ export class AuthService {
   currentUser = signal<AppUser | null>(null);
   session = signal<Session | null>(null);
 
+  /** Canal Realtime para detectar cambios en el perfil del usuario actual. */
+  private userStatusChannel: ReturnType<typeof this.supabase.channel> | null = null;
+
   /** Handle del intervalo keep-alive (LOW: se limpia al destruir el servicio). */
   private keepAliveInterval: ReturnType<typeof setInterval> | null = null;
 
@@ -198,6 +201,10 @@ export class AuthService {
       // Guardar el perfil válido en localStorage para resiliencia ante micro-cortes
       localStorage.setItem(`sigo_user_profile_${userId}`, JSON.stringify(data));
       this.currentUser.set(data as AppUser);
+
+      // Suscribirse a cambios Realtime del perfil del usuario actual
+      // para detectar desactivación remota sin necesidad de recargar la página.
+      this.subscribeToUserStatus(userId);
     } catch (e) {
       console.warn('[AuthService] loadAppUser exception:', e);
       const cached = localStorage.getItem(`sigo_user_profile_${userId}`);
@@ -233,6 +240,8 @@ export class AuthService {
       if (user?.id) {
         localStorage.removeItem(`sigo_user_profile_${user.id}`);
       }
+      // Cancelar la suscripción Realtime antes de cerrar sesión
+      this.unsubscribeFromUserStatus();
       await this.supabase.auth.signOut();
     } catch (e) {
       // Ignorar errores de red: igual limpiamos el estado local
@@ -259,5 +268,41 @@ export class AuthService {
     });
     if (error) throw error;
     return data;
+  }
+
+  /**
+   * Suscribe al canal Realtime de la fila del usuario actual en public.usuarios.
+   * Si su campo `activo` cambia a false (desactivado por otro admin), cierra la sesión de inmediato.
+   */
+  private subscribeToUserStatus(userId: string): void {
+    // Limpiar canal previo para evitar duplicados si se llama más de una vez
+    this.unsubscribeFromUserStatus();
+
+    this.userStatusChannel = this.supabase
+      .channel(`user-status-${userId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'usuarios',
+          filter: `id=eq.${userId}`
+        },
+        async (payload: any) => {
+          if (payload.new && payload.new.activo === false) {
+            console.warn('[AuthService] Cuenta desactivada remotamente. Cerrando sesión...');
+            await this.signOut();
+          }
+        }
+      )
+      .subscribe();
+  }
+
+  /** Cancela y elimina el canal Realtime del usuario actual si existe. */
+  private unsubscribeFromUserStatus(): void {
+    if (this.userStatusChannel) {
+      this.supabase.removeChannel(this.userStatusChannel);
+      this.userStatusChannel = null;
+    }
   }
 }

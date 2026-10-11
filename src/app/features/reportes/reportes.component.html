@@ -1,35 +1,205 @@
-<p-tabView>
+<div class="surface-ground min-h-screen p-3 md:p-4">
+  
+  <!-- CABECERA PRINCIPAL -->
+  <div class="flex flex-column md:flex-row md:align-items-center md:justify-content-between mb-4 gap-2">
+    <div>
+      <h1 class="text-2xl md:text-3xl font-bold text-900 m-0 flex align-items-center gap-2">
+        <i class="pi pi-chart-bar text-primary text-2xl md:text-3xl"></i>
+        Centro Analítico y Reportes
+      </h1>
+      <p class="text-500 mt-1 mb-0 text-sm md:text-base">
+        Inteligencia de negocios, auditoría financiera, logística de flota y control de inventario de Electro Ferretero W&M.
+      </p>
+    </div>
+  </div>
+
+  <!-- PESTAÑAS PRINCIPALES DEL CENTRO ANALÍTICO -->
+  <p-tabView styleClass="surface-card border-round-xl shadow-2 p-2">
+
+    <!-- ══════════════════════════════════════════════════════════════════ -->
+    <!-- PESTAÑA 1: RESUMEN EJECUTIVO (DASHBOARD)                          -->
+    <!-- ══════════════════════════════════════════════════════════════════ -->
+    <p-tabPanel header="Resumen Ejecutivo" leftIcon="pi pi-home">
       
-      <!-- REPORTE A: Historial de Ventas -->
-      <p-tabPanel header="Historial de Ventas" leftIcon="pi pi-chart-line">
-        
-        <div class="flex justify-content-between align-items-center mb-4 pt-2">
-            <div>
-                <h2 class="m-0 text-900 font-bold">Historial de Ventas</h2>
-                <p class="text-500 mt-1 mb-0">Visualiza y exporta la información operativa de tu negocio.</p>
+      <!-- KPI Cards Gerenciales -->
+      <div class="grid mb-3">
+        <div class="col-12 sm:col-6 lg:col-3">
+          <div class="surface-card p-3 border-round-xl border-1 surface-border shadow-1">
+            <div class="flex justify-content-between align-items-center mb-2">
+              <span class="text-500 font-medium text-sm">Clientes en Directorio</span>
+              <div class="flex align-items-center justify-content-center bg-blue-100 border-round w-2rem h-2rem">
+                <i class="pi pi-users text-blue-600 text-sm"></i>
+              </div>
             </div>
-        </div>
-        <div class="flex flex-column md:flex-row gap-3 mb-4 surface-50 p-3 border-round">
-          <div class="field mb-0 w-full md:w-auto">
-            <label class="block text-sm font-medium mb-1">Fecha Desde</label>
-            <p-calendar styleClass="w-full" [(ngModel)]="fechaInicioVentas" [maxDate]="fechaFinVentas || undefined" [readonlyInput]="true" placeholder="Desde..." (onSelect)="aplicarFiltrosVentas()" (onClear)="aplicarFiltrosVentas()" [showClear]="true" appendTo="body"></p-calendar>
-          </div>
-          <div class="field mb-0 w-full md:w-auto">
-            <label class="block text-sm font-medium mb-1">Fecha Hasta</label>
-            <p-calendar styleClass="w-full" [(ngModel)]="fechaFinVentas" [minDate]="fechaInicioVentas || undefined" [readonlyInput]="true" placeholder="Hasta..." (onSelect)="aplicarFiltrosVentas()" (onClear)="aplicarFiltrosVentas()" [showClear]="true" appendTo="body"></p-calendar>
-          </div>
-          <div class="field mb-0 w-full md:w-auto">
-            <label class="block text-sm font-medium mb-1">Estado</label>
-            <p-dropdown styleClass="w-full" [options]="estadosVentas" [(ngModel)]="estadoVentaFiltro" (onChange)="aplicarFiltrosVentas()" appendTo="body"></p-dropdown>
-          </div>
-          <div class="field mb-0 flex align-items-end md:ml-auto w-full md:w-auto">
-            <button pButton label="Exportar Excel/CSV" icon="pi pi-file-excel" class="p-button-success w-full" (click)="exportExcel('ventas')"></button>
+            <div class="text-2xl font-bold text-900">{{ totalClientes }}</div>
+            <span class="text-xs text-500 mt-1 block">Base de clientes registrados</span>
           </div>
         </div>
 
-        <!-- VISTA PC (Tabla) -->
-        <div class="hidden md:block overflow-x-auto w-full">
-          <p-table #dtVentas [columns]="colsVentas" [value]="ventas" [loading]="loadingVentas" [paginator]="true" [rows]="10" [exportFilename]="'Reporte_Ventas'" styleClass="p-datatable-striped p-datatable-gridlines" responsiveLayout="scroll">
+        <div class="col-12 sm:col-6 lg:col-3">
+          <div class="surface-card p-3 border-round-xl border-1 surface-border shadow-1">
+            <div class="flex justify-content-between align-items-center mb-2">
+              <span class="text-500 font-medium text-sm">Órdenes de Venta</span>
+              <div class="flex align-items-center justify-content-center bg-orange-100 border-round w-2rem h-2rem">
+                <i class="pi pi-shopping-cart text-orange-600 text-sm"></i>
+              </div>
+            </div>
+            <div class="text-2xl font-bold text-900">{{ totalVentas }}</div>
+            <span class="text-xs text-500 mt-1 block">Operaciones comerciales activas</span>
+          </div>
+        </div>
+
+        <div class="col-12 sm:col-6 lg:col-3">
+          <div class="surface-card p-3 border-round-xl border-1 surface-border shadow-1">
+            <div class="flex justify-content-between align-items-center mb-2">
+              <span class="text-500 font-medium text-sm">Facturación Acumulada</span>
+              <div class="flex align-items-center justify-content-center bg-green-100 border-round w-2rem h-2rem">
+                <i class="pi pi-money-bill text-green-600 text-sm"></i>
+              </div>
+            </div>
+            <div class="text-2xl font-bold text-green-600">{{ montoVentas | currency:'PEN':'symbol':'1.2-2' }}</div>
+            <span class="text-xs text-500 mt-1 block">Ingresos totales de ventas</span>
+          </div>
+        </div>
+
+        <div class="col-12 sm:col-6 lg:col-3">
+          <div class="surface-card p-3 border-round-xl border-1 surface-border shadow-1" [ngClass]="{'border-red-300': montoDeuda > 0}">
+            <div class="flex justify-content-between align-items-center mb-2">
+              <span class="text-500 font-medium text-sm">Deuda por Cobrar</span>
+              <div class="flex align-items-center justify-content-center border-round w-2rem h-2rem" [ngClass]="montoDeuda > 0 ? 'bg-red-100' : 'bg-green-100'">
+                <i class="pi text-sm" [ngClass]="montoDeuda > 0 ? 'pi-exclamation-triangle text-red-600' : 'pi-check text-green-600'"></i>
+              </div>
+            </div>
+            <div class="text-2xl font-bold" [ngClass]="montoDeuda > 0 ? 'text-red-600' : 'text-green-600'">
+              {{ montoDeuda | currency:'PEN':'symbol':'1.2-2' }}
+            </div>
+            <span class="text-xs text-500 mt-1 block">Saldo pendiente de cobro</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Analista de Negocio (IA Insights) -->
+      <div class="col-12 p-0 mb-4" *ngIf="predictiveInsights.length > 0">
+        <div class="surface-card p-3 md:p-4 border-round-xl border-1 border-purple-200 shadow-1" style="background: linear-gradient(135deg, var(--surface-card) 0%, rgba(139,92,246,0.06) 100%);">
+          <div class="flex align-items-center gap-2 mb-2">
+            <i class="pi pi-sparkles text-purple-600 text-xl"></i>
+            <h3 class="m-0 text-base md:text-lg font-bold text-900">Analista de Negocio</h3>
+            <span class="text-xs bg-purple-100 text-purple-700 px-2 py-1 border-round font-semibold">Insights Automáticos</span>
+          </div>
+          <p class="text-xs md:text-sm text-500 mb-3">Diagnóstico inteligente calculado sobre tus últimos 30 días de operaciones:</p>
+          <div class="grid">
+            <div *ngFor="let insight of predictiveInsights" class="col-12 md:col-6 lg:col-4">
+              <div class="surface-50 p-3 border-round-lg border-1 surface-border h-full flex align-items-start gap-2">
+                <i class="pi pi-check-circle text-purple-600 mt-1"></i>
+                <div class="text-xs md:text-sm text-700 line-height-3" [innerHTML]="insight"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Gráficos Gerenciales -->
+      <div class="grid">
+        <div class="col-12 lg:col-8">
+          <div class="surface-card p-3 md:p-4 border-round-xl border-1 surface-border shadow-1 h-full">
+            <div class="flex justify-content-between align-items-center mb-2">
+              <div>
+                <h3 class="m-0 text-base md:text-lg font-bold text-900 flex align-items-center gap-2">
+                  <i class="pi pi-users text-blue-500"></i>Top Clientes por Ingresos
+                </h3>
+                <span class="text-xs text-500">Análisis ABC · Concentración de ventas (últimos 30 días)</span>
+              </div>
+            </div>
+            <div *ngIf="cargandoGraficos" class="flex align-items-center justify-content-center h-18rem">
+              <i class="pi pi-spin pi-spinner text-3xl text-primary"></i>
+            </div>
+            <div *ngIf="!cargandoGraficos && topClientesChartData" class="w-full">
+              <p-chart type="bar" [data]="topClientesChartData" [options]="topClientesChartOptions" height="300px"></p-chart>
+            </div>
+            <div *ngIf="!cargandoGraficos && !topClientesChartData" class="flex align-items-center justify-content-center h-18rem text-500 text-sm">
+              <i class="pi pi-info-circle mr-2"></i>Sin ventas en los últimos 30 días.
+            </div>
+          </div>
+        </div>
+
+        <div class="col-12 lg:col-4">
+          <div class="surface-card p-3 md:p-4 border-round-xl border-1 surface-border shadow-1 h-full">
+            <div class="mb-2">
+              <h3 class="m-0 text-base md:text-lg font-bold text-900 flex align-items-center gap-2">
+                <i class="pi pi-calendar text-purple-500"></i>Ventas por Día
+              </h3>
+              <span class="text-xs text-500">Distribución semanal de operaciones</span>
+            </div>
+            <div *ngIf="cargandoGraficos" class="flex align-items-center justify-content-center h-18rem">
+              <i class="pi pi-spin pi-spinner text-3xl text-purple-500"></i>
+            </div>
+            <div *ngIf="!cargandoGraficos && ventasDiaSemanaChartData" class="w-full">
+              <p-chart type="bar" [data]="ventasDiaSemanaChartData" [options]="ventasDiaSemanaChartOptions" height="300px"></p-chart>
+            </div>
+            <div *ngIf="!cargandoGraficos && !ventasDiaSemanaChartData" class="flex align-items-center justify-content-center h-18rem text-500 text-sm">
+              <i class="pi pi-info-circle mr-2"></i>Sin registros en este periodo.
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </p-tabPanel>
+
+    <!-- ══════════════════════════════════════════════════════════════════ -->
+    <!-- PESTAÑA 2: VENTAS Y FINANZAS (AUDITORÍA COMERCIAL)                -->
+    <!-- ══════════════════════════════════════════════════════════════════ -->
+    <p-tabPanel header="Ventas y Finanzas" leftIcon="pi pi-shopping-bag">
+      
+      <!-- Tarjetas de Totales Dinámicos según Filtro -->
+      <div class="grid mb-3">
+        <div class="col-12 sm:col-6 lg:col-3">
+          <div class="surface-50 p-3 border-round-xl border-1 surface-border">
+            <span class="text-xs text-500 font-semibold uppercase block mb-1">Ventas del Periodo</span>
+            <span class="text-xl font-bold text-green-600">S/ {{ ventasTotalPeriodo | number:'1.2-2' }}</span>
+          </div>
+        </div>
+        <div class="col-12 sm:col-6 lg:col-3">
+          <div class="surface-50 p-3 border-round-xl border-1 surface-border">
+            <span class="text-xs text-500 font-semibold uppercase block mb-1">Cobrado (Efectivo/Banco)</span>
+            <span class="text-xl font-bold text-blue-600">S/ {{ ventasCobradoPeriodo | number:'1.2-2' }}</span>
+          </div>
+        </div>
+        <div class="col-12 sm:col-6 lg:col-3">
+          <div class="surface-50 p-3 border-round-xl border-1 surface-border">
+            <span class="text-xs text-500 font-semibold uppercase block mb-1">Saldo por Cobrar</span>
+            <span class="text-xl font-bold" [ngClass]="ventasSaldoPeriodo > 0 ? 'text-red-500' : 'text-500'">S/ {{ ventasSaldoPeriodo | number:'1.2-2' }}</span>
+          </div>
+        </div>
+        <div class="col-12 sm:col-6 lg:col-3">
+          <div class="surface-50 p-3 border-round-xl border-1 surface-border">
+            <span class="text-xs text-500 font-semibold uppercase block mb-1">Ticket Promedio</span>
+            <span class="text-xl font-bold text-900">S/ {{ ticketPromedioPeriodo | number:'1.2-2' }}</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Barra de Filtros y Exportación -->
+      <div class="flex flex-column md:flex-row gap-3 mb-4 surface-50 p-3 border-round-xl border-1 surface-border align-items-end">
+        <div class="w-full md:w-auto">
+          <label class="block text-xs font-semibold mb-1 text-700">Fecha Desde</label>
+          <p-calendar [(ngModel)]="fechaInicioVentas" [maxDate]="fechaFinVentas || undefined" [readonlyInput]="true" placeholder="dd/mm/aaaa" (onSelect)="aplicarFiltrosVentas()" (onClear)="aplicarFiltrosVentas()" [showClear]="true" appendTo="body" styleClass="w-full"></p-calendar>
+        </div>
+        <div class="w-full md:w-auto">
+          <label class="block text-xs font-semibold mb-1 text-700">Fecha Hasta</label>
+          <p-calendar [(ngModel)]="fechaFinVentas" [minDate]="fechaInicioVentas || undefined" [readonlyInput]="true" placeholder="dd/mm/aaaa" (onSelect)="aplicarFiltrosVentas()" (onClear)="aplicarFiltrosVentas()" [showClear]="true" appendTo="body" styleClass="w-full"></p-calendar>
+        </div>
+        <div class="w-full md:w-auto">
+          <label class="block text-xs font-semibold mb-1 text-700">Estado</label>
+          <p-dropdown [options]="estadosVentas" [(ngModel)]="estadoVentaFiltro" (onChange)="aplicarFiltrosVentas()" appendTo="body" styleClass="w-full md:w-12rem"></p-dropdown>
+        </div>
+        <div class="w-full md:w-auto md:ml-auto">
+          <button pButton label="Exportar a Excel" icon="pi pi-file-excel" class="p-button-success w-full" (click)="exportExcel('ventas')"></button>
+        </div>
+      </div>
+
+      <!-- Tabla de Ventas (Desktop) -->
+      <div class="hidden md:block overflow-x-auto">
+        <p-table [columns]="colsVentas" [value]="ventas" [loading]="loadingVentas" [paginator]="true" [rows]="10" styleClass="p-datatable-striped p-datatable-gridlines text-sm" responsiveLayout="scroll">
           <ng-template pTemplate="header">
             <tr>
               <th pSortableColumn="created_at">Fecha <p-sortIcon field="created_at"></p-sortIcon></th>
@@ -37,8 +207,6 @@
               <th>Tipo</th>
               <th pSortableColumn="cliente_nombre">Cliente <p-sortIcon field="cliente_nombre"></p-sortIcon></th>
               <th>Entrega</th>
-              <th pSortableColumn="subtotal" class="text-right">Subtotal <p-sortIcon field="subtotal"></p-sortIcon></th>
-              <th pSortableColumn="igv" class="text-right">IGV <p-sortIcon field="igv"></p-sortIcon></th>
               <th pSortableColumn="total" class="text-right">Total <p-sortIcon field="total"></p-sortIcon></th>
               <th pSortableColumn="total_pagado" class="text-right">Pagado <p-sortIcon field="total_pagado"></p-sortIcon></th>
               <th pSortableColumn="saldo_pendiente" class="text-right">Saldo <p-sortIcon field="saldo_pendiente"></p-sortIcon></th>
@@ -48,205 +216,363 @@
           </ng-template>
           <ng-template pTemplate="body" let-v>
             <tr>
-              <td class="text-sm">{{ v.created_at | peruDate:'dd/MM/yy HH:mm' }}</td>
+              <td class="text-xs">{{ v.created_at | peruDate:'dd/MM/yy HH:mm' }}</td>
               <td class="font-bold text-primary">{{ v.folio }}</td>
               <td><p-tag [value]="v.tipo_documento === 'COTIZACION' ? 'COT' : 'OV'" [severity]="v.tipo_documento === 'COTIZACION' ? 'warning' : 'info'"></p-tag></td>
               <td>
                 <span class="font-medium block">{{ v.cliente_nombre }}</span>
-                <span class="text-color-secondary text-xs">{{ v.cliente_doc }}</span>
+                <span class="text-500 text-xs">{{ v.cliente_doc }}</span>
               </td>
-              <td class="text-sm">{{ v.tipo_entrega_label }}</td>
-              <td class="text-right text-sm">S/ {{ v.subtotal | number:'1.2-2' }}
-                <span *ngIf="v.precios_con_igv" class="text-xs text-primary font-medium ml-1" title="Los precios incluyen IGV">c/IGV</span>
-              </td>
-              <td class="text-right text-sm" [ngClass]="{'text-primary': v.igv > 0}" title="{{ v.precios_con_igv ? 'IGV incluido en el subtotal' : 'IGV agregado al subtotal' }}">S/ {{ v.igv | number:'1.2-2' }}</td>
-              <td class="font-bold text-green-600 text-right">S/ {{ v.total | number:'1.2-2' }}</td>
-              <td class="text-right text-sm">S/ {{ v.total_pagado | number:'1.2-2' }}</td>
-              <td class="text-right" [ngClass]="{'text-red-500 font-bold': v.saldo_pendiente > 0, 'text-color-secondary': v.saldo_pendiente === 0}">S/ {{ v.saldo_pendiente | number:'1.2-2' }}</td>
+              <td class="text-xs">{{ v.tipo_entrega_label }}</td>
+              <td class="font-bold text-right text-green-600">S/ {{ v.total | number:'1.2-2' }}</td>
+              <td class="text-right text-xs">S/ {{ v.total_pagado | number:'1.2-2' }}</td>
+              <td class="text-right font-bold" [ngClass]="v.saldo_pendiente > 0 ? 'text-red-500' : 'text-500'">S/ {{ v.saldo_pendiente | number:'1.2-2' }}</td>
               <td class="text-xs">{{ v.metodo_pago }}</td>
               <td><p-tag [value]="v.estado" [severity]="getSeverity(v.estado)"></p-tag></td>
             </tr>
           </ng-template>
           <ng-template pTemplate="emptymessage">
             <tr>
-              <td colspan="12" class="text-center p-4">No se encontraron ventas con estos filtros.</td>
+              <td colspan="10" class="text-center p-4 text-500">No se encontraron ventas para los filtros seleccionados.</td>
             </tr>
           </ng-template>
-          </p-table>
-        </div>
+        </p-table>
+      </div>
 
-        <!-- VISTA MÓVIL (Tarjetas) -->
-        <div class="block md:hidden">
-          <div *ngIf="loadingVentas" class="text-center p-4"><i class="pi pi-spin pi-spinner text-3xl text-primary"></i></div>
-          <div *ngIf="!loadingVentas && ventas.length === 0" class="text-center p-4 text-color-secondary">No se encontraron ventas.</div>
-          <div class="flex flex-column">
-            <div *ngFor="let v of ventas" class="mobile-card">
-              <div class="flex justify-content-between align-items-center mb-2">
-                <span class="font-bold text-primary"><i class="pi pi-file mr-1"></i>{{ v.folio }}</span>
-                <span *ngIf="v.precios_con_igv" class="text-xs text-primary font-medium" title="Los precios incluyen IGV">c/IGV</span>
-                <p-tag [value]="v.estado" [severity]="getSeverity(v.estado)"></p-tag>
-              </div>
-              <div class="text-sm text-color-secondary mb-2"><i class="pi pi-calendar mr-1"></i>{{ v.created_at | peruDate:'dd/MM/yyyy HH:mm' }}</div>
-              <div class="font-medium mb-3 text-color"><i class="pi pi-user mr-1 text-primary"></i>{{ v.cliente_nombre }}</div>
-              
-              <div class="mobile-card-row surface-50 p-2 border-round-lg">
-                <div class="flex flex-column">
-                  <span class="block text-xs text-color-secondary">Total Venta</span>
-                  <span class="font-bold text-green-600">S/ {{ v.total | number:'1.2-2' }}</span>
-                </div>
-                <div class="text-right border-left-1 surface-border pl-3">
-                  <span class="block text-xs text-color-secondary">Saldo Pendiente</span>
-                  <span class="font-bold" [ngClass]="{'text-red-500': v.saldo_pendiente > 0, 'text-color-secondary': v.saldo_pendiente === 0}">S/ {{ v.saldo_pendiente | number:'1.2-2' }}</span>
-                </div>
-              </div>
+      <!-- Tarjetas de Ventas (Mobile) -->
+      <div class="block md:hidden">
+        <div *ngIf="loadingVentas" class="text-center p-4"><i class="pi pi-spin pi-spinner text-3xl text-primary"></i></div>
+        <div *ngIf="!loadingVentas && ventas.length === 0" class="text-center p-4 text-500">Sin registros de ventas.</div>
+        <div *ngFor="let v of ventas" class="surface-card p-3 border-round-xl border-1 surface-border shadow-1 mb-3">
+          <div class="flex justify-content-between align-items-center mb-2">
+            <span class="font-bold text-primary">{{ v.folio }}</span>
+            <p-tag [value]="v.estado" [severity]="getSeverity(v.estado)"></p-tag>
+          </div>
+          <div class="text-xs text-500 mb-1"><i class="pi pi-calendar mr-1"></i>{{ v.created_at | peruDate:'dd/MM/yyyy HH:mm' }}</div>
+          <div class="font-medium text-900 mb-2">{{ v.cliente_nombre }}</div>
+          <div class="surface-50 p-2 border-round flex justify-content-between text-xs">
+            <div>
+              <span class="text-500 block">Total</span>
+              <span class="font-bold text-green-600">S/ {{ v.total | number:'1.2-2' }}</span>
+            </div>
+            <div class="text-right">
+              <span class="text-500 block">Saldo</span>
+              <span class="font-bold" [ngClass]="v.saldo_pendiente > 0 ? 'text-red-500' : 'text-500'">S/ {{ v.saldo_pendiente | number:'1.2-2' }}</span>
             </div>
           </div>
         </div>
-      </p-tabPanel>
+      </div>
 
-      <!-- REPORTE B: Cuentas por Cobrar -->
-      <p-tabPanel header="Cuentas por Cobrar" leftIcon="pi pi-wallet">
-        <div class="flex justify-content-between align-items-center mb-4 pt-2">
-            <div>
-                <h2 class="m-0 text-900 font-bold">Cuentas por Cobrar</h2>
-                <p class="text-500 mt-1 mb-0">Listado de saldos pendientes de tus clientes.</p>
-            </div>
-        </div>
-        <div class="flex flex-column md:flex-row gap-3 justify-content-between md:align-items-center mb-4 surface-50 p-3 border-round">
-          <h3 class="m-0 text-700 text-sm md:text-base"><i class="pi pi-info-circle mr-2"></i> Solo se muestran ventas con deuda pendiente.</h3>
-          <button pButton label="Exportar Excel/CSV" icon="pi pi-file-excel" class="p-button-success w-full md:w-auto" (click)="exportExcel('deudas')"></button>
-        </div>
+    </p-tabPanel>
 
-        <!-- VISTA PC (Tabla) -->
-        <div class="hidden md:block overflow-x-auto w-full">
-          <p-table #dtDeudas [columns]="colsDeudas" [value]="deudas" [loading]="loadingDeudas" [paginator]="true" [rows]="10" [exportFilename]="'Reporte_Cuentas_por_Cobrar'" styleClass="p-datatable-striped p-datatable-gridlines" responsiveLayout="scroll">
+    <!-- ══════════════════════════════════════════════════════════════════ -->
+    <!-- PESTAÑA 3: CUENTAS POR COBRAR (AGING & MOROSIDAD)                 -->
+    <!-- ══════════════════════════════════════════════════════════════════ -->
+    <p-tabPanel header="Cuentas por Cobrar" leftIcon="pi pi-wallet">
+      
+      <!-- KPIs de Cartera Deudora -->
+      <div class="grid mb-3">
+        <div class="col-12 sm:col-6 lg:col-3">
+          <div class="surface-card p-3 border-round-xl border-1 border-red-200 shadow-1 bg-red-50">
+            <span class="text-xs text-red-700 font-semibold uppercase block mb-1">🔴 Deuda Vencida (En Mora)</span>
+            <span class="text-2xl font-bold text-red-700">S/ {{ deudaTotalVencida | number:'1.2-2' }}</span>
+            <span class="text-xs text-red-600 mt-1 block">Superó el plazo acordado</span>
+          </div>
+        </div>
+        <div class="col-12 sm:col-6 lg:col-3">
+          <div class="surface-card p-3 border-round-xl border-1 border-yellow-200 shadow-1 bg-yellow-50">
+            <span class="text-xs text-yellow-800 font-semibold uppercase block mb-1">🟡 Por Vencer (&lt; 5 días)</span>
+            <span class="text-2xl font-bold text-yellow-800">S/ {{ deudaTotalPorVencer | number:'1.2-2' }}</span>
+            <span class="text-xs text-yellow-700 mt-1 block">Próximas a fecha límite</span>
+          </div>
+        </div>
+        <div class="col-12 sm:col-6 lg:col-3">
+          <div class="surface-card p-3 border-round-xl border-1 border-green-200 shadow-1 bg-green-50">
+            <span class="text-xs text-green-800 font-semibold uppercase block mb-1">🟢 Deuda Vigente</span>
+            <span class="text-2xl font-bold text-green-800">S/ {{ deudaTotalVigente | number:'1.2-2' }}</span>
+            <span class="text-xs text-green-700 mt-1 block">Dentro del plazo de crédito</span>
+          </div>
+        </div>
+        <div class="col-12 sm:col-6 lg:col-3">
+          <div class="surface-card p-3 border-round-xl border-1 surface-border shadow-1">
+            <span class="text-xs text-500 font-semibold uppercase block mb-1">Clientes Deudores</span>
+            <span class="text-2xl font-bold text-900">{{ deudaClientesCount }}</span>
+            <span class="text-xs text-500 mt-1 block">Personas/empresas con saldo</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="flex justify-content-between align-items-center mb-3">
+        <span class="text-sm text-500"><i class="pi pi-info-circle mr-1"></i>Listado clasificado por antigüedad de deuda. Usa el botón de WhatsApp para gestión directa de cobranza.</span>
+        <button pButton label="Exportar Deudores" icon="pi pi-file-excel" class="p-button-success p-button-sm" (click)="exportExcel('deudas')"></button>
+      </div>
+
+      <!-- Tabla de Morosidad (Desktop) -->
+      <div class="hidden md:block overflow-x-auto">
+        <p-table [columns]="colsDeudas" [value]="deudas" [loading]="loadingDeudas" [paginator]="true" [rows]="10" styleClass="p-datatable-striped p-datatable-gridlines text-sm" responsiveLayout="scroll">
           <ng-template pTemplate="header">
             <tr>
-              <th pSortableColumn="created_at">Fecha <p-sortIcon field="created_at"></p-sortIcon></th>
+              <th pSortableColumn="created_at">Emisión <p-sortIcon field="created_at"></p-sortIcon></th>
               <th pSortableColumn="folio">Folio <p-sortIcon field="folio"></p-sortIcon></th>
               <th pSortableColumn="cliente_nombre">Cliente <p-sortIcon field="cliente_nombre"></p-sortIcon></th>
-              <th>Contacto</th>
+              <th>Vencimiento</th>
+              <th pSortableColumn="estado_mora">Antigüedad / Mora <p-sortIcon field="estado_mora"></p-sortIcon></th>
               <th pSortableColumn="total" class="text-right">Total <p-sortIcon field="total"></p-sortIcon></th>
               <th pSortableColumn="saldo_pendiente" class="text-right">Deuda Pendiente <p-sortIcon field="saldo_pendiente"></p-sortIcon></th>
+              <th class="text-center">Cobranza</th>
             </tr>
           </ng-template>
           <ng-template pTemplate="body" let-d>
             <tr>
-              <td>{{ d.created_at | peruDate:'dd/MM/yyyy' }}</td>
+              <td class="text-xs">{{ d.fecha_formateada }}</td>
               <td class="font-bold text-primary">{{ d.folio }}</td>
-              <td class="font-medium">{{ d.cliente_nombre }}</td>
-              <td>{{ d.cliente_telefono }}</td>
-              <td class="text-right">S/ {{ d.total | number:'1.2-2' }}</td>
-              <td class="text-red-500 font-bold text-right">S/ {{ d.saldo_pendiente | number:'1.2-2' }}</td>
+              <td>
+                <span class="font-medium block">{{ d.cliente_nombre }}</span>
+                <span class="text-500 text-xs">{{ d.cliente_telefono || 'Sin teléfono' }}</span>
+              </td>
+              <td class="text-xs">{{ d.fecha_vencimiento_str }}</td>
+              <td>
+                <p-tag [value]="d.dias_mora_texto" [severity]="getSeverityMora(d.estado_mora)"></p-tag>
+              </td>
+              <td class="text-right text-xs">S/ {{ d.total | number:'1.2-2' }}</td>
+              <td class="text-right font-bold text-red-600">S/ {{ d.saldo_pendiente | number:'1.2-2' }}</td>
+              <td class="text-center">
+                <button pButton icon="pi pi-whatsapp" class="p-button-rounded p-button-success p-button-sm p-button-text" (click)="enviarCobranzaWhatsApp(d)" pTooltip="Cobrar por WhatsApp"></button>
+              </td>
             </tr>
           </ng-template>
           <ng-template pTemplate="emptymessage">
             <tr>
-              <td colspan="6" class="text-center p-4 text-green-500 font-bold"><i class="pi pi-check-circle mr-2"></i>¡Excelente! No hay deudas pendientes registradas.</td>
+              <td colspan="8" class="text-center p-4 text-green-600 font-bold"><i class="pi pi-check-circle mr-2"></i>¡Excelente! No hay deudas pendientes registradas.</td>
             </tr>
           </ng-template>
-          </p-table>
-        </div>
+        </p-table>
+      </div>
 
-        <!-- VISTA MÓVIL (Tarjetas) -->
-        <div class="block md:hidden">
-          <div *ngIf="loadingDeudas" class="text-center p-4"><i class="pi pi-spin pi-spinner text-3xl text-primary"></i></div>
-          <div *ngIf="!loadingDeudas && deudas.length === 0" class="text-center p-4 text-green-500 font-bold"><i class="pi pi-check-circle mr-2"></i>¡Excelente! No hay deudas pendientes.</div>
-          <div class="flex flex-column">
-            <div *ngFor="let d of deudas" class="mobile-card border-red-500" style="border-left: 4px solid var(--red-500)">
-              <div class="flex justify-content-between align-items-center mb-2">
-                <span class="font-bold text-primary"><i class="pi pi-file mr-1"></i>{{ d.folio }}</span>
-                <span class="text-sm text-color-secondary"><i class="pi pi-calendar mr-1"></i>{{ d.created_at | peruDate:'dd/MM/yyyy' }}</span>
-              </div>
-              <div class="font-medium mb-1 text-color"><i class="pi pi-user mr-1 text-primary"></i>{{ d.cliente_nombre }}</div>
-              <div class="text-sm text-color-secondary mb-3"><i class="pi pi-phone mr-1"></i>{{ d.cliente_telefono || 'Sin teléfono' }}</div>
-              
-              <div class="mobile-card-row surface-50 p-2 border-round-lg">
-                <div class="flex flex-column">
-                  <span class="block text-xs text-color-secondary">Total Venta</span>
-                  <span class="font-semibold text-color">S/ {{ d.total | number:'1.2-2' }}</span>
-                </div>
-                <div class="text-right border-left-1 surface-border pl-3">
-                  <span class="block text-xs text-color-secondary">Deuda Pendiente</span>
-                  <span class="font-bold text-red-500 text-xl">S/ {{ d.saldo_pendiente | number:'1.2-2' }}</span>
-                </div>
-              </div>
-            </div>
+      <!-- Tarjetas de Morosidad (Mobile) -->
+      <div class="block md:hidden">
+        <div *ngIf="loadingDeudas" class="text-center p-4"><i class="pi pi-spin pi-spinner text-3xl text-primary"></i></div>
+        <div *ngIf="!loadingDeudas && deudas.length === 0" class="text-center p-4 text-green-600 font-bold">¡Sin deudas pendientes!</div>
+        <div *ngFor="let d of deudas" class="surface-card p-3 border-round-xl border-1 surface-border shadow-1 mb-3" [ngStyle]="{'border-left': d.estado_mora === 'VENCIDO' ? '4px solid var(--red-500)' : '4px solid var(--yellow-500)'}">
+          <div class="flex justify-content-between align-items-center mb-2">
+            <span class="font-bold text-primary">{{ d.folio }}</span>
+            <p-tag [value]="d.dias_mora_texto" [severity]="getSeverityMora(d.estado_mora)"></p-tag>
           </div>
-        </div>
-      </p-tabPanel>
-
-      <!-- REPORTE C: Inventario Valorizado -->
-      <p-tabPanel header="Valorización de Inventario" leftIcon="pi pi-box">
-        <div class="flex justify-content-between align-items-center mb-4 pt-2">
+          <div class="font-medium text-900 mb-1">{{ d.cliente_nombre }}</div>
+          <div class="text-xs text-500 mb-2"><i class="pi pi-calendar mr-1"></i>Vence: {{ d.fecha_vencimiento_str }}</div>
+          <div class="surface-50 p-2 border-round flex justify-content-between align-items-center">
             <div>
-                <h2 class="m-0 text-900 font-bold">Valorización de Inventario</h2>
-                <p class="text-500 mt-1 mb-0">Reporte del capital inmovilizado en tus productos.</p>
+              <span class="text-xs text-500 block">Deuda Pendiente</span>
+              <span class="text-lg font-bold text-red-600">S/ {{ d.saldo_pendiente | number:'1.2-2' }}</span>
             </div>
+            <button pButton label="Cobrar" icon="pi pi-whatsapp" class="p-button-success p-button-sm" (click)="enviarCobranzaWhatsApp(d)"></button>
+          </div>
         </div>
-        <div class="flex flex-column md:flex-row gap-3 justify-content-between md:align-items-center mb-4 surface-50 p-3 border-round">
-          <h3 class="m-0 text-700 text-sm md:text-base"><i class="pi pi-info-circle mr-2"></i> Valorización = Stock Físico × Precio de Venta Base.</h3>
-          <button pButton label="Exportar Excel/CSV" icon="pi pi-file-excel" class="p-button-success w-full md:w-auto" (click)="exportExcel('inventario')"></button>
+      </div>
+
+    </p-tabPanel>
+
+    <!-- ══════════════════════════════════════════════════════════════════ -->
+    <!-- PESTAÑA 4: LOGÍSTICA Y FLOTA (DESPACHOS & CAMIONES)               -->
+    <!-- ══════════════════════════════════════════════════════════════════ -->
+    <p-tabPanel header="Logística y Flota" leftIcon="pi pi-truck">
+      
+      <!-- KPIs de Logística -->
+      <div class="grid mb-3">
+        <div class="col-12 sm:col-4">
+          <div class="surface-card p-3 border-round-xl border-1 surface-border shadow-1">
+            <span class="text-xs text-500 font-semibold uppercase block mb-1">Viajes Totales Despachados</span>
+            <span class="text-2xl font-bold text-primary">{{ totalViajesDespachados }}</span>
+            <span class="text-xs text-500 mt-1 block">Cargas despachadas desde cantera</span>
+          </div>
+        </div>
+        <div class="col-12 sm:col-4">
+          <div class="surface-card p-3 border-round-xl border-1 surface-border shadow-1">
+            <span class="text-xs text-500 font-semibold uppercase block mb-1">Entregas Confirmadas en Obra</span>
+            <span class="text-2xl font-bold text-green-600">{{ viajesEntregadosCount }}</span>
+            <span class="text-xs text-500 mt-1 block">Con foto de recepción y GPS</span>
+          </div>
+        </div>
+        <div class="col-12 sm:col-4">
+          <div class="surface-card p-3 border-round-xl border-1 surface-border shadow-1">
+            <span class="text-xs text-500 font-semibold uppercase block mb-1">Tiempo Promedio en Almacén</span>
+            <span class="text-2xl font-bold text-900">{{ tiempoPromedioDespachoMinutos }} min</span>
+            <span class="text-xs text-500 mt-1 block">Desde registro hasta carga del chofer</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="grid">
+        <!-- Tabla de Rendimiento por Camión / Placa -->
+        <div class="col-12 lg:col-6">
+          <div class="surface-card p-3 border-round-xl border-1 surface-border shadow-1 h-full">
+            <div class="flex justify-content-between align-items-center mb-3">
+              <h3 class="m-0 text-base font-bold text-900 flex align-items-center gap-2">
+                <i class="pi pi-car text-blue-500"></i>Rendimiento por Camión / Placa
+              </h3>
+              <button pButton label="Exportar" icon="pi pi-file-excel" class="p-button-success p-button-sm p-button-outlined" (click)="exportExcel('logistica')"></button>
+            </div>
+            <p-table [value]="flotaVehiculos" [loading]="loadingLogistica" [rows]="8" styleClass="p-datatable-sm p-datatable-striped text-xs">
+              <ng-template pTemplate="header">
+                <tr>
+                  <th>Placa</th>
+                  <th class="text-center">Total Viajes</th>
+                  <th class="text-center">Entregados</th>
+                  <th class="text-center">En Ruta</th>
+                  <th>Última Salida</th>
+                </tr>
+              </ng-template>
+              <ng-template pTemplate="body" let-v>
+                <tr>
+                  <td class="font-bold text-primary">{{ v.placa }}</td>
+                  <td class="text-center font-bold">{{ v.total_viajes }}</td>
+                  <td class="text-center text-green-600 font-bold">{{ v.viajes_entregados }}</td>
+                  <td class="text-center text-orange-500 font-bold">{{ v.viajes_en_ruta }}</td>
+                  <td>{{ v.ultimo_viaje }}</td>
+                </tr>
+              </ng-template>
+              <ng-template pTemplate="emptymessage">
+                <tr><td colspan="5" class="text-center p-3 text-500">Sin registros de vehículos.</td></tr>
+              </ng-template>
+            </p-table>
+          </div>
         </div>
 
-        <!-- VISTA PC (Tabla) -->
-        <div class="hidden md:block overflow-x-auto w-full">
-          <p-table #dtInventario [columns]="colsInventario" [value]="inventario" [loading]="loadingInventario" [paginator]="true" [rows]="20" [exportFilename]="'Reporte_Valorizacion_Inventario'" styleClass="p-datatable-striped p-datatable-gridlines" responsiveLayout="scroll">
-          <ng-template pTemplate="header">
-            <tr>
-              <th pSortableColumn="descripcion">Producto <p-sortIcon field="descripcion"></p-sortIcon></th>
-              <th pSortableColumn="unidad_medida">Unidad <p-sortIcon field="unidad_medida"></p-sortIcon></th>
-              <th pSortableColumn="stock_actual" class="text-right">Stock Físico <p-sortIcon field="stock_actual"></p-sortIcon></th>
-              <th pSortableColumn="precio_unitario_base" class="text-right">Precio Base <p-sortIcon field="precio_unitario_base"></p-sortIcon></th>
-              <th pSortableColumn="valor_inmovilizado" class="text-right">Valor Inmovilizado (Estimado) <p-sortIcon field="valor_inmovilizado"></p-sortIcon></th>
-            </tr>
-          </ng-template>
-          <ng-template pTemplate="body" let-p>
-            <tr>
-              <td class="font-medium text-color">{{ p.descripcion }}</td>
-              <td>{{ p.unidad_medida }}</td>
-              <td class="text-right" [ngClass]="{'text-red-500 font-bold': p.stock_actual <= p.stock_minimo}">{{ p.stock_actual | number:'1.0-2' }}</td>
-              <td class="text-right">S/ {{ p.precio_unitario_base | number:'1.2-2' }}</td>
-              <td class="text-right font-bold text-green-600">S/ {{ p.valor_inmovilizado | number:'1.2-2' }}</td>
-            </tr>
-          </ng-template>
-          <ng-template pTemplate="emptymessage">
-            <tr>
-              <td colspan="5" class="text-center p-4">No hay productos en el inventario.</td>
-            </tr>
-          </ng-template>
-          </p-table>
+        <!-- Tabla de Rendimiento por Chofer -->
+        <div class="col-12 lg:col-6">
+          <div class="surface-card p-3 border-round-xl border-1 surface-border shadow-1 h-full">
+            <div class="flex justify-content-between align-items-center mb-3">
+              <h3 class="m-0 text-base font-bold text-900 flex align-items-center gap-2">
+                <i class="pi pi-user text-purple-500"></i>Rendimiento por Conductor
+              </h3>
+            </div>
+            <p-table [value]="desempenoChoferes" [loading]="loadingLogistica" [rows]="8" styleClass="p-datatable-sm p-datatable-striped text-xs">
+              <ng-template pTemplate="header">
+                <tr>
+                  <th>Conductor</th>
+                  <th class="text-center">Viajes Asignados</th>
+                  <th class="text-center">Entregados</th>
+                  <th class="text-center">Cumplimiento</th>
+                </tr>
+              </ng-template>
+              <ng-template pTemplate="body" let-c>
+                <tr>
+                  <td class="font-bold">{{ c.chofer }}</td>
+                  <td class="text-center">{{ c.total_viajes }}</td>
+                  <td class="text-center text-green-600 font-bold">{{ c.viajes_entregados }}</td>
+                  <td class="text-center">
+                    <p-tag [value]="c.tasa_cumplimiento + '%'" [severity]="c.tasa_cumplimiento >= 80 ? 'success' : 'warning'"></p-tag>
+                  </td>
+                </tr>
+              </ng-template>
+              <ng-template pTemplate="emptymessage">
+                <tr><td colspan="4" class="text-center p-3 text-500">Sin registros de choferes.</td></tr>
+              </ng-template>
+            </p-table>
+          </div>
+        </div>
+      </div>
+
+    </p-tabPanel>
+
+    <!-- ══════════════════════════════════════════════════════════════════ -->
+    <!-- PESTAÑA 5: INVENTARIO Y ROTACIÓN DE MATERIALES                    -->
+    <!-- ══════════════════════════════════════════════════════════════════ -->
+    <p-tabPanel header="Inventario y Materiales" leftIcon="pi pi-box">
+      
+      <!-- KPIs de Inventario -->
+      <div class="grid mb-3">
+        <div class="col-12 sm:col-4">
+          <div class="surface-card p-3 border-round-xl border-1 surface-border shadow-1">
+            <span class="text-xs text-500 font-semibold uppercase block mb-1">Capital Inmovilizado Estimado</span>
+            <span class="text-2xl font-bold text-green-600">S/ {{ totalValorizadoInventario | number:'1.2-2' }}</span>
+            <span class="text-xs text-500 mt-1 block">Stock físico × Precio unitario base</span>
+          </div>
+        </div>
+        <div class="col-12 sm:col-4">
+          <div class="surface-card p-3 border-round-xl border-1 surface-border shadow-1" [ngClass]="{'border-red-300 bg-red-50': productosBajoMinimoCount > 0}">
+            <span class="text-xs font-semibold uppercase block mb-1" [ngClass]="productosBajoMinimoCount > 0 ? 'text-red-700' : 'text-500'">Productos con Stock Bajo</span>
+            <span class="text-2xl font-bold" [ngClass]="productosBajoMinimoCount > 0 ? 'text-red-700' : 'text-green-600'">{{ productosBajoMinimoCount }}</span>
+            <span class="text-xs mt-1 block" [ngClass]="productosBajoMinimoCount > 0 ? 'text-red-600' : 'text-500'">Por debajo del stock mínimo</span>
+          </div>
+        </div>
+        <div class="col-12 sm:col-4">
+          <div class="surface-card p-3 border-round-xl border-1 surface-border shadow-1">
+            <span class="text-xs text-500 font-semibold uppercase block mb-1">Total Ítems en Catálogo</span>
+            <span class="text-2xl font-bold text-900">{{ inventario.length }}</span>
+            <span class="text-xs text-500 mt-1 block">Materiales y productos registrados</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="grid">
+        <!-- Tabla de Valorización de Stock -->
+        <div class="col-12 lg:col-8">
+          <div class="surface-card p-3 border-round-xl border-1 surface-border shadow-1 h-full">
+            <div class="flex justify-content-between align-items-center mb-3">
+              <h3 class="m-0 text-base font-bold text-900 flex align-items-center gap-2">
+                <i class="pi pi-box text-primary"></i>Valorización de Stock Físico
+              </h3>
+              <button pButton label="Exportar Inventario" icon="pi pi-file-excel" class="p-button-success p-button-sm" (click)="exportExcel('inventario')"></button>
+            </div>
+            <p-table [columns]="colsInventario" [value]="inventario" [loading]="loadingInventario" [paginator]="true" [rows]="10" styleClass="p-datatable-striped p-datatable-sm text-xs" responsiveLayout="scroll">
+              <ng-template pTemplate="header">
+                <tr>
+                  <th pSortableColumn="descripcion">Producto / Material <p-sortIcon field="descripcion"></p-sortIcon></th>
+                  <th>Unidad</th>
+                  <th pSortableColumn="stock_actual" class="text-right">Stock Físico <p-sortIcon field="stock_actual"></p-sortIcon></th>
+                  <th class="text-right">Precio Base</th>
+                  <th pSortableColumn="valor_inmovilizado" class="text-right">Valor Inmovilizado <p-sortIcon field="valor_inmovilizado"></p-sortIcon></th>
+                </tr>
+              </ng-template>
+              <ng-template pTemplate="body" let-p>
+                <tr>
+                  <td class="font-medium">{{ p.descripcion }}</td>
+                  <td>{{ p.unidad_medida }}</td>
+                  <td class="text-right font-bold" [ngClass]="p.stock_actual <= p.stock_minimo ? 'text-red-500' : 'text-900'">
+                    {{ p.stock_actual | number:'1.0-2' }}
+                    <i *ngIf="p.stock_actual <= p.stock_minimo" class="pi pi-exclamation-triangle text-red-500 ml-1 text-xs"></i>
+                  </td>
+                  <td class="text-right">S/ {{ p.precio_unitario_base | number:'1.2-2' }}</td>
+                  <td class="text-right font-bold text-green-600">S/ {{ p.valor_inmovilizado | number:'1.2-2' }}</td>
+                </tr>
+              </ng-template>
+              <ng-template pTemplate="emptymessage">
+                <tr><td colspan="5" class="text-center p-3 text-500">Sin productos registrados.</td></tr>
+              </ng-template>
+            </p-table>
+          </div>
         </div>
 
-        <!-- VISTA MÓVIL (Tarjetas) -->
-        <div class="block md:hidden">
-          <div *ngIf="loadingInventario" class="text-center p-4"><i class="pi pi-spin pi-spinner text-3xl text-primary"></i></div>
-          <div *ngIf="!loadingInventario && inventario.length === 0" class="text-center p-4 text-color-secondary">No hay productos en el inventario.</div>
-          <div class="flex flex-column">
-            <div *ngFor="let p of inventario" class="mobile-card" [ngClass]="{'border-red-500': p.stock_actual <= p.stock_minimo}" [ngStyle]="p.stock_actual <= p.stock_minimo ? {'border-left': '4px solid var(--red-500)'} : {}">
-              <div class="flex justify-content-between align-items-start mb-2">
-                <span class="font-bold text-color flex-1"><i class="pi pi-box mr-1"></i>{{ p.descripcion }}</span>
-                <span class="text-sm font-medium bg-primary-reverse text-color px-2 py-1 border-round ml-2">{{ p.unidad_medida }}</span>
-              </div>
-              <div class="mobile-card-row surface-50 p-2 border-round-lg mb-2 mt-3">
-                <div class="flex flex-column text-sm">
-                  <span class="text-color-secondary block mb-1">Stock Físico</span>
-                  <span class="font-bold text-lg" [ngClass]="{'text-red-500': p.stock_actual <= p.stock_minimo, 'text-color': p.stock_actual > p.stock_minimo}">
-                    {{ p.stock_actual | number:'1.0-2' }} <i *ngIf="p.stock_actual <= p.stock_minimo" class="pi pi-exclamation-triangle text-red-500 text-sm ml-1"></i>
-                  </span>
+        <!-- Ranking de Materiales Más Vendidos -->
+        <div class="col-12 lg:col-4">
+          <div class="surface-card p-3 border-round-xl border-1 surface-border shadow-1 h-full">
+            <h3 class="m-0 text-base font-bold text-900 flex align-items-center gap-2 mb-3">
+              <i class="pi pi-star text-amber-500"></i>Top Materiales Más Vendidos
+            </h3>
+            <div *ngIf="topProductosVendidos.length === 0" class="text-center p-4 text-500 text-xs">
+              Sin ventas registradas para calcular rotación.
+            </div>
+            <div class="flex flex-column gap-2" *ngIf="topProductosVendidos.length > 0">
+              <div *ngFor="let item of topProductosVendidos; let idx = index" class="surface-50 p-2 border-round flex justify-content-between align-items-center text-xs">
+                <div class="flex align-items-center gap-2">
+                  <span class="w-1rem font-bold text-500 text-center">{{ idx + 1 }}.</span>
+                  <div>
+                    <span class="font-bold text-900 block">{{ item.desc }}</span>
+                    <span class="text-500">{{ item.cantidad | number:'1.0-2' }} {{ item.um }} despachados</span>
+                  </div>
                 </div>
-                <div class="text-right text-sm border-left-1 surface-border pl-3">
-                  <span class="text-color-secondary block mb-1">Precio Base</span>
-                  <span class="font-medium text-color">S/ {{ p.precio_unitario_base | number:'1.2-2' }}</span>
+                <div class="text-right font-bold text-green-600">
+                  S/ {{ item.total | number:'1.2-2' }}
                 </div>
-              </div>
-              <div class="mobile-card-row mb-1">
-                <div class="mobile-card-label"><i class="pi pi-money-bill mr-2"></i>Valor Inmovilizado</div>
-                <div class="mobile-card-value font-bold text-green-600 text-lg">S/ {{ p.valor_inmovilizado | number:'1.2-2' }}</div>
               </div>
             </div>
           </div>
         </div>
-      </p-tabPanel>
+      </div>
 
-    </p-tabView>
+    </p-tabPanel>
+
+  </p-tabView>
+
+</div>

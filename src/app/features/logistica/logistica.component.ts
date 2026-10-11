@@ -351,8 +351,8 @@ export class LogisticaComponent implements OnInit, OnDestroy {
         const restante = this.round3(cantidadTotal - despachado);
         return {
           id: item.id,
-          descripcion: item.productos?.descripcion || item.descripcion_manual,
-          unidad_medida: item.productos?.unidad_medida || item.unidad_medida_manual,
+          descripcion: item.descripcion_manual || item.productos?.descripcion || 'Material',
+          unidad_medida: item.unidad_medida_manual || item.productos?.unidad_medida || 'UND',
           maxCantidad: restante > 0 ? restante : 0,
           cantidad_viaje: 0
         };
@@ -501,8 +501,8 @@ export class LogisticaComponent implements OnInit, OnDestroy {
         id: d?.id || '',
         pi: d?.pedido_item_id || '',
         cv: Number(d?.cantidad_viaje) || 0,
-        desc: d?.pedidos_items?.productos?.descripcion || d?.pedidos_items?.descripcion_manual || d?.descripcion || 'Material',
-        um: d?.pedidos_items?.productos?.unidad_medida || d?.pedidos_items?.unidad_medida_manual || d?.unidad_medida || 'UND'
+        desc: d?.pedidos_items?.descripcion_manual || d?.pedidos_items?.productos?.descripcion || d?.descripcion || 'Material',
+        um: d?.pedidos_items?.unidad_medida_manual || d?.pedidos_items?.productos?.unidad_medida || d?.unidad_medida || 'UND'
       }))
     };
 
@@ -550,6 +550,10 @@ export class LogisticaComponent implements OnInit, OnDestroy {
     
     try {
       const user = this.auth.currentUser();
+      if (!user?.id) {
+        alert("Debes iniciar sesión con una cuenta activa para registrar un despacho.");
+        return;
+      }
       let fotosUrls: string[] = [];
 
       // 1. Obtener/calcular numero_viaje_secuencial (clonando lógica Flutter)
@@ -636,7 +640,6 @@ export class LogisticaComponent implements OnInit, OnDestroy {
             placa_vehiculo: this.viajeForm.placa?.trim().toUpperCase(),
             numero_viaje_secuencial: secIntent,
             estado_viaje: esCantera ? 'ENTREGADO' : 'ASIGNADO',
-            lugar_entrega: this.selectedPedido!.lugar_entrega || null,
             latitud: this.viajeForm.lat,
             longitud: this.viajeForm.lng,
             fotos_urls: fotosUrls
@@ -1223,18 +1226,12 @@ export class LogisticaComponent implements OnInit, OnDestroy {
       return;
     }
 
-    const isDark = document.body.classList.contains('dark-mode') ||
-                   document.documentElement.getAttribute('data-theme') === 'dark' ||
-                   document.body.getAttribute('data-theme') === 'dark';
-
     this.map = L.map(container, { zoomControl: true, maxZoom: 19 });
 
-    const defaultLayer = L.tileLayer(
-      isDark
-        ? 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'
-        : 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',
-      { attribution: '&copy; OpenStreetMap &copy; CARTO', subdomains: 'abcd', maxZoom: 20 }
-    );
+    const defaultLayer = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+      maxZoom: 19
+    });
 
     const sateliteLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
       attribution: '© Esri',
@@ -1547,9 +1544,9 @@ export class LogisticaComponent implements OnInit, OnDestroy {
         // Solo marcar como inicializado cuando realmente se pudieron encuadrar datos
         this.mapInitialBoundsDone = true;
       } else if (!this.mapInitialBoundsDone) {
-        // Sin datos todavía: centrar en Lima sin marcar como "ya inicializado",
+        // Sin datos todavía: centrar en Chala sin marcar como "ya inicializado",
         // para que el primer poll con datos reales sí haga el fitBounds.
-        this.map!.setView([-12.046374, -77.042793], 13);
+        this.map!.setView([-15.8624, -74.2483], 14);
       }
     }
   }

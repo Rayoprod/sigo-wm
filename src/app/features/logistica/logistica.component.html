@@ -121,9 +121,9 @@
                                 <div *ngIf="!loadingItemsMap[pedido.id]" class="grid">
                                     <div *ngFor="let item of itemsDelPedidoMap[pedido.id]" class="col-12 md:col-6 lg:col-4">
                                         <div class="surface-card p-3 border-round shadow-1">
-                                            <p class="m-0 font-bold mb-1">{{ item.productos?.descripcion || item.descripcion_manual }}</p>
+                                            <p class="m-0 font-bold mb-1">{{ item.descripcion_manual || item.productos?.descripcion }}</p>
                                             <div class="flex justify-content-between text-sm text-600 mb-2">
-                                                <span>Despachado: <b>{{ item.cantidad_despachada || 0 }}</b> {{ item.productos?.unidad_medida || item.unidad_medida_manual }}</span>
+                                                <span>Despachado: <b>{{ item.cantidad_despachada || 0 }}</b> {{ item.unidad_medida_manual || item.productos?.unidad_medida }}</span>
                                                 <span>Total: <b>{{ item.cantidad }}</b></span>
                                             </div>
                                             <div class="custom-progress-track border-round overflow-hidden w-full flex mt-2 relative" style="height: 10px; background: var(--surface-border);">
@@ -211,10 +211,10 @@
 
                         <div *ngIf="!loadingItemsMap[pedido.id]" class="flex flex-column gap-3">
                             <div *ngFor="let item of itemsDelPedidoMap[pedido.id]" class="surface-50 p-3 border-round-lg">
-                                <p class="m-0 font-bold text-color mb-1">{{ item.productos?.descripcion || item.descripcion_manual }}</p>
+                                <p class="m-0 font-bold text-color mb-1">{{ item.descripcion_manual || item.productos?.descripcion }}</p>
                                 
                                 <div class="flex justify-content-between text-sm text-color-secondary mb-2">
-                                    <span>Despachado: <b class="text-color">{{ item.cantidad_despachada || 0 }}</b> {{ item.productos?.unidad_medida || item.unidad_medida_manual }}</span>
+                                    <span>Despachado: <b class="text-color">{{ item.cantidad_despachada || 0 }}</b> {{ item.unidad_medida_manual || item.productos?.unidad_medida }}</span>
                                     <span>Total: <b class="text-color">{{ item.cantidad }}</b></span>
                                 </div>
                                 
@@ -256,7 +256,11 @@
                 <div class="grid formgrid p-fluid">
                     <div class="col-12 md:col-6 mb-3 md:mb-0">
                         <span class="text-color-secondary text-sm font-bold block mb-2"><i class="pi pi-car mr-2"></i>Placa del Vehículo</span>
-                        <input pInputText type="text" [(ngModel)]="viajeForm.placa" placeholder="Ej: ABC-123" class="w-full text-lg uppercase p-inputtext-lg" />
+                        <input pInputText type="text" [(ngModel)]="viajeForm.placa" list="listaPlacasWeb" placeholder="Escribe para filtrar (ej: V1A-850)" class="w-full text-lg uppercase p-inputtext-lg" />
+                        <datalist id="listaPlacasWeb">
+                            <option *ngFor="let v of vehiculosOptions" [value]="v.value"></option>
+                        </datalist>
+                        <small class="text-500 mt-1 block">Filtra automáticamente mientras escribes o registra una nueva.</small>
                     </div>
                     <div class="col-12 md:col-6">
                         <span class="text-color-secondary text-sm font-bold block mb-2"><i class="pi pi-map-marker mr-2"></i>Ubicación de Salida (Auditoría)</span>
@@ -572,10 +576,10 @@
                                                 </div>
                                                 <div class="data-pills-container">
                                                     <div class="data-pill" *ngFor="let d of event.data.despachos_viajes_detalle">
-                                                        <span class="pill-name">{{ d.pedidos_items?.productos?.descripcion || d.pedidos_items?.descripcion_manual || 'Producto' }}</span>
+                                                        <span class="pill-name">{{ d.pedidos_items?.descripcion_manual || d.pedidos_items?.productos?.descripcion || 'Producto' }}</span>
                                                         <span class="pill-qty">
                                                             {{ d.cantidad_viaje | number:'1.0-2' }}
-                                                            {{ d.pedidos_items?.productos?.unidad_medida || d.pedidos_items?.unidad_medida_manual || '' }}
+                                                            {{ d.pedidos_items?.unidad_medida_manual || d.pedidos_items?.productos?.unidad_medida || '' }}
                                                         </span>
                                                     </div>
                                                 </div>

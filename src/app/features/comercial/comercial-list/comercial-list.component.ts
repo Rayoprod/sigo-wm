@@ -64,7 +64,7 @@ export class ComercialListComponent implements OnInit {
   estadosCotizacion = [
     { label: 'Pendiente', value: 'PENDIENTE' },
     { label: 'Aprobada (Convertir a Venta)', value: 'APROBADA' },
-    { label: 'Rechazada', value: 'RECHAZADA' }
+    { label: 'Anulada', value: 'ANULADA' }
   ];
 
   estadosVenta = [
@@ -106,13 +106,13 @@ export class ComercialListComponent implements OnInit {
     this.destroyConversionMap();
 
     const hasCoords = this.conversionConfig.lat_destino != null && this.conversionConfig.lng_destino != null;
-    const lat = hasCoords ? Number(this.conversionConfig.lat_destino) : -12.046374;
-    const lng = hasCoords ? Number(this.conversionConfig.lng_destino) : -77.042793;
+    const lat = hasCoords ? Number(this.conversionConfig.lat_destino) : -15.8624;
+    const lng = hasCoords ? Number(this.conversionConfig.lng_destino) : -74.2483;
 
-    this.conversionMap = L.map(container, { maxZoom: 19, attributionControl: false }).setView([lat, lng], hasCoords ? 16 : 12);
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
+    this.conversionMap = L.map(container, { maxZoom: 19, attributionControl: false }).setView([lat, lng], hasCoords ? 16 : 14);
+    L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
       maxZoom: 19,
-      attribution: '&copy; OpenStreetMap'
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
     }).addTo(this.conversionMap);
 
     if (hasCoords) {
@@ -303,7 +303,6 @@ export class ComercialListComponent implements OnInit {
       case 'PENDIENTE': return 'warning';
       case 'APROBADA': return 'info';
       case 'COMPLETADA': return 'success';
-      case 'RECHAZADA': return 'danger';
       case 'ANULADA': return 'danger';
       default: return 'secondary';
     }
@@ -323,7 +322,7 @@ export class ComercialListComponent implements OnInit {
     return today > validUntil;
   }
 
-  // Botones explícitos Aprobar / Rechazar para cotizaciones pendientes.
+  // Botones explícitos Aprobar / Anular para cotizaciones pendientes.
   // (Además del dropdown de estado, para que la acción sea visible.)
   aprobarCotizacion(pedido: any) {
     if (this.isCotizacionVencida(pedido)) {
@@ -338,27 +337,35 @@ export class ComercialListComponent implements OnInit {
     this.onEstadoChange({ value: 'APROBADA' }, pedido);
   }
 
-  rechazarCotizacion(pedido: any) {
+  anularCotizacion(pedido: any) {
     this.confirmationService.confirm({
-      message: `¿Estás seguro de rechazar la cotización <b>${pedido.folio}</b>?`,
-      header: 'Rechazar Cotización',
+      message: `¿Estás seguro de anular la cotización <b>${pedido.folio}</b>?`,
+      header: 'Anular Cotización',
       icon: 'pi pi-times-circle text-red-500',
-      acceptLabel: 'Sí, Rechazar',
+      acceptLabel: 'Sí, Anular',
       rejectLabel: 'Cancelar',
       acceptButtonStyleClass: 'p-button-danger',
       accept: async () => {
         try {
-          await this.actualizarEstadoYStock(pedido, 'RECHAZADA', 'COTIZACION', false, false);
+          const { error } = await this.supabase
+            .from('pedidos')
+            .update({ estado: 'ANULADA' })
+            .eq('id', pedido.id);
+          if (error) throw error;
+
+          // Actualizar vista local
+          pedido.estado = 'ANULADA';
+
           this.messageService.add({
             severity: 'success',
-            summary: 'Cotización rechazada',
-            detail: `La cotización ${pedido.folio} fue marcada como rechazada.`
+            summary: 'Cotización anulada',
+            detail: `La cotización ${pedido.folio} fue marcada como anulada.`
           });
         } catch (e: any) {
           this.messageService.add({
             severity: 'error',
             summary: 'Error',
-            detail: 'No se pudo rechazar la cotización: ' + e.message
+            detail: 'No se pudo anular la cotización: ' + e.message
           });
         }
       }

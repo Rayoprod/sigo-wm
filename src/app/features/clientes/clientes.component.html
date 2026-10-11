@@ -114,15 +114,20 @@
     </div>
 </div>
 
-<p-dialog header="Nuevo Cliente" [(visible)]="displayModal" [modal]="true" [style]="{width: '450px'}">
+<p-confirmDialog></p-confirmDialog>
+
+<p-dialog [header]="nuevoCliente.id ? 'Editar Cliente' : 'Nuevo Cliente'" [(visible)]="displayModal" [modal]="true" [style]="{width: '450px'}">
     <div class="p-fluid grid formgrid pt-2">
         <div class="field col-12">
-            <label>Documento (RUC/DNI/CE para Autocompletar)</label>
+            <label>Documento (RUC/DNI/CE)</label>
             <div class="p-inputgroup">
-                <input pInputText type="text" [(ngModel)]="nuevoCliente.documento_identidad" (keyup.enter)="buscarDocApiPeru()" placeholder="Escriba y presione buscar..." />
-                <button type="button" pButton icon="pi pi-search" styleClass="p-button-primary" (click)="buscarDocApiPeru()" [loading]="isSearchingDoc"></button>
+                <input pInputText type="text" [(ngModel)]="nuevoCliente.documento_identidad" [disabled]="clienteTienePedidos" (keyup.enter)="!clienteTienePedidos && buscarDocApiPeru()" placeholder="Escriba y presione buscar..." />
+                <button *ngIf="!clienteTienePedidos" type="button" pButton icon="pi pi-search" styleClass="p-button-primary" (click)="buscarDocApiPeru()" [loading]="isSearchingDoc" pTooltip="Buscar en SUNAT/RENIEC"></button>
             </div>
-            <small class="text-500">Busca en SUNAT/RENIEC para llenar los datos automáticamente.</small>
+            <small *ngIf="!clienteTienePedidos" class="text-500">Busca en SUNAT/RENIEC para llenar los datos automáticamente.</small>
+            <small *ngIf="clienteTienePedidos" class="text-orange-600 font-semibold flex align-items-center gap-1 mt-1">
+                <i class="pi pi-lock"></i> Documento protegido: Este cliente tiene historial de pedidos o ventas.
+            </small>
         </div>
         <div class="field col-12 mt-3">
             <label>Razón Social / Nombre (*)</label>

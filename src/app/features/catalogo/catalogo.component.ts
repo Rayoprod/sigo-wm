@@ -4,10 +4,12 @@ import { FormsModule } from '@angular/forms';
 import { SupabaseService } from '../../core/services/supabase.service';
 import { InventarioService } from '../../core/services/inventario.service';
 
+import { ConfirmationService, MessageService } from 'primeng/api';
 import { TableModule } from 'primeng/table';
 import { ButtonModule } from 'primeng/button';
 import { TagModule } from 'primeng/tag';
 import { DialogModule } from 'primeng/dialog';
+import { ConfirmDialogModule } from 'primeng/confirmdialog';
 import { DropdownModule } from 'primeng/dropdown';
 import { InputNumberModule } from 'primeng/inputnumber';
 import { InputTextModule } from 'primeng/inputtext';
@@ -26,6 +28,7 @@ import { PeruDatePipe } from '../../shared/pipes/peru-date.pipe';
     ButtonModule,
     TagModule,
     DialogModule,
+    ConfirmDialogModule,
     DropdownModule,
     InputNumberModule,
     InputTextModule,
@@ -34,12 +37,14 @@ import { PeruDatePipe } from '../../shared/pipes/peru-date.pipe';
     TabViewModule,
     PeruDatePipe
   ],
+  providers: [ConfirmationService, MessageService],
   templateUrl: './catalogo.component.html',
   styleUrl: './catalogo.component.scss'
 })
 export class CatalogoComponent implements OnInit {
   supabase = inject(SupabaseService).client;
   inventarioService = inject(InventarioService);
+  private confirmationService = inject(ConfirmationService);
 
   productos: any[] = [];
   loading = false;
@@ -125,15 +130,25 @@ export class CatalogoComponent implements OnInit {
     this.displayModalProducto = true;
   }
 
-  async eliminarProducto(producto: any) {
-    if (!confirm(`¿Eliminar el producto "${producto.descripcion}"?`)) return;
-    try {
-      const { error } = await this.supabase.from('productos').delete().eq('id', producto.id);
-      if (error) throw error;
-      await this.cargarProductos();
-    } catch {
-      alert('No se puede eliminar: el producto ya tiene ventas o movimientos de inventario asociados.');
-    }
+  eliminarProducto(producto: any) {
+    this.confirmationService.confirm({
+      message: `¿Estás seguro de eliminar el producto <strong>${producto.descripcion}</strong>?<br><br>Esta acción no se puede deshacer.`,
+      header: 'Eliminar Producto',
+      icon: 'pi pi-exclamation-triangle',
+      acceptButtonStyleClass: 'p-button-danger',
+      rejectButtonStyleClass: 'p-button-text',
+      acceptLabel: 'Sí, Eliminar',
+      rejectLabel: 'Cancelar',
+      accept: async () => {
+        try {
+          const { error } = await this.supabase.from('productos').delete().eq('id', producto.id);
+          if (error) throw error;
+          await this.cargarProductos();
+        } catch {
+          alert('No se puede eliminar: el producto ya tiene ventas o movimientos de inventario asociados.');
+        }
+      }
+    });
   }
 
   async guardarProducto() {

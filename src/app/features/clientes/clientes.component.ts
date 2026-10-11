@@ -5,9 +5,11 @@ import { SupabaseService } from '../../core/services/supabase.service';
 import { ApiPeruService } from '../../core/services/api-peru.service';
 import { CE_SIN_AUTOCOMPLETAR, getTipoDocumento } from '../../shared/utils/documento-identidad';
 
+import { ConfirmationService, MessageService } from 'primeng/api';
 import { TableModule } from 'primeng/table';
 import { ButtonModule } from 'primeng/button';
 import { DialogModule } from 'primeng/dialog';
+import { ConfirmDialogModule } from 'primeng/confirmdialog';
 import { InputTextModule } from 'primeng/inputtext';
 import { CardModule } from 'primeng/card';
 
@@ -20,15 +22,18 @@ import { CardModule } from 'primeng/card';
     TableModule,
     ButtonModule,
     DialogModule,
+    ConfirmDialogModule,
     InputTextModule,
     CardModule
   ],
+  providers: [ConfirmationService, MessageService],
   templateUrl: './clientes.component.html',
   styleUrl: './clientes.component.scss'
 })
 export class ClientesComponent implements OnInit {
   supabase = inject(SupabaseService).client;
   apiPeruService = inject(ApiPeruService);
+  private confirmationService = inject(ConfirmationService);
 
   clientes: any[] = [];
   loading = false;
@@ -36,6 +41,8 @@ export class ClientesComponent implements OnInit {
   displayModal = false;
   isSaving = false;
   isSearchingDoc = false;
+  clienteTienePedidos = false;
+  docOriginal = '';
   
   nuevoCliente: any = {
     id: null,
@@ -72,28 +79,49 @@ export class ClientesComponent implements OnInit {
       telefono: '',
       correo: ''
     };
+    this.clienteTienePedidos = false;
+    this.docOriginal = '';
     this.displayModal = true;
   }
 
-  abrirEditar(cliente: any) {
+  async abrirEditar(cliente: any) {
     this.nuevoCliente = { ...cliente };
+    this.docOriginal = cliente.documento_identidad || '';
+    this.clienteTienePedidos = false;
+
+    // Verificar si el cliente ya tiene pedidos para proteger la integridad histórica
+    const { count } = await this.supabase
+      .from('pedidos')
+      .select('id', { count: 'exact', head: true })
+      .eq('cliente_id', cliente.id);
+
+    this.clienteTienePedidos = (count ?? 0) > 0;
     this.displayModal = true;
   }
 
-  async eliminarCliente(cliente: any) {
-    if (confirm(`¿Estás seguro de eliminar el cliente ${cliente.nombre_razon_social}?`)) {
-      try {
-        const { error } = await this.supabase
-          .from('clientes')
-          .delete()
-          .eq('id', cliente.id);
-        
-        if (error) throw error;
-        await this.loadClientes();
-      } catch (error: any) {
-        alert('Error al eliminar: No se puede eliminar un cliente si ya tiene pedidos registrados.');
+  eliminarCliente(cliente: any) {
+    this.confirmationService.confirm({
+      message: `¿Estás seguro de eliminar al cliente <strong>${cliente.nombre_razon_social}</strong>?<br><br>Esta acción no se puede deshacer.`,
+      header: 'Eliminar Cliente',
+      icon: 'pi pi-exclamation-triangle',
+      acceptButtonStyleClass: 'p-button-danger',
+      rejectButtonStyleClass: 'p-button-text',
+      acceptLabel: 'Sí, Eliminar',
+      rejectLabel: 'Cancelar',
+      accept: async () => {
+        try {
+          const { error } = await this.supabase
+            .from('clientes')
+            .delete()
+            .eq('id', cliente.id);
+
+          if (error) throw error;
+          await this.loadClientes();
+        } catch (error: any) {
+          alert('Error al eliminar: No se puede eliminar un cliente si ya tiene pedidos registrados.');
+        }
       }
-    }
+    });
   }
 
   async buscarDocApiPeru() {
@@ -196,6 +224,13 @@ export class ClientesComponent implements OnInit {
 
     this.isSaving = true;
     try {
+      // Si el cliente ya tiene pedidos, proteger que no se cambie su documento de identidad
+      if (this.nuevoCliente.id && this.clienteTienePedidos && this.nuevoCliente.documento_identidad !== this.docOriginal) {
+        alert('No se puede modificar el documento de identidad (DNI/RUC) de un cliente que ya tiene cotizaciones o pedidos registrados.');
+        this.isSaving = false;
+        return;
+      }
+
       // Verificar si el documento ya está registrado por otro cliente
       if (this.nuevoCliente.documento_identidad) {
         let query = this.supabase

@@ -10,10 +10,6 @@ const supabaseAnonKey = process.env['SUPABASE_ANON_KEY'] || 'eyJhbGciOiJIUzI1NiI
 // Los folios son secuenciales y NO son secretos; el endpoint público nunca debe
 // aceptarlos como identificador de búsqueda (riesgo de enumeración de pedidos).
 const UUID_V4_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-// RUC/DNI puramente numéricos (8-11 dígitos) — también cubre los CE numéricos antiguos (9-10 dígitos).
-const RUC_OR_DNI_REGEX = /^\d{8,11}$/;
-// Carné de Extranjería con formato actual: 1 letra inicial + 7 a 11 dígitos (ej: A12345678).
-const CE_REGEX = /^[A-Za-z]\d{7,11}$/;
 
 // Rate limit simple en memoria (best-effort en serverless).
 // El cliente público consulta cada 10s (~6 req/min); 90 req/min por IP es suficiente.
@@ -63,11 +59,9 @@ export default async function handler(req: any, res: any) {
     return res.status(400).json({ error: 'Token de rastreo es requerido' });
   }
 
-  // Validar: debe ser un UUID v4 (enlace seguro) o un documento del cliente (RUC/DNI/CE).
-  const esUuid = UUID_V4_REGEX.test(token);
-  const esRucODni = RUC_OR_DNI_REGEX.test(token) || CE_REGEX.test(token);
-  if (!esUuid && !esRucODni) {
-    return res.status(400).json({ error: 'Token de rastreo inválido' });
+  // Validar: debe ser un UUID v4 (enlace seguro compartido al cliente)
+  if (!UUID_V4_REGEX.test(token)) {
+    return res.status(400).json({ error: 'Token de rastreo inválido. Utilice el enlace seguro de su pedido.' });
   }
 
   // Rate limit por IP
@@ -80,13 +74,7 @@ export default async function handler(req: any, res: any) {
   const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
   try {
-    // Si el usuario escribió un RUC/DNI/CE, se busca el pedido más reciente del cliente.
-    // En caso contrario se usa el tracking_token (UUID) del enlace seguro.
-    const rpcResult = esRucODni
-      ? await supabase.rpc('get_public_tracking_data_by_ruc', { p_ruc: token })
-      : await supabase.rpc('get_public_tracking_data', { p_token: token });
-
-    const { data, error } = rpcResult;
+    const { data, error } = await supabase.rpc('get_public_tracking_data', { p_token: token });
 
     if (error) {
       console.error('Error RPC:', error);

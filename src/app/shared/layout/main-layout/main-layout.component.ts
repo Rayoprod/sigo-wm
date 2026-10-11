@@ -58,7 +58,7 @@ export class MainLayoutComponent {
 
     if (isAdmin || isVendedor) {
       items.push(
-        { label: 'Dashboard',             icon: 'pi pi-home',          routerLink: '/dashboard' },
+        { label: 'Panel y Reportes',      icon: 'pi pi-chart-bar',     routerLink: '/dashboard' },
         { label: 'Ventas y Cotizaciones', icon: 'pi pi-shopping-cart', routerLink: '/comercial' },
         { label: 'Productos e Inventario',icon: 'pi pi-box',           routerLink: '/catalogo'  },
         { label: 'Clientes',              icon: 'pi pi-users',         routerLink: '/clientes'  },
@@ -76,7 +76,6 @@ export class MainLayoutComponent {
 
     if (isAdmin) {
       items.push(
-        { label: 'Reportes Analíticos', icon: 'pi pi-chart-bar', routerLink: '/reportes'      },
         { label: 'Configuración',       icon: 'pi pi-cog',       routerLink: '/configuracion' },
       );
     }

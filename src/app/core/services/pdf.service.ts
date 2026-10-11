@@ -173,8 +173,8 @@ export class PdfService {
         ],
         ...items.map((item: PedidosItems, i: number) => {
           const bg = i % 2 === 0 ? '#ffffff' : '#f9fafb';
-          const desc = (item as any).productos ? (item as any).productos.descripcion : item.descripcion_manual;
-          const um = (item as any).productos ? (item as any).productos.unidad_medida : item.unidad_medida_manual;
+          const desc = item.descripcion_manual || ((item as any).productos ? (item as any).productos.descripcion : 'Material');
+          const um = item.unidad_medida_manual || ((item as any).productos ? (item as any).productos.unidad_medida : '-');
           return [
             { text: (i + 1).toString(), style: 'tdCell', alignment: 'center', fillColor: bg },
             { text: this.formatearTextoLargo(desc), style: 'tdCell', fillColor: bg },

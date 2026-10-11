@@ -34,19 +34,19 @@ export const roleGuard: CanActivateFn = async (route, state) => {
     return true;
   }
 
-  // Verificar roles requeridos por la ruta
-  const requiredRoles = route.data?.['roles'] as AppRole[] | undefined;
-  if (requiredRoles?.length && !auth.hasRole(...requiredRoles)) {
-    return router.createUrlTree(['/sin-acceso']);
-  }
-
-  // Despachador puro intentando ir al dashboard → logística
+  // Despachador puro intentando ir al dashboard o reportes → logística
   if (
-    (state.url === '/' || state.url === '/dashboard') &&
+    (state.url === '/' || state.url === '/dashboard' || state.url === '/reportes') &&
     auth.hasRole('despachador') &&
     !auth.hasRole('vendedor')
   ) {
     return router.createUrlTree(['/logistica']);
+  }
+
+  // Verificar roles requeridos por la ruta
+  const requiredRoles = route.data?.['roles'] as AppRole[] | undefined;
+  if (requiredRoles?.length && !auth.hasRole(...requiredRoles)) {
+    return router.createUrlTree(['/sin-acceso']);
   }
 
   return true;

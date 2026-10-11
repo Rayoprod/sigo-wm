@@ -60,32 +60,6 @@
             <div class="gps-waiting-note" *ngIf="!gpsDisponible">
               <span class="gps-pulse-dot"></span> Esperando señal GPS del chofer...
             </div>
-
-            <!-- ETA Overlay Card: solo si el chofer ya inició el viaje -->
-            <div class="eta-glass-card" *ngIf="etaInfo">
-              <div class="eta-header" [style.background]="etaInfo.esEstimado ? 'rgba(251,146,60,0.15)' : 'rgba(59,130,246,0.15)'">
-                <span class="font-bold text-sm" [style.color]="etaInfo.esEstimado ? '#c2410c' : '#1d4ed8'">
-                  ⏱ Llegada aproximada
-                </span>
-              </div>
-              <div class="eta-body">
-                <div class="eta-time-row">
-                  <span class="eta-time" [style.color]="etaInfo.esEstimado ? '#ea580c' : '#1d4ed8'">
-                    {{ etaInfo.eta }}
-                  </span>
-                  <span class="eta-day" [style.color]="etaInfo.esEstimado ? '#c2410c' : '#1d4ed8'">{{ etaInfo.etaDia }}</span>
-                </div>
-                <div class="eta-stats">
-                  <span>
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="svg-icon mr-1"><polygon points="3 11 22 2 13 21 11 13 3 11"></polygon></svg>
-                    {{ etaInfo.distanciaKm }} km al destino
-                  </span>
-                </div>
-                <div *ngIf="etaInfo.esEstimado" class="eta-warning" style="margin-top: 4px; font-size: 0.78rem; color: #ea580c;">
-                  Basado en última posición conocida (hace {{ etaInfo.edadMin }} min)
-                </div>
-              </div>
-            </div>
           </div>
         </section>
 
@@ -223,14 +197,6 @@
                       <span class="mini-label" style="color: #94a3b8; font-style: italic;">Esperando que el chofer inicie el viaje...</span>
                     </div>
                   </div>
-                </div>
-
-                <!-- ETA texto dentro de la tarjeta cuando está en ruta -->
-                <div *ngIf="viajeActivo.enRuta && etaInfo" 
-                     style="background: rgba(59,130,246,0.08); border: 1px solid rgba(59,130,246,0.2); border-radius: 10px; padding: 12px 14px; margin-bottom: 14px;">
-                  <span style="font-size: 0.85rem; color: #475569;">⏱ Llegada aproximada al destino:</span><br>
-                  <span style="font-size: 1.2rem; font-weight: 700; color: #1d4ed8;">{{ etaInfo.eta }} <small style="font-size: 0.75rem; font-weight: 600;">{{ etaInfo.etaDia }}</small></span>
-                  <span style="font-size: 0.8rem; color: #64748b; margin-left: 8px;">(± {{ etaInfo.distanciaKm }} km)</span>
                 </div>
 
                 <!-- Resumen de Carga Activa -->

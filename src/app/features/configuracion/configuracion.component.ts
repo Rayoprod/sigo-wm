@@ -7,9 +7,11 @@ import { createClient } from '@supabase/supabase-js';
 import { environment } from '../../../environments/environment';
 import { AsArrayPipe } from '../../shared/pipes/as-array.pipe';
 
+import { ConfirmationService } from 'primeng/api';
 import { TableModule } from 'primeng/table';
 import { ButtonModule } from 'primeng/button';
 import { DialogModule } from 'primeng/dialog';
+import { ConfirmDialogModule } from 'primeng/confirmdialog';
 import { InputTextModule } from 'primeng/inputtext';
 import { InputTextareaModule } from 'primeng/inputtextarea';
 import { DropdownModule } from 'primeng/dropdown';
@@ -28,6 +30,7 @@ import { TooltipModule } from 'primeng/tooltip';
     TableModule,
     ButtonModule,
     DialogModule,
+    ConfirmDialogModule,
     InputTextModule,
     InputTextareaModule,
     DropdownModule,
@@ -38,6 +41,7 @@ import { TooltipModule } from 'primeng/tooltip';
     TooltipModule,
     AsArrayPipe
   ],
+  providers: [ConfirmationService],
   templateUrl: './configuracion.component.html',
   styleUrl: './configuracion.component.scss'
 })
@@ -45,6 +49,7 @@ export class ConfiguracionComponent implements OnInit {
   supabaseService = inject(SupabaseService);
   authService = inject(AuthService);
   supabase = this.supabaseService.client;
+  private confirmationService = inject(ConfirmationService);
   
   /**
    * ¿El usuario actual es superadmin?
@@ -276,6 +281,22 @@ export class ConfiguracionComponent implements OnInit {
   async toggleUserStatus(usuario: any) {
     if (usuario.es_superadmin && !this.currentUserIsSuperAdmin) {
       alert('🔒 Acceso denegado: No tienes permisos para desactivar la cuenta del Administrador Principal.');
+      return;
+    }
+
+    // Prevenir que un usuario se desactive a sí mismo
+    const currentUserId = this.authService.currentUser()?.id;
+    if (usuario.id === currentUserId && !usuario.activo) {
+      // Intento de reactivar su propia cuenta desactivada — permitir solo si es superadmin
+    } else if (usuario.id === currentUserId && usuario.activo) {
+      this.confirmationService.confirm({
+        message: 'NO ES POSIBLE BLOQUEAR LA MISMA CUENTA.',
+        header: 'Acción no permitida',
+        icon: 'pi pi-ban',
+        rejectVisible: false,
+        acceptLabel: 'Entendido',
+        acceptButtonStyleClass: 'p-button-secondary'
+      });
       return;
     }
 

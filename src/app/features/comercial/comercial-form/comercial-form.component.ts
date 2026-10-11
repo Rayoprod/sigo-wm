@@ -8,6 +8,7 @@ import { ApiPeruService } from '../../../core/services/api-peru.service';
 import { CE_SIN_AUTOCOMPLETAR, getTipoDocumento } from '../../../shared/utils/documento-identidad';
 import { TablaCarritoComponent, CarritoItem } from './tabla-carrito/tabla-carrito.component';
 import { InventarioService } from '../../../core/services/inventario.service';
+import { PdfService } from '../../../core/services/pdf.service';
 import * as L from 'leaflet';
 
 // PrimeNG
@@ -55,6 +56,7 @@ export class ComercialFormComponent implements OnInit {
   route = inject(ActivatedRoute);
   apiPeru = inject(ApiPeruService);
   inventarioService = inject(InventarioService);
+  pdfService = inject(PdfService);
 
   pedidoIdAEditar: string | null = null;
   folioAEditar: string | null = null;
@@ -190,9 +192,9 @@ export class ComercialFormComponent implements OnInit {
     this.destroyMapaModal();
 
     this.mapaModalMap = L.map(container, { maxZoom: 19, attributionControl: false });
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
+    L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
       maxZoom: 19,
-      attribution: '&copy; OpenStreetMap'
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
     }).addTo(this.mapaModalMap);
 
     this.coordsTemp = (this.lat_destino && this.lng_destino) ? { lat: this.lat_destino, lng: this.lng_destino } : null;
@@ -200,8 +202,8 @@ export class ComercialFormComponent implements OnInit {
     this.resultadosBusqueda = [];
     this.busquedaQuery = '';
 
-    const centro: [number, number] = this.coordsTemp ? [this.coordsTemp.lat, this.coordsTemp.lng] : [-12.046374, -77.042793];
-    this.mapaModalMap.setView(centro, this.coordsTemp ? 16 : 12);
+    const centro: [number, number] = this.coordsTemp ? [this.coordsTemp.lat, this.coordsTemp.lng] : [-15.8624, -74.2483];
+    this.mapaModalMap.setView(centro, this.coordsTemp ? 16 : 14);
 
     if (this.coordsTemp) {
       this.colocarPinModal(this.coordsTemp.lat, this.coordsTemp.lng, false);
@@ -723,12 +725,12 @@ export class ComercialFormComponent implements OnInit {
         docFolio = newPedido.folio;
       }
 
-      // 4. Insertar Items
+      // 4. Insertar Items (Snapshot Pattern: siempre congela el nombre y unidad comercial del momento)
       const itemsToInsert = this.items.map(i => ({
         pedido_id: pId,
         producto_id: i.producto_id || null,
-        descripcion_manual: i.is_custom ? i.descripcion : null,
-        unidad_medida_manual: i.is_custom ? i.unidad_medida : null,
+        descripcion_manual: i.descripcion || null,
+        unidad_medida_manual: i.unidad_medida || null,
         cantidad: i.cantidad,
         precio_unitario: i.precio_unitario,
         subtotal: i.subtotal
@@ -762,6 +764,16 @@ export class ComercialFormComponent implements OnInit {
 
         // Descontar inventario 
         await this.inventarioService.descontarStockPorVenta(pId as string, docFolio || '');
+      }
+
+      // Si es COTIZACIÓN, generar y descargar el PDF antes de navegar
+      if (this.tipo_documento === 'COTIZACION' && pId) {
+        try {
+          await this.pdfService.generateComercialPdf(pId as string);
+        } catch (pdfErr: any) {
+          // El PDF falló pero la cotización ya quedó guardada — informar sin bloquear
+          alert('Cotización guardada correctamente. Sin embargo, no se pudo generar el PDF: ' + pdfErr.message);
+        }
       }
 
       this.router.navigate(['/comercial']);

@@ -28,14 +28,6 @@ export class RastreoClienteComponent implements OnInit, OnDestroy {
   /** Evita resetear el zoom cuando el usuario ha hecho zoom manual. */
   private fitBoundsDone = false;
 
-  etaInfo: {
-    eta: string;
-    etaDia: string;
-    distanciaKm: string;
-    esEstimado: boolean;
-    edadMin: number;
-  } | null = null;
-
   constructor(private route: ActivatedRoute, private http: HttpClient) {}
 
   ngOnInit() {
@@ -133,7 +125,7 @@ export class RastreoClienteComponent implements OnInit, OnDestroy {
         } else {
           // Actualizar mapa si ya existe, si no intentar inicializar
           if (this.map) {
-            this.updateMapAndETA();
+            this.updateMap();
           } else {
             setTimeout(() => {
               if (this.isDispatched && !this.esCantera && !this.map) {
@@ -166,8 +158,8 @@ export class RastreoClienteComponent implements OnInit, OnDestroy {
 
     const destino = this.getCoordenadasDestino();
     const ultimaPos = this.getUltimaPosicionConocida();
-    // Centro inicial: destino > última posición conocida > Lima (fallback)
-    const centro = destino ?? ultimaPos ?? { lat: -12.046374, lng: -77.042793 };
+    // Centro inicial: destino > última posición conocida > Chala (fallback)
+    const centro = destino ?? ultimaPos ?? { lat: -15.8624, lng: -74.2483 };
 
     this.map = L.map('rastreo-cliente-map', {
       zoomControl: true,
@@ -177,8 +169,8 @@ export class RastreoClienteComponent implements OnInit, OnDestroy {
       touchZoom: true
     }).setView([centro.lat, centro.lng], 13);
 
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
-      attribution: '© OpenStreetMap contributors',
+    L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
       maxZoom: 19
     }).addTo(this.map);
 
@@ -226,7 +218,7 @@ export class RastreoClienteComponent implements OnInit, OnDestroy {
     }
     this.markerCamion = L.marker([camionPos.lat, camionPos.lng], { icon: this.buildClientTruckIcon(estadoInicial, edadInicial) }).addTo(this.map);
 
-    this.updateMapAndETA();
+    this.updateMap();
     setTimeout(() => this.map?.invalidateSize(), 500);
   }
 
@@ -254,7 +246,7 @@ export class RastreoClienteComponent implements OnInit, OnDestroy {
     return { lat, lng };
   }
 
-  private updateMapAndETA() {
+  private updateMap() {
     if (this.esCantera) return;
     if (!this.map || !this.trackingData || !this.markerCamion) return;
 
@@ -301,70 +293,7 @@ export class RastreoClienteComponent implements OnInit, OnDestroy {
       this.map.fitBounds(bounds, { padding: [60, 60], maxZoom: 15 });
       this.fitBoundsDone = true;
     }
-
-    // ETA solo si hay coordenadas de destino y el viaje activo está EN RUTA
-    const viajeActivo = this.viajeActivo;
-    if (!destino || !viajeActivo || !viajeActivo.enRuta || viajeActivo.entregado) {
-      this.etaInfo = null;
-    } else {
-      this.calculateETA(latC, lngC, destino.lat, destino.lng, lastUpdate, gpsDisponible);
-    }
   }
-
-
-  private calculateETA(latC: number, lngC: number, latD: number, lngD: number, lastUpdate: Date, gpsDisponible: boolean) {
-    const distanciaKm = this.getDistanceFromLatLonInKm(latC, lngC, latD, lngD);
-    const ahora = new Date();
-    const difMinutos = (ahora.getTime() - lastUpdate.getTime()) / 60000;
-    const esEstimado = !gpsDisponible || difMinutos > 5;
-
-    const velKmh = 35; // Velocidad urbana promedio asumida
-    const horasRestantes = distanciaKm / velKmh;
-    const fechaLlegada = new Date(ahora.getTime() + horasRestantes * 3600000);
-
-    const formatoLlegada = fechaLlegada.toLocaleTimeString('es-PE', {
-      hour: '2-digit',
-      minute: '2-digit',
-      timeZone: 'America/Lima'
-    });
-
-    // Día de llegada en hora de Perú (hoy / mañana / fecha corta)
-    const fmtDia = (d: Date) => d.toLocaleDateString('en-CA', { timeZone: 'America/Lima' });
-    const hoyLima = fmtDia(ahora);
-    const mananaLima = fmtDia(new Date(ahora.getTime() + 24 * 3600000));
-    const llegadaLima = fmtDia(fechaLlegada);
-    let etaDia: string;
-    if (llegadaLima === hoyLima) {
-      etaDia = 'hoy';
-    } else if (llegadaLima === mananaLima) {
-      etaDia = 'mañana';
-    } else {
-      etaDia = fechaLlegada.toLocaleDateString('es-PE', { day: '2-digit', month: 'short', timeZone: 'America/Lima' });
-    }
-
-    this.etaInfo = {
-      eta: formatoLlegada,
-      etaDia,
-      distanciaKm: distanciaKm.toFixed(1),
-      esEstimado: esEstimado,
-      edadMin: Math.floor(difMinutos)
-    };
-  }
-
-
-  private getDistanceFromLatLonInKm(lat1: number, lon1: number, lat2: number, lon2: number) {
-    const R = 6371; // Radius of the earth in km
-    const dLat = this.deg2rad(lat2 - lat1);
-    const dLon = this.deg2rad(lon2 - lon1);
-    const a =
-      Math.sin(dLat/2) * Math.sin(dLat/2) +
-      Math.cos(this.deg2rad(lat1)) * Math.cos(this.deg2rad(lat2)) *
-      Math.sin(dLon/2) * Math.sin(dLon/2);
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-    return R * c;
-  }
-
-  private deg2rad(deg: number) { return deg * (Math.PI/180); }
 
   get isDelivered(): boolean { return this.trackingData?.estado === 'COMPLETADA'; }
 
