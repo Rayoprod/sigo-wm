@@ -540,6 +540,17 @@ body.dark-mode {
   .topbar-glass {
     background: rgba(15, 23, 42, 0.9) !important;
   }
+
+  /* Stepper de Despacho */
+  .stepper-pill {
+    background-color: rgba(15, 23, 42, 0.6) !important;
+    border-color: #334155 !important;
+  }
+  .stepper-input {
+    color: #f8fafc !important;
+    background: transparent !important;
+    border: none !important;
+  }
 }
 
 .topbar-glass {

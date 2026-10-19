@@ -243,7 +243,7 @@
     [header]="'Registrar Despacho - Folio ' + selectedPedido?.folio"
     [style]="{width: '100vw', height: '100vh', maxHeight: '100vh', margin: 0}"
     [breakpoints]="{'960px': '100vw'}"
-    [contentStyle]="{padding: '1rem', backgroundColor: '#f8f9fa'}"
+    [contentStyle]="{padding: '1rem', backgroundColor: 'var(--surface-ground)'}"
     [draggable]="false" 
     [resizable]="false"
     [closeOnEscape]="true">
@@ -280,31 +280,57 @@
             <!-- Tarjetas de Materiales (Táctiles) -->
             <span class="text-color-secondary text-sm font-bold block mb-2 ml-1"><i class="pi pi-box mr-2"></i>Cantidades a Cargar</span>
             <div class="flex flex-column gap-3 mb-4">
-                <div *ngFor="let item of viajeForm.items; let i = index" class="surface-card p-3 border-round-xl shadow-1 border-left-3" [ngClass]="item.cantidad_viaje > 0 ? 'border-primary bg-primary-reverse' : 'surface-border'">
+                <div *ngFor="let item of viajeForm.items; let i = index" 
+                     class="surface-card p-3 border-round-xl shadow-1 border-left-3 overflow-hidden" 
+                     [ngClass]="item.cantidad_viaje > 0 ? 'border-primary bg-primary-reverse' : 'surface-border'">
                     <div class="flex flex-column sm:flex-row justify-content-between align-items-start sm:align-items-center gap-3">
-                        <div class="flex-1">
+                        <div class="flex-1 min-w-0">
                             <div class="font-bold text-lg text-color">{{ item.descripcion }}</div>
-                            <div class="text-sm text-500 mt-1">Pendiente de envío: <b class="text-color">{{ item.maxCantidad }}</b> {{ item.unidad_medida }}</div>
+                            <div class="text-sm text-500 mt-1">
+                                Pendiente de envío: 
+                                <b class="text-color cursor-pointer hover:underline" (click)="setCantidadMaxima(item)" pTooltip="Clic para cargar todo" tooltipPosition="top">
+                                    {{ item.maxCantidad }}
+                                </b> 
+                                {{ item.unidad_medida }}
+                            </div>
                         </div>
                         
                         <!-- Controles Numéricos Táctiles y Teclado -->
-                        <div class="flex align-items-center gap-2 surface-50 p-2 border-round-3xl border-1 surface-border">
-                            <button pButton icon="pi pi-minus" class="p-button-rounded p-button-secondary p-button-text w-2rem h-2rem" 
-                                    (click)="item.cantidad_viaje = round3(item.cantidad_viaje > 0 ? (item.cantidad_viaje - 1 < 0 ? 0 : item.cantidad_viaje - 1) : 0)" 
-                                    [disabled]="item.cantidad_viaje <= 0"></button>
-                            
-                            <p-inputNumber [(ngModel)]="item.cantidad_viaje"
-                                           [min]="0" 
-                                           [max]="item.maxCantidad" 
-                                           [minFractionDigits]="0" 
-                                           [maxFractionDigits]="3" 
-                                           styleClass="w-5rem" 
-                                           inputStyleClass="text-center font-bold text-lg p-inputtext-sm border-none bg-transparent surface-card shadow-none">
-                            </p-inputNumber>
-                            
-                            <button pButton icon="pi pi-plus" class="p-button-rounded p-button-primary p-button-text w-2rem h-2rem" 
-                                    (click)="item.cantidad_viaje = round3(item.cantidad_viaje < item.maxCantidad ? (item.cantidad_viaje + 1 > item.maxCantidad ? item.maxCantidad : item.cantidad_viaje + 1) : item.maxCantidad)"
-                                    [disabled]="item.cantidad_viaje >= item.maxCantidad"></button>
+                        <div class="flex align-items-center gap-2 flex-shrink-0">
+                            <div class="stepper-pill flex align-items-center">
+                                <button pButton type="button" icon="pi pi-minus" 
+                                        class="p-button-rounded p-button-secondary p-button-text stepper-btn" 
+                                        (click)="ajustarCantidadItem(item, -1)" 
+                                        [disabled]="item.cantidad_viaje <= 0"
+                                        pTooltip="Disminuir 1"
+                                        tooltipPosition="top"></button>
+                                
+                                <input type="number" 
+                                       [(ngModel)]="item.cantidad_viaje" 
+                                       (input)="onCantidadInput(item)"
+                                       (blur)="validarCantidadItem(item)"
+                                       [min]="0" 
+                                       [max]="item.maxCantidad" 
+                                       step="any"
+                                       placeholder="0"
+                                       class="stepper-input font-bold text-center" />
+                                
+                                <button pButton type="button" icon="pi pi-plus" 
+                                        class="p-button-rounded p-button-primary p-button-text stepper-btn" 
+                                        (click)="ajustarCantidadItem(item, 1)" 
+                                        [disabled]="item.cantidad_viaje >= item.maxCantidad"
+                                        pTooltip="Aumentar 1"
+                                        tooltipPosition="top"></button>
+                            </div>
+
+                            <button pButton type="button" 
+                                    label="Todo" 
+                                    class="p-button-outlined p-button-sm text-xs font-bold px-2 border-round-2xl" 
+                                    style="height: 2.25rem;"
+                                    (click)="setCantidadMaxima(item)" 
+                                    [disabled]="item.cantidad_viaje >= item.maxCantidad"
+                                    pTooltip="Cargar cantidad máxima pendiente" 
+                                    tooltipPosition="top"></button>
                         </div>
                     </div>
                 </div>

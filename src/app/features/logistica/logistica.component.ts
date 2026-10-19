@@ -365,7 +365,48 @@ export class LogisticaComponent implements OnInit, OnDestroy {
 
   /** Redondea a 3 decimales (misma precisión de cantidades que usa la app Flutter). */
   round3(valor: number): number {
-    return Math.round((valor + Number.EPSILON) * 1000) / 1000;
+    return Math.round((Number(valor || 0) + Number.EPSILON) * 1000) / 1000;
+  }
+
+  ajustarCantidadItem(item: any, delta: number) {
+    const actual = Number(item.cantidad_viaje) || 0;
+    const nuevo = this.round3(actual + delta);
+    if (nuevo < 0) {
+      item.cantidad_viaje = 0;
+    } else if (nuevo > item.maxCantidad) {
+      item.cantidad_viaje = this.round3(item.maxCantidad);
+    } else {
+      item.cantidad_viaje = nuevo;
+    }
+  }
+
+  setCantidadMaxima(item: any) {
+    item.cantidad_viaje = this.round3(item.maxCantidad);
+  }
+
+  onCantidadInput(item: any) {
+    if (item.cantidad_viaje === null || item.cantidad_viaje === undefined || item.cantidad_viaje === '') {
+      return;
+    }
+    const val = Number(item.cantidad_viaje);
+    if (!isNaN(val) && val > item.maxCantidad) {
+      item.cantidad_viaje = this.round3(item.maxCantidad);
+    }
+  }
+
+  validarCantidadItem(item: any) {
+    if (item.cantidad_viaje === null || item.cantidad_viaje === undefined || item.cantidad_viaje === '') {
+      item.cantidad_viaje = 0;
+      return;
+    }
+    const val = Number(item.cantidad_viaje);
+    if (isNaN(val) || val < 0) {
+      item.cantidad_viaje = 0;
+    } else if (val > item.maxCantidad) {
+      item.cantidad_viaje = this.round3(item.maxCantidad);
+    } else {
+      item.cantidad_viaje = this.round3(val);
+    }
   }
 
   capturarGPS() {
